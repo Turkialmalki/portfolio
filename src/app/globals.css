@@ -168,8 +168,21 @@ main > section:last-of-type {
 }
 
 /* Pause marquee on hover — true pause, not slowdown */
-.marquee-container:hover .marquee-track {
+.marquee-container:hover .marquee-track,
+.marquee-container:hover .marquee-track-right {
   animation-play-state: paused;
+}
+
+/* Right-scrolling marquee for second gallery row */
+@keyframes marquee-right {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+
+.marquee-track-right {
+  display: inline-flex;
+  animation: marquee-right 62s linear infinite;
+  will-change: transform;
 }
 
 /* Edge-fade mask applied to the marquee wrapper */
