@@ -6,7 +6,16 @@ import { motion, useScroll, useTransform } from "framer-motion";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-export default function Hero() {
+const MARQUEE_PROJECTS = [
+  { title: "BaseBox AI SaaS", tag: "AI · SaaS", accent: "#0091FF" },
+  { title: "Munaaseb Fintech", tag: "Fintech · Open Banking", accent: "#00C8A0" },
+  { title: "Hala Product", tag: "Product · Innovation", accent: "#FF6B35" },
+  { title: "SAP Cloud CX", tag: "Enterprise · CX", accent: "#0070D2" },
+  { title: "Lean Technologies", tag: "Open Banking · API", accent: "#9B59B6" },
+];
+const MARQUEE_TRACK = [...MARQUEE_PROJECTS, ...MARQUEE_PROJECTS];
+
+export default function Hero({ ready = true }: { ready?: boolean }) {
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -18,75 +27,47 @@ export default function Hero() {
     <section
       id="home"
       ref={sectionRef}
-      style={{ backgroundColor: "#F5F5F3", overflow: "hidden" }}
+      style={{
+        /* Pure white in light mode (--bg-surface = #FFFFFF), deep dark in dark mode */
+        backgroundColor: "var(--bg-surface)",
+        overflow: "hidden",
+        transition: "background-color 0.45s ease",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 600,
+      }}
     >
+      {/* ── Hero grid: copy left, avatar right ── */}
       <div
         className="hero-grid"
         style={{
           maxWidth: 1280,
+          width: "100%",
           margin: "0 auto",
-          padding:
-            "clamp(130px, 15vw, 200px) 32px clamp(100px, 12vw, 160px)",
+          padding: "clamp(100px, 13vw, 160px) 32px 32px",
           display: "grid",
-          gap: "clamp(56px, 7vw, 100px)",
+          gap: "clamp(40px, 5vw, 80px)",
           alignItems: "center",
+          flex: 1,
         }}
       >
         {/* ── LEFT: Copy ── */}
         <div>
-          {/* Availability badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: EASE }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 40,
-              background: "rgba(0,0,0,0.05)",
-              borderRadius: 100,
-              padding: "7px 16px",
-              border: "1px solid rgba(0,0,0,0.07)",
-              width: "fit-content",
-            }}
-          >
-            <span
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: "#22C55E",
-                boxShadow: "0 0 9px rgba(34,197,94,0.55)",
-                display: "inline-block",
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: 500,
-                color: "#6B7280",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Available for work
-            </span>
-          </motion.div>
-
           {/* Headline line 1 */}
           <div style={{ overflow: "hidden" }}>
             <motion.h1
               initial={{ y: "110%", opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
+              animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
               transition={{ duration: 1.05, ease: EASE, delay: 0.08 }}
               style={{
-                fontSize: "clamp(44px, 6.2vw, 88px)",
+                fontSize: "clamp(40px, 5.8vw, 84px)",
                 fontWeight: 800,
-                color: "#0D0E12",
+                color: "var(--text-primary)",
                 lineHeight: 1.05,
-                letterSpacing: "-0.042em",
+                letterSpacing: "-0.04em",
                 display: "block",
+                transition: "color 0.45s ease",
               }}
             >
               Hello! 👋
@@ -94,18 +75,19 @@ export default function Hero() {
           </div>
 
           {/* Headline line 2 */}
-          <div style={{ overflow: "hidden", marginBottom: 32 }}>
+          <div style={{ overflow: "hidden", marginBottom: 24 }}>
             <motion.h1
               initial={{ y: "110%", opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
+              animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
               transition={{ duration: 1.05, ease: EASE, delay: 0.14 }}
               style={{
-                fontSize: "clamp(44px, 6.2vw, 88px)",
+                fontSize: "clamp(40px, 5.8vw, 84px)",
                 fontWeight: 800,
-                color: "#0D0E12",
+                color: "var(--text-primary)",
                 lineHeight: 1.05,
-                letterSpacing: "-0.042em",
+                letterSpacing: "-0.04em",
                 display: "block",
+                transition: "color 0.45s ease",
               }}
             >
               I&apos;m Turki Almalki
@@ -115,48 +97,36 @@ export default function Hero() {
           {/* Subtext */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.9, ease: EASE, delay: 0.32 }}
             style={{
-              fontSize: "clamp(15px, 1.15vw, 17px)",
+              fontSize: "clamp(14px, 1.1vw, 16px)",
               color: "#6B7280",
               lineHeight: 1.74,
-              maxWidth: 430,
-              marginBottom: 52,
+              maxWidth: 420,
+              marginBottom: 40,
               fontWeight: 400,
             }}
           >
-            An engineering leader and designer based in Riyadh, SA. With over
-            6+ years of experience driving digital excellence and system
-            integrations.
+            Software Engineering Leader at Monsha&apos;at. 9+ years driving
+            digital transformation and enterprise-grade innovation across
+            fintech, product, and government sectors.
           </motion.p>
 
           {/* CTA row */}
           <motion.div
             initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
+            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
             transition={{ duration: 0.8, ease: EASE, delay: 0.46 }}
             style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
           >
-            <PillButton
-              color="#0091FF"
-              onClick={() =>
-                document
-                  .querySelector("#projects")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
+            {/* Primary: blue (#0091FF) */}
+            <PillButton color="#0091FF" href="/projects">
               View Portfolio
             </PillButton>
-            <PillButton
-              color="#0D0E12"
-              onClick={() =>
-                document
-                  .querySelector("footer")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              Let&apos;s Connect
+            {/* Secondary: ghost/outline */}
+            <PillButton color="transparent" href="/about" outline>
+              About Me
             </PillButton>
           </motion.div>
         </div>
@@ -165,7 +135,7 @@ export default function Hero() {
         <motion.div
           className="hidden md:flex"
           initial={{ opacity: 0, scale: 0.88 }}
-          animate={{ opacity: 1, scale: 1 }}
+          animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
           transition={{ duration: 1.4, ease: EASE, delay: 0.2 }}
           style={{
             y: avatarY,
@@ -178,13 +148,44 @@ export default function Hero() {
         </motion.div>
       </div>
 
+      {/* ── Inline Marquee Strip — stays within 100vh ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={ready ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.8, ease: EASE, delay: 0.7 }}
+        style={{ paddingBottom: 110, overflow: "hidden" }}
+      >
+        <p
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: "var(--text-secondary)",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            padding: "0 32px",
+            marginBottom: 14,
+            opacity: 0.65,
+          }}
+        >
+          Selected Work
+        </p>
+
+        <div className="marquee-container">
+          <div className="marquee-track" style={{ gap: 0 }}>
+            {MARQUEE_TRACK.map((p, i) => (
+              <HeroMarqueeCard key={i} project={p} />
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
       <style>{`
         .hero-grid {
           grid-template-columns: 1fr;
         }
         @media (min-width: 768px) {
           .hero-grid {
-            grid-template-columns: 1.12fr 0.88fr;
+            grid-template-columns: 1.15fr 0.85fr;
           }
         }
       `}</style>
@@ -192,59 +193,138 @@ export default function Hero() {
   );
 }
 
-/* ── Pill CTA button ── */
-function PillButton({
-  children,
-  onClick,
-  color,
+/* ── Compact marquee pill inside hero viewport ── */
+function HeroMarqueeCard({
+  project,
 }: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  color: string;
+  project: { title: string; tag: string; accent: string };
 }) {
   return (
-    <motion.button
-      whileHover={{ scale: 1.04, filter: "brightness(1.08)" }}
-      whileTap={{ scale: 0.96 }}
-      transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      onClick={onClick}
+    <motion.div
+      whileHover={{ scale: 1.04, y: -3 }}
+      transition={{ type: "spring", stiffness: 320, damping: 24 }}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 8,
-        background: color,
-        color: "#FFFFFF",
-        padding: "14px 30px",
-        borderRadius: 100,
-        fontSize: 14,
-        fontWeight: 600,
-        border: "none",
+        gap: 14,
+        flexShrink: 0,
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border-color)",
+        borderRadius: 32,
+        padding: "14px 22px",
+        margin: "0 8px",
         cursor: "pointer",
-        fontFamily: "inherit",
-        letterSpacing: "-0.012em",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+        minWidth: 220,
         whiteSpace: "nowrap",
-        boxShadow:
-          color === "#0091FF"
-            ? "0 8px 24px rgba(0,145,255,0.35)"
-            : "0 8px 24px rgba(0,0,0,0.18)",
       }}
     >
-      {children}
-    </motion.button>
+      <div
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: "50%",
+          background: `${project.accent}22`,
+          border: `1.5px solid ${project.accent}44`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: project.accent,
+          }}
+        />
+      </div>
+      <div>
+        <p
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: "var(--text-primary)",
+            letterSpacing: "-0.018em",
+            transition: "color 0.45s ease",
+          }}
+        >
+          {project.title}
+        </p>
+        <p
+          style={{
+            fontSize: 11,
+            color: "var(--text-secondary)",
+            fontWeight: 400,
+            marginTop: 1,
+          }}
+        >
+          {project.tag}
+        </p>
+      </div>
+    </motion.div>
   );
 }
 
-/* ── Memoji-style avatar with teal/blue glow ── */
+/* ── Pill CTA button ── */
+function PillButton({
+  children,
+  href,
+  color,
+  outline,
+}: {
+  children: React.ReactNode;
+  href?: string;
+  color: string;
+  outline?: boolean;
+}) {
+  const style: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    background: outline ? "transparent" : color,
+    color: outline ? "var(--text-primary)" : "#FFFFFF",
+    padding: "13px 28px",
+    borderRadius: 100,
+    fontSize: 14,
+    fontWeight: 600,
+    border: outline ? "1.5px solid var(--border-subtle)" : "none",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    letterSpacing: "-0.012em",
+    whiteSpace: "nowrap",
+    textDecoration: "none",
+    /* Shadow tinted to match button color */
+    boxShadow: outline ? "none" : `0 8px 28px ${color}48`,
+    transition: "opacity 0.2s ease",
+  };
+
+  return (
+    <motion.a
+      href={href}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: "spring", stiffness: 320, damping: 22 }}
+      style={style}
+    >
+      {children}
+    </motion.a>
+  );
+}
+
+/* ── Profile image with multi-layer glow + floating badges ── */
 function AvatarVisual() {
   return (
-    <div style={{ position: "relative", width: 340, height: 340 }}>
-      {/* Pulsing outer glow rings */}
+    <div style={{ position: "relative", width: 380, height: 380 }}>
+      {/* Pulsing radial glow rings */}
       {([1.55, 1.32, 1.12] as const).map((scale, i) => (
         <motion.div
           key={i}
           animate={{
-            scale: [scale, scale * 1.05, scale],
-            opacity: [0.12, 0.2, 0.12],
+            scale: [scale, scale * 1.06, scale],
+            opacity: [0.14, 0.28, 0.14],
           }}
           transition={{
             duration: 3.5 + i * 0.8,
@@ -256,14 +336,14 @@ function AvatarVisual() {
             position: "absolute",
             inset: 0,
             borderRadius: "50%",
-            background: `radial-gradient(circle, rgba(0,145,255,${0.22 - i * 0.05}) 0%, rgba(0,200,200,${0.1 - i * 0.02}) 45%, transparent 70%)`,
+            background: `radial-gradient(circle, rgba(0,145,255,${0.28 - i * 0.07}) 0%, rgba(0,200,220,${0.13 - i * 0.03}) 45%, transparent 70%)`,
             transform: `scale(${scale})`,
             transformOrigin: "center",
           }}
         />
       ))}
 
-      {/* Main avatar circle — real photo */}
+      {/* Main circular avatar */}
       <div
         style={{
           position: "absolute",
@@ -271,8 +351,8 @@ function AvatarVisual() {
           borderRadius: "50%",
           overflow: "hidden",
           boxShadow:
-            "0 28px 72px rgba(0,145,255,0.4), 0 8px 32px rgba(0,145,255,0.18)",
-          border: "3px solid rgba(0,145,255,0.25)",
+            "0 32px 80px rgba(0,145,255,0.44), 0 10px 36px rgba(0,145,255,0.20)",
+          border: "3px solid rgba(0,145,255,0.28)",
         }}
       >
         <Image
@@ -280,52 +360,42 @@ function AvatarVisual() {
           alt="Turki Almalki"
           fill
           priority
-          sizes="340px"
-          style={{
-            objectFit: "cover",
-            objectPosition: "center 12%",
-          }}
+          sizes="380px"
+          style={{ objectFit: "cover", objectPosition: "center 12%" }}
         />
-        {/* Subtle vignette to blend edges */}
+        {/* Vignette */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             borderRadius: "50%",
             background:
-              "radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(0,0,0,0.18) 100%)",
+              "radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,0.12) 100%)",
             pointerEvents: "none",
           }}
         />
       </div>
 
-      {/* Floating card — name + role */}
+      {/* Floating badge — location */}
       <motion.div
         initial={{ opacity: 0, x: 20, y: 8 }}
         animate={{ opacity: 1, x: 0, y: 0 }}
         transition={{ duration: 1.0, ease: EASE, delay: 1.05 }}
         style={{
           position: "absolute",
-          bottom: 12,
-          right: -24,
+          bottom: 20,
+          right: -28,
           background: "rgba(255,255,255,0.96)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
           borderRadius: 18,
-          padding: "14px 18px",
+          padding: "12px 16px",
           border: "1px solid rgba(0,0,0,0.06)",
           boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
-          minWidth: 160,
+          minWidth: 155,
         }}
       >
-        <p
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: "#0D0E12",
-            letterSpacing: "-0.02em",
-          }}
-        >
+        <p style={{ fontSize: 13, fontWeight: 700, color: "#0D0E12", letterSpacing: "-0.02em" }}>
           Turki Almalki
         </p>
         <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3, fontWeight: 400 }}>
@@ -333,20 +403,20 @@ function AvatarVisual() {
         </p>
       </motion.div>
 
-      {/* Floating card — experience */}
+      {/* Floating badge — experience */}
       <motion.div
         initial={{ opacity: 0, x: -20, y: -8 }}
         animate={{ opacity: 1, x: 0, y: 0 }}
         transition={{ duration: 1.0, ease: EASE, delay: 1.25 }}
         style={{
           position: "absolute",
-          top: 20,
-          left: -28,
+          top: 24,
+          left: -32,
           background: "rgba(255,255,255,0.96)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
           borderRadius: 18,
-          padding: "14px 18px",
+          padding: "12px 16px",
           border: "1px solid rgba(0,0,0,0.06)",
           boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
         }}
@@ -360,7 +430,7 @@ function AvatarVisual() {
             lineHeight: 1,
           }}
         >
-          6+
+          9+
         </p>
         <p style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontWeight: 400 }}>
           Years Experience

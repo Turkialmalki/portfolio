@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Dancing_Script } from "next/font/google";
+import { Inter, Dancing_Script, Noto_Naskh_Arabic } from "next/font/google";
 import "./globals.css";
 import LenisProvider from "@/providers/LenisProvider";
 
@@ -15,6 +15,13 @@ const dancingScript = Dancing_Script({
   variable: "--font-dancing-script",
   display: "swap",
   weight: ["700"],
+});
+
+const notoNaskhArabic = Noto_Naskh_Arabic({
+  subsets: ["arabic"],
+  variable: "--font-noto-naskh",
+  display: "swap",
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -36,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${dancingScript.variable}`}>
+    <html lang="en" className={`${inter.variable} ${dancingScript.variable} ${notoNaskhArabic.variable}`}>
       <body className="antialiased overflow-x-hidden">
         <LenisProvider>{children}</LenisProvider>
       </body>

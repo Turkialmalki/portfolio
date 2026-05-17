@@ -200,7 +200,7 @@ function ExperienceCard() {
           pointerEvents: "none",
         }}
       >
-        6
+        9
       </div>
 
       <div>
@@ -226,7 +226,7 @@ function ExperienceCard() {
             marginBottom: 16,
           }}
         >
-          Over 6+ years of experience
+          9+ Years of experience
         </h3>
         <p
           style={{
@@ -245,7 +245,7 @@ function ExperienceCard() {
       {/* Stats row */}
       <div style={{ display: "flex", gap: 32, marginTop: 32 }}>
         {[
-          { n: "6+", label: "Years" },
+          { n: "9+", label: "Years" },
           { n: "25+", label: "Projects" },
           { n: "3", label: "Industries" },
         ].map(({ n, label }) => (
@@ -428,7 +428,7 @@ function LeaderCard() {
             marginBottom: 14,
           }}
         >
-          Engineering Leader
+          Led fast-moving teams
         </h3>
         <p
           style={{
@@ -437,8 +437,8 @@ function LeaderCard() {
             lineHeight: 1.65,
           }}
         >
-          Guiding teams, shaping architecture, and enforcing engineering
-          governance across enterprise digital programs.
+          Mentoring engineers, shaping architecture, and driving delivery
+          across high-velocity enterprise digital programs.
         </p>
       </div>
 
@@ -614,17 +614,30 @@ function StatsCard() {
         >
           Impact
         </p>
-        <h3
-          style={{
-            fontSize: "clamp(18px, 2vw, 22px)",
-            fontWeight: 800,
-            color: "#FFFFFF",
-            letterSpacing: "-0.028em",
-            lineHeight: 1.2,
-          }}
-        >
-          Turning Vision into Reality
-        </h3>
+        <div>
+          {/* 5 star icons */}
+          <div style={{ display: "flex", gap: 3, marginBottom: 10 }}>
+            {[0, 1, 2, 3, 4].map((s) => (
+              <svg key={s} width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path
+                  d="M7 1l1.545 3.13L12 4.635l-2.5 2.435.59 3.44L7 8.985l-3.09 1.525.59-3.44L2 4.635l3.455-.505L7 1z"
+                  fill="rgba(255,255,255,0.75)"
+                />
+              </svg>
+            ))}
+          </div>
+          <h3
+            style={{
+              fontSize: "clamp(18px, 2vw, 22px)",
+              fontWeight: 800,
+              color: "#FFFFFF",
+              letterSpacing: "-0.028em",
+              lineHeight: 1.2,
+            }}
+          >
+            Turning ideas into milestones
+          </h3>
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

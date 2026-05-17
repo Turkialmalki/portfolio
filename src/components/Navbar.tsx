@@ -1,49 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { FiHome, FiBriefcase, FiGrid, FiMail } from "react-icons/fi";
+import { FiHome, FiBriefcase, FiUser, FiBook } from "react-icons/fi";
 
 const NAV_ITEMS = [
-  { Icon: FiHome, label: "Home", section: "home" },
-  { Icon: FiBriefcase, label: "Work", section: "projects" },
-  { Icon: FiGrid, label: "About", section: "about" },
-  { Icon: FiMail, label: "Contact", section: "contact-footer" },
+  { Icon: FiHome, label: "Home", href: "/" },
+  { Icon: FiBriefcase, label: "Portfolio", href: "/projects" },
+  { Icon: FiUser, label: "About", href: "/about" },
+  { Icon: FiBook, label: "Blog", href: "/blog" },
 ];
 
 export default function Navbar() {
-  const [active, setActive] = useState("home");
+  const pathname = usePathname();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
+  useEffect(() => setMounted(true), []);
 
-    const targets = NAV_ITEMS.map((n) => {
-      const id = n.section === "contact-footer" ? undefined : n.section;
-      return id ? document.getElementById(id) : null;
-    }).filter(Boolean) as HTMLElement[];
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  };
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) setActive(entry.target.id);
-        });
-      },
-      { threshold: 0.35, rootMargin: "-10% 0px -10% 0px" }
-    );
-
-    targets.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
-
-  const handleClick = (section: string) => {
-    if (section === "home") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (section === "contact-footer") {
-      document.querySelector("footer")?.scrollIntoView({ behavior: "smooth" });
-    } else {
-      document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
-    }
+  const handleClick = (href: string) => {
+    router.push(href);
   };
 
   if (!mounted) return null;
@@ -59,26 +41,26 @@ export default function Navbar() {
         bottom: 28,
         left: "50%",
         transform: "translateX(-50%)",
-        zIndex: 200,
+        zIndex: 1000,
         display: "flex",
         alignItems: "center",
         gap: 4,
-        backgroundColor: "rgba(13, 14, 18, 0.72)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(255,255,255,0.1)",
+        backgroundColor: "var(--nav-bg)",
+        backdropFilter: "blur(60px) saturate(200%)",
+        WebkitBackdropFilter: "blur(60px) saturate(200%)",
+        border: "1px solid var(--nav-border)",
         borderRadius: 100,
         padding: "8px 12px",
-        boxShadow:
-          "0 8px 32px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.08)",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.14), 0 2px 10px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.18)",
+        transition: "background-color 0.45s ease, border-color 0.45s ease",
       }}
     >
-      {NAV_ITEMS.map(({ Icon, label, section }) => {
-        const isActive = active === section || (section === "contact-footer" && active === "contact-footer");
+      {NAV_ITEMS.map(({ Icon, label, href }) => {
+        const active = isActive(href);
         return (
           <motion.button
             key={label}
-            onClick={() => handleClick(section)}
+            onClick={() => handleClick(href)}
             title={label}
             whileTap={{ scale: 0.9 }}
             style={{
@@ -95,17 +77,20 @@ export default function Navbar() {
               flexShrink: 0,
             }}
           >
-            {isActive && (
+            {active && (
               <motion.div
-                layoutId="dock-pill"
+                layoutId="active-pill"
                 style={{
                   position: "absolute",
                   inset: 0,
                   borderRadius: "50%",
                   background: "#FFFFFF",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                  filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.1))",
                 }}
-                transition={{ type: "spring", stiffness: 400, damping: 34 }}
+                transition={{
+                  type: "spring",
+                  bounce: 0.3,
+                }}
               />
             )}
             <Icon
@@ -113,7 +98,9 @@ export default function Navbar() {
               style={{
                 position: "relative",
                 zIndex: 1,
-                color: isActive ? "#0D0E12" : "rgba(255,255,255,0.45)",
+                color: active
+                  ? "var(--nav-icon-active)"
+                  : "var(--nav-icon-inactive)",
                 transition: "color 0.25s ease",
               }}
             />

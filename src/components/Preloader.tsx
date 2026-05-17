@@ -1,140 +1,272 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 
-// Easily adjustable config
-const ANIMATION_DURATION = 2.5; // seconds for the full draw-in + hold phase
-const TEXT_COLOR = "#FFFFFF";
-const PRELOADER_BG = "#000000";
+const BLOBS = [
+  {
+    gradient: "radial-gradient(circle, #6B1FA8 0%, #2D0054 60%, transparent 100%)",
+    xKeys: ["-28vw", "8vw", "-18vw", "-28vw"],
+    yKeys: ["-22vh", "14vh", "-6vh", "-22vh"],
+    size: "78vmax",
+    duration: 20,
+    delay: 0,
+    opacity: 0.72,
+  },
+  {
+    gradient: "radial-gradient(circle, #1A56DB 0%, #001B44 55%, transparent 100%)",
+    xKeys: ["22vw", "-12vw", "32vw", "22vw"],
+    yKeys: ["18vh", "-22vh", "6vh", "18vh"],
+    size: "85vmax",
+    duration: 25,
+    delay: 2.5,
+    opacity: 0.65,
+  },
+  {
+    gradient: "radial-gradient(circle, #E91E63 0%, #880E4F 50%, transparent 100%)",
+    xKeys: ["6vw", "-24vw", "16vw", "6vw"],
+    yKeys: ["-18vh", "22vh", "-28vh", "-18vh"],
+    size: "52vmax",
+    duration: 16,
+    delay: 1,
+    opacity: 0.55,
+  },
+];
+
+type Stage = "draw" | "glow" | "exit";
 
 export default function Preloader({ onComplete }: { onComplete: () => void }) {
   const [visible, setVisible] = useState(true);
+  const [stage, setStage] = useState<Stage>("draw");
+
+  /*
+   * Motion value drives the feathered RTL mask on every frame.
+   * Using useTransform avoids gradient-string interpolation in Framer Motion,
+   * which is unreliable for complex multi-stop gradients.
+   */
+  const drawProgress = useMotionValue(0);
+
+  /*
+   * "to left" direction: 0 % = RIGHT edge, 100 % = LEFT edge.
+   * Pen starts at the right (first Arabic character, حياك) and sweeps left (الله).
+   * p <= 0 → fully transparent (hidden before draw delay fires).
+   * p = 1  → 92 % solid black + 8 % soft feather on the left trailing edge.
+   */
+  const maskImage = useTransform(drawProgress, (p) => {
+    if (p <= 0) return "linear-gradient(to left, transparent 0%, transparent 100%)";
+    const pct = p * 92;
+    return `linear-gradient(to left, black 0%, black ${pct.toFixed(1)}%, rgba(0,0,0,0.4) ${(pct + 4).toFixed(1)}%, transparent ${(pct + 8).toFixed(1)}%, transparent 100%)`;
+  });
+
+  /* 5 px → 0 px vertical shift simulates pen pressure during the stroke */
+  const textY = useTransform(drawProgress, [0, 1], [5, 0]);
 
   useEffect(() => {
     const shown = sessionStorage.getItem("portfolio-preloader-shown");
 
     if (shown) {
-      // Return visit — exit instantly, reveal content quickly
       document.body.style.overflow = "";
       setVisible(false);
       const t = setTimeout(onComplete, 60);
       return () => clearTimeout(t);
     }
 
-    // First visit — full cinematic sequence
     document.body.style.overflow = "hidden";
 
-    // Start exit: draw-in takes ~1.8s, hold ~0.7s, then fade out
-    const exitAt = ANIMATION_DURATION * 1000 + 700;
-    const doneAt = exitAt + 900; // exit animation is 0.9s
+    /* Organic pen-speed curve: slow start, fast mid, slow land */
+    const drawControls = animate(drawProgress, 1, {
+      duration: 2.2,
+      ease: [0.45, 0, 0.55, 1],
+      delay: 0.35,
+    });
 
-    const exitTimer = setTimeout(() => setVisible(false), exitAt);
-    const doneTimer = setTimeout(() => {
+    /* 2.4 s → text fully revealed, radiance pulse begins */
+    const t1 = setTimeout(() => setStage("glow"), 2400);
+    /* 2.8 s → curtain slides up revealing the page */
+    const t2 = setTimeout(() => setStage("exit"), 2800);
+    /* 3.3 s → release scroll & signal content reveal */
+    const t3 = setTimeout(() => {
       document.body.style.overflow = "";
       sessionStorage.setItem("portfolio-preloader-shown", "true");
       onComplete();
-    }, doneAt);
+    }, 3300);
+    /* 4.2 s → remove DOM node */
+    const t4 = setTimeout(() => setVisible(false), 4200);
 
     return () => {
-      clearTimeout(exitTimer);
-      clearTimeout(doneTimer);
+      drawControls.stop();
+      [t1, t2, t3, t4].forEach(clearTimeout);
       document.body.style.overflow = "";
     };
-  }, [onComplete]);
+  }, [onComplete, drawProgress]);
+
+  if (!visible) return null;
 
   return (
-    <AnimatePresence>
-      {visible && (
+    <motion.div
+      initial={{ y: 0 }}
+      animate={{ y: stage === "exit" ? "-100%" : 0 }}
+      transition={
+        stage === "exit"
+          ? { duration: 0.95, ease: [0.77, 0, 0.175, 1] }
+          : { duration: 0 }
+      }
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        backgroundColor: "#060010",
+      }}
+    >
+      {/* Animated mesh-gradient blobs */}
+      {BLOBS.map((blob, i) => (
         <motion.div
-          key="preloader"
-          exit={{
-            opacity: 0,
-            transition: { duration: 0.9, ease: [0.76, 0, 0.24, 1] },
+          key={i}
+          animate={{ x: blob.xKeys, y: blob.yKeys }}
+          transition={{
+            duration: blob.duration,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: blob.delay,
+            times: [0, 0.33, 0.66, 1],
           }}
           style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: PRELOADER_BG,
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            width: blob.size,
+            height: blob.size,
+            marginTop: `calc(-${blob.size} / 2)`,
+            marginLeft: `calc(-${blob.size} / 2)`,
+            borderRadius: "50%",
+            background: blob.gradient,
+            filter: "blur(90px)",
+            opacity: blob.opacity,
+            willChange: "transform",
+          }}
+        />
+      ))}
+
+      {/* Grain texture overlay */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")",
+          opacity: 0.04,
+          pointerEvents: "none",
+          zIndex: 1,
+        }}
+      />
+
+      {/*
+       * حياك الله — outer wrapper handles:
+       *   draw stage  → no glow, normal state
+       *   glow stage  → single pulse: scale + drop-shadow + color drift
+       *   exit stage  → opacity fades at 0.8× curtain speed (parallax depth)
+       */}
+      <motion.div
+        animate={
+          stage === "exit"
+            ? { opacity: 0 }
+            : stage === "glow"
+            ? {
+                scale: [1, 1.03, 1.015],
+                filter: [
+                  "drop-shadow(0 0 0px rgba(255,255,255,0))",
+                  "drop-shadow(0 0 28px rgba(255,255,255,0.72)) drop-shadow(0 0 72px rgba(210,150,255,0.48))",
+                  "drop-shadow(0 0 18px rgba(255,255,255,0.48)) drop-shadow(0 0 44px rgba(190,130,255,0.3))",
+                ],
+              }
+            : {
+                scale: 1,
+                filter: "drop-shadow(0 0 0px rgba(255,255,255,0))",
+              }
+        }
+        transition={
+          stage === "exit"
+            ? { duration: 0.76, ease: [0.77, 0, 0.175, 1] }
+            : stage === "glow"
+            ? { duration: 0.84, ease: "easeInOut" }
+            : {}
+        }
+        style={{ position: "relative", zIndex: 2 }}
+      >
+        {/* Radiance bloom — blurred colour field pulsing beneath the text */}
+        <motion.div
+          animate={
+            stage === "glow" || stage === "exit"
+              ? {
+                  opacity: [0, 0.9, 0.55],
+                  filter: ["blur(0px)", "blur(20px)", "blur(12px)"],
+                  scale: [0.85, 1.12, 1.0],
+                }
+              : { opacity: 0, filter: "blur(0px)", scale: 0.85 }
+          }
+          transition={
+            stage === "glow" || stage === "exit"
+              ? { duration: 0.9, ease: "easeOut" }
+              : {}
+          }
+          style={{
+            position: "absolute",
+            inset: "-28px",
+            background:
+              "radial-gradient(ellipse at center, rgba(195,130,255,0.75) 0%, rgba(90,50,200,0.4) 45%, transparent 72%)",
+            pointerEvents: "none",
+            zIndex: 0,
+            borderRadius: "50%",
+          }}
+        />
+
+        {/*
+         * Live mask-image driven by drawProgress motion value.
+         * Feathered RTL reveal: pen writes حياك (right) → الله (left).
+         * textY provides a 5 px pen-pressure drop that resolves to 0.
+         */}
+        <motion.div
+          style={{
+            maskImage,
+            WebkitMaskImage: maskImage,
+            y: textY,
           }}
         >
-          {/* Ambient radial glow — breathes in slowly */}
-          <motion.div
-            initial={{ scale: 0.4, opacity: 0 }}
-            animate={{ scale: 1.6, opacity: 1 }}
-            transition={{ duration: 4, ease: [0.16, 1, 0.3, 1] }}
+          {/*
+           * SVG <text> avoids CSS-variable timing issues on Next.js font load.
+           * fill="currentColor" lets the parent motion.svg animate the colour.
+           * Color drifts: #FFFFFF → faint lavender #EDE8FF on glow (matches mesh).
+           */}
+          <motion.svg
+            animate={{ color: stage === "draw" ? "#FFFFFF" : "#EDE8FF" }}
+            transition={{ duration: 0.84, ease: "easeInOut" }}
+            viewBox="0 0 560 110"
             style={{
-              position: "absolute",
-              width: 560,
-              height: 560,
-              borderRadius: "50%",
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)",
-              pointerEvents: "none",
+              display: "block",
+              width: "min(88vw, 560px)",
+              height: "auto",
+              overflow: "visible",
             }}
-          />
-
-          {/* "Hello" — blur-in container then clip-path draw-in */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, filter: "blur(18px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            transition={{
-              duration: 1.1,
-              ease: [0.16, 1, 0.3, 1],
-              delay: 0.15,
-            }}
-            style={{ position: "relative", overflow: "hidden" }}
+            aria-label="حياك الله"
           >
-            <motion.span
-              initial={{ clipPath: "inset(0 102% 0 0)" }}
-              animate={{ clipPath: "inset(0 0% 0 0)" }}
-              transition={{
-                duration: ANIMATION_DURATION * 0.7,
-                ease: [0.25, 0.46, 0.45, 0.94],
-                delay: 0.3,
-              }}
-              style={{
-                fontFamily: "var(--font-dancing-script)",
-                fontSize: "clamp(5rem, 16vw, 13rem)",
-                fontWeight: 700,
-                color: TEXT_COLOR,
-                userSelect: "none",
-                lineHeight: 1.15,
-                letterSpacing: "-0.01em",
-                display: "block",
-              }}
-              aria-label="Hello"
+            <text
+              x="280"
+              y="80"
+              textAnchor="middle"
+              fontFamily="'Noto Naskh Arabic', 'SF Arabic', 'Traditional Arabic', serif"
+              fontWeight="700"
+              fontSize="72"
+              fill="currentColor"
             >
-              Hello
-            </motion.span>
-          </motion.div>
-
-          {/* Thin horizontal line that draws beneath the text */}
-          <motion.div
-            initial={{ scaleX: 0, opacity: 0 }}
-            animate={{ scaleX: 1, opacity: 0.15 }}
-            transition={{
-              duration: 1.4,
-              ease: [0.25, 0.46, 0.45, 0.94],
-              delay: 0.6,
-            }}
-            style={{
-              position: "absolute",
-              bottom: "calc(50% - clamp(3rem, 10vw, 8rem))",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "clamp(5rem, 16vw, 13rem)",
-              height: 1,
-              background: TEXT_COLOR,
-              transformOrigin: "left",
-            }}
-          />
+              حياك الله
+            </text>
+          </motion.svg>
         </motion.div>
-      )}
-    </AnimatePresence>
+      </motion.div>
+    </motion.div>
   );
 }

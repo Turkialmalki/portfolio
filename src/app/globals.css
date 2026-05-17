@@ -10,6 +10,44 @@
   --color-accent: #111111;
   --font-sans: var(--font-inter);
   --font-script: var(--font-dancing-script);
+  --font-arabic: var(--font-noto-naskh);
+}
+
+/* ── Design tokens ── */
+:root {
+  --bg-primary: #F5F5F3;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --text-primary: #0D0E12;
+  --text-secondary: #6B7280;
+  --border-color: rgba(0, 0, 0, 0.06);
+  --border-subtle: rgba(0, 0, 0, 0.09);
+  --nav-bg: rgba(255, 255, 255, 0.64);
+  --nav-border: rgba(255, 255, 255, 0.28);
+  --nav-icon-inactive: rgba(0, 0, 0, 0.38);
+  --nav-icon-active: #0D0E12;
+  --nav-pill-bg: #FFFFFF;
+  --topbar-name-color: #0D0E12;
+  --topbar-toggle-bg: rgba(0, 0, 0, 0.05);
+  --topbar-toggle-color: #0D0E12;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0D0E12;
+  --bg-surface: #141519;
+  --bg-elevated: #1C1D24;
+  --text-primary: #F0F0EF;
+  --text-secondary: #9CA3AF;
+  --border-color: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --nav-bg: rgba(14, 15, 22, 0.80);
+  --nav-border: rgba(255, 255, 255, 0.12);
+  --nav-icon-inactive: rgba(255, 255, 255, 0.36);
+  --nav-icon-active: #F0F0EF;
+  --nav-pill-bg: rgba(255, 255, 255, 0.13);
+  --topbar-name-color: #F0F0EF;
+  --topbar-toggle-bg: rgba(255, 255, 255, 0.08);
+  --topbar-toggle-color: #F0F0EF;
 }
 
 * {
@@ -41,13 +79,14 @@ html.lenis body {
 }
 
 body {
-  background-color: #F5F5F3;
-  color: #0D0E12;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  transition: background-color 0.45s ease, color 0.45s ease;
 }
 
 /* Scroll offsets — bottom dock height clearance */
@@ -62,8 +101,8 @@ main > section:last-of-type {
 }
 
 ::selection {
-  background: rgba(13, 14, 18, 0.1);
-  color: #0D0E12;
+  background: rgba(0, 145, 255, 0.18);
+  color: var(--text-primary);
 }
 
 ::-webkit-scrollbar {
@@ -77,6 +116,7 @@ main > section:last-of-type {
   border-radius: 2px;
 }
 
+/* ── Infinite marquee ── */
 @keyframes marquee {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
@@ -89,6 +129,28 @@ main > section:last-of-type {
 
 .marquee-track {
   display: inline-flex;
-  animation: marquee 30s linear infinite;
+  animation: marquee 28s linear infinite;
   will-change: transform;
+}
+
+/* Slower variant for oversized project cards */
+.marquee-track-slow {
+  animation-duration: 60s;
+}
+
+/* Oversized premium project cards — fixed 580px on desktop, no clamp */
+.project-card {
+  width: 580px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .project-card {
+    width: 92vw;
+  }
+}
+
+/* Pause marquee on hover — true pause, not slowdown */
+.marquee-container:hover .marquee-track {
+  animation-play-state: paused;
 }
