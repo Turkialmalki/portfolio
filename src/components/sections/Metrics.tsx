@@ -34,7 +34,7 @@ export default function Metrics() {
         style={{
           maxWidth: 1280,
           margin: "0 auto",
-          padding: "clamp(80px, 11vw, 140px) 32px",
+          padding: "clamp(80px, 11vw, 140px) clamp(24px, 4vw, 32px)",
         }}
       >
         {/* Header row */}

@@ -73,6 +73,7 @@
 html {
   scroll-behavior: auto;
   height: 100%;
+  overflow-x: hidden;
 }
 
 html.lenis,
@@ -139,56 +140,76 @@ main > section:last-of-type {
   to   { transform: translateX(-50%); }
 }
 
-.marquee-container {
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.marquee-track {
-  display: inline-flex;
-  animation: marquee 28s linear infinite;
-  will-change: transform;
-}
-
-/* Slower variant for oversized project cards */
-.marquee-track-slow {
-  animation-duration: 60s;
-}
-
-/* Oversized premium project cards — fixed 580px on desktop, no clamp */
-.project-card {
-  width: 580px;
-  flex-shrink: 0;
-}
-
-@media (max-width: 767px) {
-  .project-card {
-    width: 92vw;
-  }
-}
-
-/* Pause marquee on hover — true pause, not slowdown */
-.marquee-container:hover .marquee-track,
-.marquee-container:hover .marquee-track-right {
-  animation-play-state: paused;
-}
-
-/* Right-scrolling marquee for second gallery row */
 @keyframes marquee-right {
   from { transform: translateX(-50%); }
   to   { transform: translateX(0); }
 }
 
-.marquee-track-right {
-  display: inline-flex;
-  animation: marquee-right 62s linear infinite;
+.marquee-container {
+  overflow: hidden;
+  width: 100%;
+}
+
+.marquee-track {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: max-content;
+  animation: marquee 58s linear infinite;
   will-change: transform;
 }
 
-/* Edge-fade mask applied to the marquee wrapper */
+.marquee-track-right {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: max-content;
+  animation: marquee-right 64s linear infinite;
+  will-change: transform;
+}
+
+/* Pause marquee on hover */
+.marquee-container:hover .marquee-track,
+.marquee-container:hover .marquee-track-right {
+  animation-play-state: paused;
+}
+
+/* Project cards — fixed width, never shrink */
+.project-card {
+  width: 560px;
+  height: 300px;
+  flex-shrink: 0;
+  border-radius: 28px;
+  overflow: hidden;
+  cursor: pointer;
+  margin: 0 10px;
+  transition:
+    transform 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.project-card:hover {
+  transform: scale(1.025) translateY(-5px);
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .project-card {
+    width: 400px;
+    height: 280px;
+  }
+}
+
+@media (max-width: 767px) {
+  .project-card {
+    width: calc(100vw - 3rem);
+    height: 240px;
+  }
+}
+
+/* Edge-fade mask */
 .marquee-edges {
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 9%, #000 91%, transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 9%, #000 91%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
 }
 
 /* Hover-lift for interactive cards */

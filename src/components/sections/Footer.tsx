@@ -50,7 +50,7 @@ export default function Footer() {
         style={{
           maxWidth: 1280,
           margin: "0 auto",
-          padding: "clamp(80px, 12vw, 160px) 32px 0",
+          padding: "clamp(80px, 12vw, 160px) clamp(24px, 4vw, 32px) 0",
         }}
       >
         {/* Black card */}
@@ -227,7 +227,7 @@ export default function Footer() {
         style={{
           maxWidth: 1280,
           margin: "0 auto",
-          padding: "32px 32px clamp(80px, 10vw, 112px)",
+          padding: "32px clamp(24px, 4vw, 32px) clamp(80px, 10vw, 112px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",

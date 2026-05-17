@@ -31,7 +31,7 @@ export default function BentoGrid() {
         style={{
           maxWidth: 1280,
           margin: "0 auto",
-          padding: "clamp(80px, 11vw, 140px) 32px",
+          padding: "clamp(80px, 11vw, 140px) clamp(24px, 4vw, 32px)",
         }}
       >
         {/* Header */}
@@ -111,6 +111,15 @@ export default function BentoGrid() {
         }
         @media (max-width: 580px) {
           .bento-row-2 { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 480px) {
+          .bento-card-experience > div,
+          .bento-card-tech > div,
+          .bento-card-leader > div,
+          .bento-card-quality > div,
+          .bento-card-stats > div {
+            padding: 28px 22px !important;
+          }
         }
       `}</style>
     </section>

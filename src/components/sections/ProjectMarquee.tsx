@@ -58,14 +58,6 @@ export default function ProjectMarquee() {
         transition: "background-color 0.45s ease",
       }}
     >
-      {/* Marquee strip with edge fade */}
-      <div className="marquee-container marquee-edges">
-        <div className="marquee-track marquee-track-slow" style={{ gap: 0 }}>
-          {TRACK.map((project, i) => (
-            <MarqueeCard key={i} project={project} />
-          ))}
-        </div>
-      </div>
     </section>
   );
 }

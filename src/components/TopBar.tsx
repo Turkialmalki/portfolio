@@ -42,7 +42,7 @@ export default function TopBar() {
         style={{
           maxWidth: 1200,
           margin: "0 auto",
-          padding: "20px 32px",
+          padding: "20px clamp(16px, 4vw, 32px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",

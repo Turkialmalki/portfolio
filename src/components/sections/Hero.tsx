@@ -10,37 +10,37 @@ const PROJECTS = [
   {
     title: "BaseBox AI SaaS",
     tag: "AI · SaaS Platform",
-    accent: "#0091FF",
-    bg: "linear-gradient(148deg, #060E1E 0%, #0A1B38 60%, #070F20 100%)",
-    glow: "rgba(0,145,255,0.38)",
+    accent: "#0080FF",
+    cardBg: "#EEF4FF",
+    image: null as string | null,
   },
   {
     title: "Munaaseb Fintech",
     tag: "Fintech · Open Banking",
-    accent: "#00C8A0",
-    bg: "linear-gradient(148deg, #051310 0%, #092418 60%, #051110 100%)",
-    glow: "rgba(0,200,160,0.38)",
+    accent: "#00A87A",
+    cardBg: "#EDFAF6",
+    image: null as string | null,
   },
   {
-    title: "Hala Product",
-    tag: "Product · Innovation",
-    accent: "#FF6B35",
-    bg: "linear-gradient(148deg, #160A04 0%, #251006 60%, #140904 100%)",
-    glow: "rgba(255,107,53,0.38)",
+    title: "Lean Technologies",
+    tag: "Enterprise · Digital",
+    accent: "#FFFFFF",
+    cardBg: "#0F0A1A",
+    image: "/1.jpg" as string | null,
   },
   {
     title: "SAP Cloud CX",
     tag: "Enterprise · CX Suite",
-    accent: "#0070D2",
-    bg: "linear-gradient(148deg, #050C16 0%, #091020 60%, #050A14 100%)",
-    glow: "rgba(0,112,210,0.38)",
+    accent: "#0057B8",
+    cardBg: "#EEF2FF",
+    image: null as string | null,
   },
   {
-    title: "Lean Technologies",
-    tag: "Open Banking · API",
-    accent: "#9B59B6",
-    bg: "linear-gradient(148deg, #0C0814 0%, #150B22 60%, #0B0712 100%)",
-    glow: "rgba(155,89,182,0.38)",
+    title: "Hala Product",
+    tag: "Product · Innovation",
+    accent: "#E8541E",
+    cardBg: "#FFF4EE",
+    image: null as string | null,
   },
 ];
 
@@ -75,7 +75,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           maxWidth: 1280,
           width: "100%",
           margin: "0 auto",
-          padding: "clamp(88px, 11vw, 132px) 32px 20px",
+          padding: "clamp(88px, 11vw, 132px) clamp(24px, 4vw, 32px) 20px",
           display: "grid",
           gap: "clamp(40px, 5vw, 80px)",
           alignItems: "center",
@@ -83,6 +83,35 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
       >
         {/* LEFT: Copy */}
         <div>
+          {/* Mobile-only avatar — hidden on md+ where the right column appears */}
+          <motion.div
+            className="flex justify-center mb-6 md:hidden"
+            initial={{ opacity: 0, scale: 0.88 }}
+            animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
+            transition={{ duration: 0.9, ease: EASE, delay: 0.05 }}
+          >
+            <div
+              style={{
+                width: 100,
+                height: 100,
+                borderRadius: "50%",
+                overflow: "hidden",
+                border: "2.5px solid rgba(0,145,255,0.28)",
+                boxShadow: "0 8px 32px rgba(0,145,255,0.25)",
+                flexShrink: 0,
+              }}
+            >
+              <Image
+                src="/avatar.jpg"
+                alt="Turki Almalki"
+                width={100}
+                height={100}
+                priority
+                style={{ objectFit: "cover", objectPosition: "center 12%" }}
+              />
+            </div>
+          </motion.div>
+
           <div style={{ overflow: "hidden" }}>
             <motion.h1
               initial={{ y: "110%", opacity: 0 }}
@@ -177,7 +206,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
         </motion.div>
       </div>
 
-      {/* ── Two-row large card gallery ── */}
+      {/* ── Two-row infinite image gallery ── */}
       <motion.div
         initial={{ opacity: 0, y: 36 }}
         animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 36 }}
@@ -187,29 +216,23 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          gap: 16,
-          paddingBottom: 108,
+          gap: 14,
+          paddingBottom: 100,
           overflow: "hidden",
         }}
       >
-        {/* Row 1: left-scrolling */}
+        {/* Row 1: scrolls left */}
         <div className="marquee-container marquee-edges">
-          <div
-            className="marquee-track marquee-track-slow"
-            style={{ gap: 0, alignItems: "stretch" }}
-          >
+          <div className="marquee-track">
             {ROW_1.map((p, i) => (
               <LargeProjectCard key={i} project={p} index={i % PROJECTS.length} />
             ))}
           </div>
         </div>
 
-        {/* Row 2: right-scrolling */}
+        {/* Row 2: scrolls right */}
         <div className="marquee-container marquee-edges">
-          <div
-            className="marquee-track-right"
-            style={{ gap: 0, alignItems: "stretch" }}
-          >
+          <div className="marquee-track-right">
             {ROW_2.map((p, i) => (
               <LargeProjectCard key={i} project={p} index={i % PROJECTS.length} />
             ))}
@@ -231,7 +254,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
   );
 }
 
-/* ── Large premium project preview card ── */
+/* ── Premium image-forward project card ── */
 function LargeProjectCard({
   project,
   index,
@@ -239,582 +262,338 @@ function LargeProjectCard({
   project: (typeof PROJECTS)[number];
   index: number;
 }) {
+  const isPhoto = Boolean(project.image);
+
   return (
-    <motion.div
-      whileHover={{ scale: 1.03, y: -8 }}
-      transition={{ type: "spring", stiffness: 260, damping: 22 }}
+    <div
       className="project-card"
       style={{
-        flexShrink: 0,
-        height: 298,
-        borderRadius: 24,
-        background: project.bg,
-        overflow: "hidden",
+        background: project.cardBg,
+        boxShadow: isPhoto
+          ? "0 8px 40px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12)"
+          : "0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
         position: "relative",
-        cursor: "pointer",
-        margin: "0 12px",
-        boxShadow:
-          "0 12px 48px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.055)",
       }}
     >
-      {/* Ambient glow */}
-      <div
-        style={{
-          position: "absolute",
-          top: -50,
-          right: -30,
-          width: 280,
-          height: 280,
-          borderRadius: "50%",
-          background: project.glow,
-          filter: "blur(90px)",
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* Mockup visual area */}
-      <div
-        style={{
-          position: "absolute",
-          top: 16,
-          left: 16,
-          right: 16,
-          height: 186,
-          borderRadius: 14,
-          overflow: "hidden",
-          background: "rgba(255,255,255,0.035)",
-          border: "1px solid rgba(255,255,255,0.07)",
-        }}
-      >
-        {/* Browser chrome */}
-        <div
-          style={{
-            height: 24,
-            background: "rgba(0,0,0,0.28)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 10px",
-            gap: 5,
-            borderBottom: "1px solid rgba(255,255,255,0.055)",
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(255,95,87,0.72)" }}
-          />
-          <div
-            style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(255,189,46,0.72)" }}
-          />
-          <div
-            style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(40,202,65,0.72)" }}
+      {isPhoto ? (
+        /* ── Full-bleed photo card ── */
+        <>
+          <Image
+            src={project.image!}
+            alt={project.title}
+            fill
+            sizes="560px"
+            style={{ objectFit: "cover", objectPosition: "center 28%" }}
+            priority={false}
           />
           <div
             style={{
-              flex: 1,
-              marginLeft: 8,
-              height: 5,
-              background: "rgba(255,255,255,0.06)",
-              borderRadius: 3,
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to bottom, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.72) 100%)",
             }}
           />
           <div
-            style={{ width: 28, height: 5, background: "rgba(255,255,255,0.04)", borderRadius: 3 }}
-          />
-        </div>
-
-        {/* Project-specific mockup */}
-        <div style={{ width: "100%", height: "calc(100% - 24px)", overflow: "hidden" }}>
-          <ProjectMockup index={index} accent={project.accent} />
-        </div>
-      </div>
-
-      {/* Bottom gradient + info */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background:
-            "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.44) 55%, transparent 100%)",
-          padding: "36px 22px 20px",
-        }}
-      >
-        <span
+            style={{
+              position: "absolute",
+              bottom: 20,
+              left: 20,
+              right: 20,
+            }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase" as const,
+                color: "rgba(255,255,255,0.75)",
+                background: "rgba(255,255,255,0.14)",
+                borderRadius: 100,
+                padding: "3px 10px",
+                marginBottom: 7,
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+              }}
+            >
+              {project.tag}
+            </span>
+            <h3
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: "#FFFFFF",
+                letterSpacing: "-0.025em",
+                lineHeight: 1.2,
+              }}
+            >
+              {project.title}
+            </h3>
+          </div>
+        </>
+      ) : (
+        /* ── Light card with inset mockup window ── */
+        <div
           style={{
-            display: "inline-block",
-            fontSize: 10,
-            fontWeight: 700,
-            color: project.accent,
-            background: `${project.accent}22`,
-            border: `1px solid ${project.accent}44`,
-            borderRadius: 100,
-            padding: "3px 10px",
-            marginBottom: 7,
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
           }}
         >
-          {project.tag}
-        </span>
-        <h3
-          style={{
-            fontSize: 19,
-            fontWeight: 800,
-            color: "#FFFFFF",
-            letterSpacing: "-0.03em",
-            lineHeight: 1.15,
-          }}
-        >
-          {project.title}
-        </h3>
-      </div>
-    </motion.div>
+          {/* Inset screenshot window */}
+          <div
+            style={{
+              margin: "10px 10px 0",
+              borderRadius: 18,
+              overflow: "hidden",
+              flex: 1,
+              border: "1px solid rgba(0,0,0,0.07)",
+            }}
+          >
+            <ProjectMockup index={index} accent={project.accent} />
+          </div>
+
+          {/* Label strip */}
+          <div style={{ padding: "14px 18px 18px", flexShrink: 0 }}>
+            <span
+              style={{
+                display: "inline-block",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.07em",
+                textTransform: "uppercase" as const,
+                color: project.accent,
+                background: `${project.accent}18`,
+                borderRadius: 100,
+                padding: "3px 9px",
+                marginBottom: 5,
+              }}
+            >
+              {project.tag}
+            </span>
+            <h3
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#0D0E12",
+                letterSpacing: "-0.025em",
+                lineHeight: 1.2,
+              }}
+            >
+              {project.title}
+            </h3>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
-/* ── Per-project SVG mockups ── */
+/* ── Per-project light-background SVG mockups ── */
 function ProjectMockup({ index, accent: a }: { index: number; accent: string }) {
+  /* index 0: BaseBox AI — clean SaaS dashboard */
   if (index === 0) {
-    /* BaseBox AI — dashboard with sidebar + stat cards + chart */
     return (
-      <svg
-        viewBox="0 0 548 162"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMid slice"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
+      <svg viewBox="0 0 560 218" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" fill="none">
+        <rect width="560" height="218" fill="#FAFBFF" />
+
         {/* Sidebar */}
-        <rect x="0" y="0" width="46" height="162" fill="rgba(0,0,0,0.32)" />
-        <rect x="0" y="28" width="3" height="20" rx="1.5" fill={a} />
-        {[10, 34, 58, 84, 110, 136].map((y, i) => (
-          <rect
-            key={y}
-            x="12"
-            y={y}
-            width="22"
-            height="7"
-            rx="3.5"
-            fill={i === 1 ? `${a}70` : "rgba(255,255,255,0.1)"}
-          />
-        ))}
-
-        {/* Header */}
-        <rect x="56" y="8" width="88" height="7" rx="3.5" fill="rgba(255,255,255,0.45)" />
-        <rect x="56" y="20" width="54" height="4" rx="2" fill="rgba(255,255,255,0.18)" />
-
-        {/* Stat cards */}
-        {[0, 1, 2].map((i) => (
-          <g key={i}>
-            <rect
-              x={56 + i * 164}
-              y="34"
-              width="154"
-              height="46"
-              rx="8"
-              fill={i === 0 ? `${a}18` : "rgba(255,255,255,0.04)"}
-              stroke={i === 0 ? `${a}40` : "rgba(255,255,255,0.08)"}
-              strokeWidth="1"
-            />
-            <rect
-              x={66 + i * 164}
-              y="42"
-              width={i === 0 ? 52 : 40}
-              height="4"
-              rx="2"
-              fill={i === 0 ? `${a}90` : "rgba(255,255,255,0.2)"}
-            />
-            <rect
-              x={66 + i * 164}
-              y="52"
-              width={76 - i * 8}
-              height="9"
-              rx="4"
-              fill="rgba(255,255,255,0.58)"
-            />
-            <rect
-              x={66 + i * 164}
-              y="67"
-              width="32"
-              height="4"
-              rx="2"
-              fill={i === 0 ? "rgba(0,220,110,0.62)" : "rgba(255,255,255,0.14)"}
-            />
+        <rect width="50" height="218" fill="#EEF0F8" />
+        <rect x="13" y="13" width="24" height="24" rx="7" fill={a} />
+        {[52, 84, 116, 148, 180].map((y, i) => (
+          <g key={y}>
+            <rect x="13" y={y} width="24" height="20" rx="5" fill={i === 0 ? `${a}20` : "transparent"} />
+            <rect x="17" y={y + 7} width="16" height="6" rx="3" fill={i === 0 ? a : "#BCC4D8"} opacity={i === 0 ? 0.9 : 0.6} />
           </g>
         ))}
+        <rect x="0" y="52" width="3" height="20" rx="1.5" fill={a} />
+        <line x1="50" y1="0" x2="50" y2="218" stroke="#E4E8F0" strokeWidth="1" />
 
-        {/* Chart */}
-        <rect
-          x="56"
-          y="88"
-          width="488"
-          height="70"
-          rx="8"
-          fill="rgba(255,255,255,0.03)"
-        />
-        {[96, 110, 124, 138, 152].map((y) => (
-          <line
-            key={y}
-            x1="64"
-            y1={y}
-            x2="540"
-            y2={y}
-            stroke="rgba(255,255,255,0.05)"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-          />
+        {/* Top bar */}
+        <rect x="50" width="510" height="42" fill="white" />
+        <line x1="50" y1="42" x2="560" y2="42" stroke="#E4E8F0" strokeWidth="1" />
+        <rect x="62" y="14" width="96" height="14" rx="5" fill="#111827" opacity="0.78" />
+        <rect x="452" y="13" width="62" height="16" rx="8" fill={a} />
+        <circle cx="534" cy="21" r="9" fill="#EEF0F8" />
+        <circle cx="534" cy="21" r="5" fill="#BCC4D8" opacity="0.7" />
+
+        {/* Stat cards */}
+        {[0, 1, 2].map(i => {
+          const x = 62 + i * 162;
+          return (
+            <g key={i}>
+              <rect x={x} y="54" width="150" height="60" rx="10" fill={i === 0 ? `${a}0E` : "white"} stroke={i === 0 ? `${a}28` : "#E8ECF4"} strokeWidth="1" />
+              <rect x={x + 12} y="65" width="42" height="6" rx="3" fill="#9CA3AF" />
+              <rect x={x + 12} y="77" width={i === 0 ? 64 : 50} height="14" rx="4" fill={i === 0 ? a : "#111827"} opacity={i === 0 ? 0.88 : 0.72} />
+              <rect x={x + 12} y="98" width="28" height="7" rx="3.5" fill="#ECFDF5" />
+              <rect x={x + 17} y="101" width="16" height="1" rx="0.5" fill="#10B981" />
+            </g>
+          );
+        })}
+
+        {/* Area chart */}
+        <rect x="62" y="126" width="486" height="80" rx="10" fill="white" stroke="#E8ECF4" strokeWidth="1" />
+        {[140, 154, 168, 182, 196].map(y => (
+          <line key={y} x1="76" y1={y} x2="536" y2={y} stroke="#F3F4F6" strokeWidth="1" />
         ))}
         <path
-          d="M64,148 L120,134 L176,139 L232,122 L288,127 L344,112 L400,117 L456,103 L512,108 L540,98"
-          stroke={a}
-          strokeWidth="2.2"
-          fill="none"
-          strokeLinejoin="round"
+          d="M76,198 C114,186 152,192 200,176 C248,160 280,168 320,152 C360,136 400,144 440,126 C476,111 508,118 536,104"
+          stroke={a} strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"
         />
         <path
-          d="M64,148 L120,134 L176,139 L232,122 L288,127 L344,112 L400,117 L456,103 L512,108 L540,98 L540,155 L64,155 Z"
-          fill={`${a}28`}
+          d="M76,198 C114,186 152,192 200,176 C248,160 280,168 320,152 C360,136 400,144 440,126 C476,111 508,118 536,104 L536,198 Z"
+          fill={`${a}10`}
         />
-        <circle cx="344" cy="112" r="4" fill={a} />
-        <circle cx="540" cy="98" r="4" fill={a} />
-        <rect x="330" y="94" width="42" height="14" rx="4" fill={`${a}ee`} />
-        <rect x="334" y="99" width="28" height="4" rx="2" fill="rgba(255,255,255,0.9)" />
+        <circle cx="320" cy="152" r="3.5" fill={a} />
+        <circle cx="536" cy="104" r="3.5" fill={a} />
+        <rect x="304" y="136" width="38" height="13" rx="5" fill={a} />
+        <rect x="309" y="141" width="24" height="3" rx="1.5" fill="white" opacity="0.9" />
       </svg>
     );
   }
 
+  /* index 1: Munaaseb Fintech — banking app */
   if (index === 1) {
-    /* Munaaseb — fintech balance + chart + transactions */
-    const bars = [0.44, 0.62, 0.52, 0.78, 0.66, 0.88, 0.74, 0.92, 0.84, 0.98, 0.88, 1.0];
+    const bars = [0.44, 0.6, 0.5, 0.76, 0.64, 0.88, 0.72, 0.94, 0.82, 0.98, 0.86, 1.0];
+    const barW = 30, gap = 14, startX = 20;
     return (
-      <svg
-        viewBox="0 0 548 162"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMid slice"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Balance display */}
-        <rect x="16" y="8" width="60" height="5" rx="2.5" fill="rgba(255,255,255,0.22)" />
-        <rect x="16" y="18" width="140" height="14" rx="5" fill="rgba(255,255,255,0.72)" />
-        <rect x="164" y="22" width="48" height="6" rx="3" fill="rgba(0,220,110,0.62)" />
+      <svg viewBox="0 0 560 218" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" fill="none">
+        <rect width="560" height="218" fill="white" />
 
-        {/* Tabs */}
-        <rect x="16" y="38" width="36" height="6" rx="3" fill={`${a}cc`} />
-        <rect x="58" y="38" width="28" height="6" rx="3" fill="rgba(255,255,255,0.15)" />
-        <rect x="92" y="38" width="28" height="6" rx="3" fill="rgba(255,255,255,0.15)" />
+        {/* Balance card */}
+        <rect x="16" y="12" width="260" height="72" rx="14" fill={`${a}10`} stroke={`${a}20`} strokeWidth="1" />
+        <rect x="28" y="24" width="56" height="6" rx="3" fill="#9CA3AF" />
+        <rect x="28" y="36" width="130" height="18" rx="5" fill="#111827" opacity="0.85" />
+        <rect x="28" y="62" width="38" height="10" rx="5" fill="#ECFDF5" />
+        <rect x="33" y="65" width="24" height="4" rx="2" fill="#10B981" />
 
-        {/* Area chart */}
+        {/* Period tabs */}
+        <rect x="16" y="96" width="40" height="14" rx="7" fill={a} />
+        <rect x="62" y="96" width="48" height="14" rx="7" fill="#F3F4F6" />
+        <rect x="116" y="96" width="38" height="14" rx="7" fill="#F3F4F6" />
+        <rect x="21" y="100" width="28" height="5" rx="2.5" fill="white" />
+        <rect x="68" y="100" width="36" height="5" rx="2.5" fill="#9CA3AF" />
+        <rect x="121" y="100" width="26" height="5" rx="2.5" fill="#9CA3AF" />
+
+        {/* Bar chart */}
         {bars.map((h, i) => (
           <rect
             key={i}
-            x={16 + i * 44}
-            y={112 - h * 62}
-            width="32"
-            height={h * 62}
-            rx="5"
-            fill={i === 11 ? a : `${a}38`}
+            x={startX + i * (barW + gap)}
+            y={178 - h * 60}
+            width={barW}
+            height={h * 60}
+            rx="6"
+            fill={i === 11 ? a : `${a}35`}
           />
         ))}
-        <path
-          d={`M32,112 ${bars.map((h, i) => `L${32 + i * 44},${112 - h * 62}`).join(" ")} L${32 + 11 * 44},112 Z`}
-          fill={`${a}12`}
-        />
 
-        {/* Transaction rows */}
-        {[0, 1, 2].map((i) => (
+        {/* Transactions */}
+        {[["Salary", "+SAR 18,500"], ["Rent", "-SAR 3,200"], ["Transfer", "+SAR 5,000"]].map(([_name, amt], i) => (
           <g key={i}>
-            <rect
-              x="16"
-              y={120 + i * 14}
-              width="8"
-              height="8"
-              rx="2"
-              fill={`${a}40`}
-            />
-            <rect
-              x="30"
-              y={121 + i * 14}
-              width={64 - i * 10}
-              height="5"
-              rx="2.5"
-              fill="rgba(255,255,255,0.3)"
-            />
-            <rect
-              x="380"
-              y={121 + i * 14}
-              width="40"
-              height="5"
-              rx="2.5"
-              fill={i === 0 ? "rgba(0,220,110,0.5)" : "rgba(255,255,255,0.18)"}
-            />
-            <line
-              x1="16"
-              y1={133 + i * 14}
-              x2="532"
-              y2={133 + i * 14}
-              stroke="rgba(255,255,255,0.05)"
-              strokeWidth="1"
-            />
+            <rect x="300" y={20 + i * 60} width="246" height="52" rx="10" fill={i % 2 === 0 ? "#FAFBFF" : "white"} stroke="#F0F2F8" strokeWidth="1" />
+            <rect x="316" y={32 + i * 60} width="28" height="28" rx="8" fill={`${a}15`} />
+            <rect x="352" y={34 + i * 60} width={60 - i * 8} height="7" rx="3.5" fill="#111827" opacity="0.7" />
+            <rect x="352" y={46 + i * 60} width="40" height="5" rx="2.5" fill="#9CA3AF" />
+            <rect x="468" y={36 + i * 60} width="62" height="7" rx="3.5" fill={amt.startsWith("+") ? "#10B981" : "#EF4444"} opacity="0.8" />
           </g>
         ))}
       </svg>
     );
   }
 
-  if (index === 2) {
-    /* Hala Product — marketing landing page mockup */
-    return (
-      <svg
-        viewBox="0 0 548 162"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMid slice"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Nav bar */}
-        <rect x="0" y="0" width="548" height="22" fill="rgba(0,0,0,0.2)" />
-        <rect x="16" y="7" width="36" height="8" rx="3" fill={`${a}90`} />
-        {[70, 110, 148, 186].map((x) => (
-          <rect key={x} x={x} y="9" width="28" height="5" rx="2.5" fill="rgba(255,255,255,0.2)" />
-        ))}
-        <rect x="492" y="7" width="40" height="8" rx="4" fill={a} />
-
-        {/* Hero headline lines */}
-        <rect x="80" y="34" width="240" height="12" rx="5" fill="rgba(255,255,255,0.65)" />
-        <rect x="80" y="52" width="200" height="12" rx="5" fill="rgba(255,255,255,0.55)" />
-        <rect x="80" y="70" width="300" height="8" rx="4" fill="rgba(255,255,255,0.2)" />
-        <rect x="80" y="82" width="260" height="8" rx="4" fill="rgba(255,255,255,0.14)" />
-
-        {/* CTA buttons */}
-        <rect x="80" y="96" width="96" height="18" rx="9" fill={a} />
-        <rect x="182" y="96" width="80" height="18" rx="9" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-
-        {/* Feature cards row */}
-        {[0, 1, 2, 3].map((i) => (
-          <g key={i}>
-            <rect
-              x={80 + i * 116}
-              y="122"
-              width="106"
-              height="36"
-              rx="8"
-              fill="rgba(255,255,255,0.05)"
-              stroke="rgba(255,255,255,0.09)"
-              strokeWidth="1"
-            />
-            <rect
-              x={90 + i * 116}
-              y="130"
-              width="12"
-              height="12"
-              rx="3"
-              fill={`${a}50`}
-            />
-            <rect
-              x={108 + i * 116}
-              y="132"
-              width={52 - i * 6}
-              height="4"
-              rx="2"
-              fill="rgba(255,255,255,0.35)"
-            />
-            <rect
-              x={108 + i * 116}
-              y="140"
-              width={38 - i * 4}
-              height="4"
-              rx="2"
-              fill="rgba(255,255,255,0.15)"
-            />
-          </g>
-        ))}
-
-        {/* Decorative illustration right side */}
-        <circle cx="440" cy="72" r="44" fill={`${a}12`} stroke={`${a}20`} strokeWidth="1" />
-        <circle cx="440" cy="72" r="28" fill={`${a}18`} stroke={`${a}28`} strokeWidth="1" />
-        <circle cx="440" cy="72" r="12" fill={`${a}50`} />
-        {[[-28, 0], [0, -28], [28, 0], [0, 28]].map(([dx, dy], i) => (
-          <circle key={i} cx={440 + dx} cy={72 + dy} r="5" fill={`${a}60`} />
-        ))}
-      </svg>
-    );
-  }
-
+  /* index 3: SAP Cloud CX — enterprise CRM */
   if (index === 3) {
-    /* SAP Cloud CX — CRM table with sidebar */
     return (
-      <svg
-        viewBox="0 0 548 162"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMid slice"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Top nav */}
-        <rect x="0" y="0" width="548" height="22" fill="rgba(0,0,0,0.3)" />
-        <rect x="12" y="7" width="32" height="8" rx="3" fill={`${a}90`} />
-        {[64, 96, 130, 164].map((x) => (
-          <rect key={x} x={x} y="9" width="24" height="4" rx="2" fill="rgba(255,255,255,0.18)" />
-        ))}
-        <rect x="488" y="8" width="24" height="7" rx="3.5" fill={`${a}80`} />
-        <circle cx="524" cy="11" r="6" fill="rgba(255,255,255,0.12)" />
+      <svg viewBox="0 0 560 218" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" fill="none">
+        <rect width="560" height="218" fill="white" />
 
-        {/* Sidebar */}
-        <rect x="0" y="22" width="54" height="140" fill="rgba(0,0,0,0.25)" />
-        {[30, 56, 82, 108, 134].map((y, i) => (
-          <rect key={y} x="12" y={y} width="30" height="6" rx="3" fill={i === 0 ? `${a}70` : "rgba(255,255,255,0.1)"} />
+        {/* Top navigation */}
+        <rect width="560" height="44" fill={`${a}0C`} />
+        <rect x="0" y="44" width="560" height="1" fill={`${a}20`} />
+        <rect x="14" y="15" width="30" height="14" rx="5" fill={a} opacity="0.9" />
+        {[56, 96, 136, 176].map(x => (
+          <rect key={x} x={x} y="17" width="28" height="10" rx="4" fill={`${a}30`} />
         ))}
-        <rect x="0" y="46" width="3" height="20" rx="1.5" fill={a} />
+        <rect x="460" y="14" width="60" height="16" rx="8" fill={a} />
+        <circle cx="540" cy="22" r="10" fill={`${a}20`} />
+        <circle cx="540" cy="22" r="6" fill={`${a}40`} />
 
         {/* Table header */}
-        <rect x="62" y="26" width="480" height="16" rx="0" fill="rgba(255,255,255,0.05)" />
-        {[62, 178, 278, 368, 448].map((x, i) => (
-          <rect key={x} x={x + 6} y="31" width={[88, 80, 70, 60, 50][i]} height="5" rx="2.5" fill="rgba(255,255,255,0.22)" />
+        <rect x="0" y="44" width="560" height="26" fill="#F8F9FC" />
+        {[16, 140, 248, 346, 436].map((x, i) => (
+          <rect key={x} x={x} y="53" width={[100, 86, 72, 62, 52][i]} height="8" rx="4" fill="#9CA3AF" />
         ))}
 
         {/* Table rows */}
-        {[0, 1, 2, 3, 4].map((row) => (
-          <g key={row}>
-            <rect
-              x="62"
-              y={44 + row * 22}
-              width="480"
-              height="20"
-              fill={row % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent"}
-            />
-            <circle cx="78" cy={54 + row * 22} r="6" fill={`${a}30`} />
-            <rect x="90" y={51 + row * 22} width={70 - row * 4} height="5" rx="2.5" fill="rgba(255,255,255,0.38)" />
-            <rect x="190" y={51 + row * 22} width="60" height="5" rx="2.5" fill="rgba(255,255,255,0.18)" />
-            <rect x="290" y={51 + row * 22} width="50" height="5" rx="2.5" fill="rgba(255,255,255,0.18)" />
-            {/* Status pill */}
-            <rect
-              x="374"
-              y={47 + row * 22}
-              width="44"
-              height="12"
-              rx="6"
-              fill={row < 2 ? `${a}30` : row < 4 ? "rgba(0,220,110,0.22)" : "rgba(255,255,255,0.08)"}
-            />
-            <rect
-              x="380"
-              y={51 + row * 22}
-              width={row < 2 ? 28 : 24}
-              height="4"
-              rx="2"
-              fill={row < 2 ? `${a}cc` : row < 4 ? "rgba(0,220,110,0.8)" : "rgba(255,255,255,0.3)"}
-            />
-          </g>
-        ))}
+        {[0, 1, 2, 3, 4].map(row => {
+          const y = 70 + row * 28;
+          const statuses = ["Active", "New", "Pending", "Active", "Closed"];
+          const statusColors = [a, "#10B981", "#F59E0B", a, "#6B7280"];
+          const statusBgs = [`${a}15`, "#ECFDF5", "#FFFBEB", `${a}15`, "#F3F4F6"];
+          return (
+            <g key={row}>
+              <rect x="0" y={y} width="560" height="28" fill={row % 2 === 0 ? "white" : "#FAFBFF"} />
+              <circle cx="28" cy={y + 14} r="10" fill={`${a}18`} />
+              <rect x="42" y={y + 10} width={80 - row * 6} height="8" rx="4" fill="#374151" opacity="0.75" />
+              <rect x="148" y={y + 10} width="68" height="8" rx="4" fill="#9CA3AF" />
+              <rect x="256" y={y + 10} width="60" height="8" rx="4" fill="#9CA3AF" />
+              <rect x="348" y={y + 7} width="52" height="14" rx="7" fill={statusBgs[row]} />
+              <rect x="356" y={y + 11} width={statuses[row].length * 4.2} height="6" rx="3" fill={statusColors[row]} opacity="0.8" />
+              <rect x="444" y={y + 10} width="48" height="8" rx="4" fill="#D1D5DB" />
+            </g>
+          );
+        })}
       </svg>
     );
   }
 
-  /* index === 4: Lean Technologies — API banking node diagram */
-  const bankNodes: [number, number, string][] = [
-    [274, 48, "SNB"],
-    [380, 88, "ANB"],
-    [350, 148, "BSF"],
-    [198, 148, "ARJ"],
-    [168, 88, "NCB"],
-  ];
+  /* index 4: Hala Product — marketing landing page */
   return (
-    <svg
-      viewBox="0 0 548 162"
-      width="100%"
-      height="100%"
-      preserveAspectRatio="xMidYMid slice"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Grid dots background */}
-      {Array.from({ length: 6 }, (_, row) =>
-        Array.from({ length: 12 }, (_, col) => (
-          <circle
-            key={`${row}-${col}`}
-            cx={22 + col * 48}
-            cy={14 + row * 28}
-            r="1.5"
-            fill="rgba(255,255,255,0.06)"
-          />
-        ))
-      )}
+    <svg viewBox="0 0 560 218" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" fill="none">
+      <rect width="560" height="218" fill="white" />
 
-      {/* Connection lines hub → nodes */}
-      {bankNodes.map(([x, y], i) => (
-        <line
-          key={i}
-          x1="274"
-          y1="108"
-          x2={x}
-          y2={y}
-          stroke={`${a}50`}
-          strokeWidth="1.5"
-          strokeDasharray="6 4"
-        />
+      {/* Nav */}
+      <rect width="560" height="40" fill="white" />
+      <line x1="0" y1="40" x2="560" y2="40" stroke="#F0F2F6" strokeWidth="1" />
+      <rect x="16" y="13" width="32" height="14" rx="5" fill={a} opacity="0.9" />
+      {[64, 102, 140, 178].map(x => (
+        <rect key={x} x={x} y="15" width="26" height="10" rx="4" fill="#E5E7EB" />
       ))}
+      <rect x="474" y="12" width="70" height="16" rx="8" fill={a} />
 
-      {/* Bank node circles */}
-      {bankNodes.map(([x, y, label], i) => (
+      {/* Hero section */}
+      <rect x="30" y="58" width="224" height="18" rx="6" fill="#111827" opacity="0.86" />
+      <rect x="30" y="82" width="200" height="18" rx="6" fill="#111827" opacity="0.72" />
+      <rect x="30" y="106" width="290" height="8" rx="4" fill="#D1D5DB" />
+      <rect x="30" y="118" width="260" height="8" rx="4" fill="#E5E7EB" />
+
+      {/* CTA buttons */}
+      <rect x="30" y="134" width="100" height="22" rx="11" fill={a} />
+      <rect x="138" y="134" width="84" height="22" rx="11" fill="transparent" stroke="#D1D5DB" strokeWidth="1.5" />
+      <rect x="40" y="140" width="72" height="10" rx="3" fill="white" opacity="0.9" />
+      <rect x="148" y="140" width="60" height="10" rx="3" fill="#6B7280" />
+
+      {/* Feature cards */}
+      {[0, 1, 2].map(i => (
         <g key={i}>
-          <circle cx={x} cy={y} r="22" fill={`${a}18`} stroke={`${a}40`} strokeWidth="1.5" />
-          <circle cx={x} cy={y} r="14" fill={`${a}28`} />
-          <circle
-            cx={x + 14}
-            cy={y - 14}
-            r="5"
-            fill="rgba(0,220,110,0.8)"
-            stroke="rgba(0,0,0,0.4)"
-            strokeWidth="1"
-          />
-          <rect x={x - 14} y={y - 4} width="28" height="8" rx="4" fill="rgba(255,255,255,0)" />
-          <text
-            x={x}
-            y={y + 4}
-            textAnchor="middle"
-            fontSize="8"
-            fontWeight="700"
-            fill="rgba(255,255,255,0.75)"
-            fontFamily="system-ui, sans-serif"
-          >
-            {label}
-          </text>
+          <rect x={30 + i * 110} y="168" width="100" height="40" rx="10" fill="#FAFBFF" stroke="#E8ECF4" strokeWidth="1" />
+          <rect x={40 + i * 110} y="178" width="14" height="14" rx="4" fill={`${a}20`} />
+          <rect x={59 + i * 110} y="180" width={50 - i * 6} height="6" rx="3" fill="#374151" opacity="0.7" />
+          <rect x={59 + i * 110} y="190" width={38 - i * 4} height="5" rx="2.5" fill="#9CA3AF" />
         </g>
       ))}
 
-      {/* Central API hub */}
-      <circle cx="274" cy="108" r="30" fill={`${a}22`} stroke={`${a}60`} strokeWidth="2" />
-      <circle cx="274" cy="108" r="20" fill={`${a}30`} />
-      <circle cx="274" cy="108" r="10" fill={a} />
-      <text
-        x="274"
-        y="146"
-        textAnchor="middle"
-        fontSize="9"
-        fontWeight="700"
-        fill="rgba(255,255,255,0.5)"
-        fontFamily="system-ui, sans-serif"
-      >
-        LEAN API HUB
-      </text>
-
-      {/* Stats strip */}
-      <rect x="16" y="8" width="80" height="14" rx="4" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-      <rect x="22" y="12" width="20" height="4" rx="2" fill="rgba(255,255,255,0.25)" />
-      <rect x="46" y="12" width="28" height="4" rx="2" fill={`${a}80`} />
-
-      <rect x="104" y="8" width="80" height="14" rx="4" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-      <rect x="110" y="12" width="20" height="4" rx="2" fill="rgba(255,255,255,0.25)" />
-      <rect x="134" y="12" width="28" height="4" rx="2" fill="rgba(0,220,110,0.7)" />
-
-      {/* Pulse ring on hub */}
-      <circle cx="274" cy="108" r="38" stroke={`${a}25`} strokeWidth="1" fill="none" />
-      <circle cx="274" cy="108" r="48" stroke={`${a}12`} strokeWidth="1" fill="none" />
+      {/* Decorative illustration right */}
+      <circle cx="450" cy="130" r="58" fill={`${a}08`} stroke={`${a}15`} strokeWidth="1" />
+      <circle cx="450" cy="130" r="38" fill={`${a}12`} stroke={`${a}20`} strokeWidth="1" />
+      <circle cx="450" cy="130" r="20" fill={`${a}25`} />
+      <circle cx="450" cy="130" r="8" fill={`${a}60`} />
+      {([[0, -38], [38, 0], [0, 38], [-38, 0]] as [number, number][]).map(([dx, dy], i) => (
+        <circle key={i} cx={450 + dx} cy={130 + dy} r="7" fill={`${a}30`} stroke={`${a}40`} strokeWidth="1" />
+      ))}
     </svg>
   );
 }

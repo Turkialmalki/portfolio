@@ -91,7 +91,7 @@ export default function Projects() {
         {/* Header */}
         <div
           style={{
-            padding: "0 32px",
+            padding: "0 clamp(24px, 4vw, 32px)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-end",
@@ -176,7 +176,7 @@ export default function Projects() {
             justifyContent: "center",
             gap: 8,
             marginTop: 40,
-            padding: "0 32px",
+            padding: "0 clamp(24px, 4vw, 32px)",
           }}
         >
           {PROJECTS.map((_, i) => (
