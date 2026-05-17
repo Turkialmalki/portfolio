@@ -1,234 +1,363 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, type Variants } from "framer-motion";
+import { useRef } from "react";
+import { motion, useInView } from "framer-motion";
 
 type Bezier = [number, number, number, number];
-const EASE_OUT: Bezier = [0.16, 1, 0.3, 1];
-const EASE_IN_OUT: Bezier = [0.76, 0, 0.24, 1];
-
-const reveal: Variants = {
-  hidden: { clipPath: "inset(0 0 100% 0)", opacity: 0 },
-  show: (i: number) => ({
-    clipPath: "inset(0 0 0% 0)",
-    opacity: 1,
-    transition: {
-      delay: i * 0.12,
-      duration: 1,
-      ease: EASE_OUT,
-    },
-  }),
-};
-
-const fadeUp: Variants = {
-  hidden: { y: 20, opacity: 0 },
-  show: (i: number) => ({
-    y: 0,
-    opacity: 1,
-    transition: {
-      delay: 0.5 + i * 0.1,
-      duration: 0.8,
-      ease: EASE_OUT,
-    },
-  }),
-};
+const EASE_OUT: Bezier = [0.0, 0.0, 0.2, 1.0];
 
 export default function Hero() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 20;
-      const y = (e.clientY / window.innerHeight - 0.5) * 10;
-      setMousePos({ x, y });
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    return () => window.removeEventListener("mousemove", onMouseMove);
-  }, []);
+  const ref = useRef<HTMLElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
 
   return (
     <section
       id="home"
-      ref={containerRef}
-      className="relative min-h-[100svh] flex flex-col justify-center overflow-hidden px-6 md:px-10 lg:px-16 pt-24 pb-16"
+      ref={ref}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
-      {/* Background radial */}
       <div
-        className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage:
-            "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.015) 0%, transparent 60%)",
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "clamp(60px, 10vw, 120px) 24px",
+          display: "grid",
+          gap: "clamp(32px, 5vw, 64px)",
+          alignItems: "center",
         }}
-      />
-
-      {/* Parallax ambient */}
-      <motion.div
-        className="absolute top-1/2 left-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(255,255,255,0.025) 0%, transparent 65%)",
-          translateX: "-50%",
-          translateY: "-50%",
-          x: mousePos.x * 2,
-          y: mousePos.y * 2,
-        }}
-        transition={{ type: "spring", stiffness: 50, damping: 20 }}
-      />
-
-      <div className="relative max-w-[1400px] mx-auto w-full">
-        {/* Available badge */}
+        className="hero-grid"
+      >
+        {/* Left: Text Content */}
         <motion.div
-          custom={0}
-          initial="hidden"
-          animate="show"
-          variants={fadeUp}
-          className="inline-flex items-center gap-2 mb-12 md:mb-16"
+          initial={{ opacity: 0, y: 40 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, ease: EASE_OUT }}
+          style={{ display: "flex", flexDirection: "column", gap: 0 }}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[#A1A1AA] text-xs tracking-widest uppercase">
-            Available for work
-          </span>
-        </motion.div>
-
-        {/* Main heading */}
-        <div className="mb-6 md:mb-8">
-          <motion.h1
-            custom={0}
-            initial="hidden"
-            animate="show"
-            variants={reveal}
-            className="text-white font-bold leading-[0.88] tracking-tight"
-            style={{ fontSize: "clamp(4.5rem, 13vw, 13rem)", display: "block" }}
+          {/* Badge */}
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "#F9F9FB",
+              border: "1px solid #E4E7EC",
+              borderRadius: 100,
+              padding: "7px 14px",
+              marginBottom: 28,
+              width: "fit-content",
+            }}
           >
-            TURKI
-          </motion.h1>
-          <motion.h1
-            custom={1}
-            initial="hidden"
-            animate="show"
-            variants={reveal}
-            className="text-white font-bold leading-[0.88] tracking-tight"
-            style={{ fontSize: "clamp(4.5rem, 13vw, 13rem)", display: "block" }}
-          >
-            AL-MALKI
-          </motion.h1>
-        </div>
-
-        {/* Role and description */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 md:gap-0 mt-10 md:mt-16">
-          <div>
-            <motion.p
-              custom={0}
-              initial="hidden"
-              animate="show"
-              variants={fadeUp}
-              className="text-[#A1A1AA] text-base md:text-lg tracking-wide mb-1"
-            >
-              Creative Developer & Product Designer
-            </motion.p>
-            <motion.p
-              custom={1}
-              initial="hidden"
-              animate="show"
-              variants={fadeUp}
-              className="text-white/60 text-sm md:text-base max-w-md leading-relaxed"
-            >
-              Crafting digital experiences at the intersection
-              <br className="hidden md:block" /> of design and technology.
-            </motion.p>
-          </div>
-
-          <motion.div
-            custom={2}
-            initial="hidden"
-            animate="show"
-            variants={fadeUp}
-            className="flex items-center gap-6"
-          >
-            <MagneticButton
-              onClick={() => {
-                document
-                  .querySelector("#projects")
-                  ?.scrollIntoView({ behavior: "smooth" });
+            <span style={{ fontSize: 14, lineHeight: 1 }}>👋</span>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: "#0D0E12",
+                letterSpacing: "-0.01em",
               }}
             >
-              View Work
-            </MagneticButton>
-          </motion.div>
-        </div>
+              Hello! I&apos;m Turki Al-Malki
+            </span>
+          </div>
 
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 1 }}
-          className="absolute bottom-0 right-6 md:right-0 flex flex-col items-center gap-2"
-        >
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-            className="w-px h-12 md:h-16 bg-gradient-to-b from-transparent to-white/30"
-          />
-          <span
-            className="text-[#A1A1AA] text-[10px] tracking-widest uppercase"
-            style={{ writingMode: "vertical-rl" }}
+          {/* H1 */}
+          <h1
+            style={{
+              fontSize: "clamp(36px, 4.5vw, 64px)",
+              fontWeight: 800,
+              color: "#0D0E12",
+              lineHeight: 1.08,
+              letterSpacing: "-0.03em",
+              marginBottom: 20,
+            }}
           >
-            Scroll
-          </span>
+            Senior Creative Developer & Product Designer.
+          </h1>
+
+          {/* Sub-headline */}
+          <p
+            style={{
+              fontSize: 18,
+              fontWeight: 400,
+              color: "#666D80",
+              lineHeight: 1.65,
+              marginBottom: 36,
+              maxWidth: 460,
+            }}
+          >
+            Crafting intuitive and impactful digital products that seamlessly
+            bridge user needs and business goals.
+          </p>
+
+          {/* CTA */}
+          <CTAButton
+            onClick={() =>
+              document
+                .querySelector("#projects")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            View Portfolio
+          </CTAButton>
+        </motion.div>
+
+        {/* Right: Headshot / Visual */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.1 }}
+          style={{
+            borderRadius: 24,
+            overflow: "hidden",
+            border: "1px solid #E4E7EC",
+            aspectRatio: "4/5",
+            minHeight: 400,
+            position: "relative",
+          }}
+          className="hidden md:block"
+        >
+          <HeadshotVisual />
         </motion.div>
       </div>
+
+      <style>{`
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
+        @media (min-width: 768px) {
+          .hero-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+      `}</style>
     </section>
   );
 }
 
-function MagneticButton({
+function CTAButton({
   children,
   onClick,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
 }) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left - rect.width / 2) * 0.35;
-    const y = (e.clientY - rect.top - rect.height / 2) * 0.35;
-    setOffset({ x, y });
-  };
-
-  const onMouseLeave = () => setOffset({ x: 0, y: 0 });
-
   return (
-    <motion.button
-      ref={ref}
-      onMouseMove={onMouseMove}
-      onMouseLeave={onMouseLeave}
+    <button
       onClick={onClick}
-      animate={{ x: offset.x, y: offset.y }}
-      transition={{ type: "spring", stiffness: 200, damping: 20 }}
-      className="group relative inline-flex items-center gap-3 px-7 py-3.5 text-white text-sm tracking-wide rounded-full overflow-hidden"
-      style={{ border: "1px solid rgba(255,255,255,0.2)" }}
-      whileHover={{ borderColor: "rgba(255,255,255,0.5)" }}
-      data-cursor-hover
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        background: "#0D0E12",
+        color: "#FFFFFF",
+        padding: "14px 28px",
+        borderRadius: 100,
+        fontSize: 15,
+        fontWeight: 600,
+        border: "none",
+        cursor: "pointer",
+        fontFamily: "inherit",
+        letterSpacing: "-0.01em",
+        width: "fit-content",
+        transition: "opacity 0.2s ease, transform 0.2s ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.opacity = "0.85";
+        (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.opacity = "1";
+        (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+      }}
     >
-      <motion.span
-        className="absolute inset-0 bg-white rounded-full"
-        initial={{ scale: 0, opacity: 0 }}
-        whileHover={{ scale: 2.5, opacity: 0.07 }}
-        transition={{ duration: 0.5, ease: EASE_OUT }}
+      {children}
+      <span style={{ fontSize: 16, marginLeft: 2 }}>→</span>
+    </button>
+  );
+}
+
+function HeadshotVisual() {
+  return (
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      {/* Base gradient background */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(160deg, #EEF0F7 0%, #E2E6F0 40%, #D8DDED 100%)",
+        }}
       />
-      <span className="relative z-10">{children}</span>
-      <motion.span
-        className="relative z-10 text-[#A1A1AA]"
-        whileHover={{ x: 3, color: "#ffffff" }}
-        transition={{ duration: 0.3 }}
+
+      {/* Soft light source top-right */}
+      <div
+        style={{
+          position: "absolute",
+          top: -60,
+          right: -60,
+          width: 280,
+          height: 280,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(255,255,255,0.65) 0%, transparent 70%)",
+        }}
+      />
+
+      {/* Abstract presence silhouette */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "62%",
+          height: "72%",
+          background:
+            "linear-gradient(180deg, #B8C4DC 0%, #9AAAC8 50%, #7D93B8 100%)",
+          borderRadius: "50% 50% 0 0 / 60% 60% 0 0",
+          opacity: 0.55,
+        }}
+      />
+
+      {/* Inner glow center */}
+      <div
+        style={{
+          position: "absolute",
+          top: "25%",
+          left: "50%",
+          transform: "translate(-50%, 0)",
+          width: 120,
+          height: 140,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(ellipse, rgba(255,255,255,0.4) 0%, transparent 70%)",
+          filter: "blur(20px)",
+        }}
+      />
+
+      {/* Top decoration lines */}
+      <div
+        style={{
+          position: "absolute",
+          top: 24,
+          left: 24,
+          display: "flex",
+          flexDirection: "column",
+          gap: 7,
+        }}
       >
-        ↗
-      </motion.span>
-    </motion.button>
+        <div
+          style={{
+            height: 3,
+            width: 72,
+            background: "rgba(13,14,18,0.08)",
+            borderRadius: 2,
+          }}
+        />
+        <div
+          style={{
+            height: 3,
+            width: 48,
+            background: "rgba(13,14,18,0.05)",
+            borderRadius: 2,
+          }}
+        />
+      </div>
+
+      {/* Status pill */}
+      <div
+        style={{
+          position: "absolute",
+          top: 20,
+          right: 20,
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 100,
+          padding: "6px 12px",
+          border: "1px solid rgba(228,231,236,0.8)",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: "#22C55E",
+            display: "block",
+            boxShadow: "0 0 6px rgba(34,197,94,0.6)",
+          }}
+        />
+        <span
+          style={{ fontSize: 11, fontWeight: 600, color: "#0D0E12" }}
+        >
+          Available
+        </span>
+      </div>
+
+      {/* Name card */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 24,
+          left: 24,
+          right: 24,
+          background: "rgba(255,255,255,0.88)",
+          backdropFilter: "blur(12px)",
+          borderRadius: 16,
+          padding: "14px 16px",
+          border: "1px solid rgba(228,231,236,0.7)",
+        }}
+      >
+        <p
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "#0D0E12",
+            margin: 0,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Turki Al-Malki
+        </p>
+        <p
+          style={{
+            fontSize: 12,
+            color: "#666D80",
+            margin: "3px 0 0",
+            fontWeight: 400,
+          }}
+        >
+          Creative Developer & Product Designer
+        </p>
+        <div
+          style={{
+            marginTop: 10,
+            display: "flex",
+            gap: 6,
+          }}
+        >
+          {["Next.js", "Figma", "Framer"].map((tag) => (
+            <span
+              key={tag}
+              style={{
+                fontSize: 10,
+                fontWeight: 500,
+                color: "#666D80",
+                background: "#F9F9FB",
+                border: "1px solid #E4E7EC",
+                borderRadius: 100,
+                padding: "2px 8px",
+              }}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

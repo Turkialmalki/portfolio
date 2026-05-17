@@ -1,44 +1,39 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+
+type Bezier = [number, number, number, number];
+const EASE_OUT: Bezier = [0.0, 0.0, 0.2, 1.0];
 
 const projects = [
   {
     id: "01",
     title: "Luminary OS",
-    category: "Product Design",
-    year: "2024",
-    description: "A next-generation operating system interface concept built for creative professionals.",
-    gradient: "linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%)",
-    accent: "rgba(100, 150, 255, 0.3)",
+    tags: ["Product Design", "UI/UX", "Design System"],
+    description: "Next-generation OS interface concept built for creative professionals.",
+    visual: <LuminaryVisual />,
   },
   {
     id: "02",
     title: "Aria Finance",
-    category: "Web Application",
-    year: "2024",
-    description: "Reinventing personal finance through intelligent data visualization and clean UX.",
-    gradient: "linear-gradient(135deg, #0d0d0d 0%, #1a0a0a 40%, #2d1515 100%)",
-    accent: "rgba(255, 100, 100, 0.3)",
+    tags: ["Web App", "Fintech", "Data Viz"],
+    description: "Reinventing personal finance through intelligent data visualization.",
+    visual: <AriaVisual />,
   },
   {
     id: "03",
     title: "Solstice Brand",
-    category: "Brand Identity",
-    year: "2023",
+    tags: ["Brand Identity", "Motion Design", "Strategy"],
     description: "Complete brand system and digital presence for a sustainable luxury brand.",
-    gradient: "linear-gradient(135deg, #0a0a1a 0%, #0d1a0d 40%, #1a2d0d 100%)",
-    accent: "rgba(100, 200, 100, 0.3)",
+    visual: <SolsticeVisual />,
   },
   {
     id: "04",
     title: "Nexus Platform",
-    category: "Creative Development",
-    year: "2023",
-    description: "A collaborative design platform that bridges the gap between design and engineering.",
-    gradient: "linear-gradient(135deg, #1a0d1a 0%, #2d0d2d 40%, #1a0a2d 100%)",
-    accent: "rgba(180, 100, 255, 0.3)",
+    tags: ["Creative Dev", "TypeScript", "Framer Motion"],
+    description: "A collaborative design platform bridging design and engineering.",
+    visual: <NexusVisual />,
   },
 ];
 
@@ -50,53 +45,112 @@ export default function Projects() {
     <section
       id="projects"
       ref={ref}
-      className="px-6 md:px-10 lg:px-16 py-28 md:py-40"
-      style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
-      <div className="max-w-[1400px] mx-auto">
+      <div
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "clamp(60px, 10vw, 120px) 24px",
+        }}
+      >
         {/* Header */}
-        <div className="flex items-end justify-between mb-16 md:mb-20">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            marginBottom: 48,
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
           <div>
             <motion.p
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6 }}
-              className="text-[#A1A1AA] text-xs tracking-widest uppercase mb-4"
+              transition={{ duration: 0.5, ease: EASE_OUT }}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#666D80",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                marginBottom: 10,
+              }}
             >
               Featured Work
             </motion.p>
-            <div className="overflow-hidden">
-              <motion.h2
-                initial={{ y: "100%" }}
-                animate={inView ? { y: 0 } : {}}
-                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-                className="text-white font-bold leading-tight"
-                style={{ fontSize: "clamp(2.5rem, 6vw, 5rem)" }}
-              >
-                Selected Projects
-              </motion.h2>
-            </div>
+            <motion.h2
+              initial={{ opacity: 0, y: 24 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.05 }}
+              style={{
+                fontSize: "clamp(28px, 3.5vw, 44px)",
+                fontWeight: 800,
+                color: "#0D0E12",
+                letterSpacing: "-0.03em",
+                lineHeight: 1.1,
+              }}
+            >
+              Selected projects.
+            </motion.h2>
           </div>
-          <motion.a
-            href="#"
+
+          <motion.button
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
-            transition={{ delay: 0.4 }}
-            className="hidden md:inline-flex items-center gap-2 text-[#A1A1AA] hover:text-white text-sm transition-colors group"
-            data-cursor-hover
+            transition={{ duration: 0.5, delay: 0.2 }}
+            style={{
+              background: "none",
+              border: "1px solid #E4E7EC",
+              color: "#0D0E12",
+              padding: "10px 20px",
+              borderRadius: 100,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "-0.01em",
+              transition: "background 0.2s ease, border-color 0.2s ease",
+            }}
+            whileHover={{
+              backgroundColor: "#0D0E12",
+              color: "#FFFFFF",
+              borderColor: "#0D0E12",
+            }}
           >
-            All projects
-            <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
-          </motion.a>
+            View all work →
+          </motion.button>
         </div>
 
-        {/* Projects grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+        {/* 2×2 Grid */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: 24,
+          }}
+          className="projects-grid"
+        >
           {projects.map((project, i) => (
-            <ProjectCard key={project.id} project={project} index={i} inView={inView} />
+            <ProjectCard
+              key={project.id}
+              project={project}
+              index={i}
+              inView={inView}
+            />
           ))}
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .projects-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </section>
   );
 }
@@ -106,98 +160,391 @@ function ProjectCard({
   index,
   inView,
 }: {
-  project: typeof projects[0];
+  project: (typeof projects)[0];
   index: number;
   inView: boolean;
 }) {
-  const [hovered, setHovered] = useState(false);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{
-        duration: 0.8,
-        ease: [0.16, 1, 0.3, 1],
-        delay: 0.2 + index * 0.1,
+      transition={{ duration: 0.6, ease: [0.0, 0.0, 0.2, 1.0], delay: 0.1 + index * 0.07 }}
+      whileHover={{
+        scale: 1.02,
+        boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
+        transition: { duration: 0.25 },
       }}
-      className="project-card group cursor-pointer"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      data-cursor-hover
+      style={{
+        borderRadius: 24,
+        overflow: "hidden",
+        border: "1px solid #E4E7EC",
+        cursor: "pointer",
+        background: "#FFFFFF",
+      }}
     >
-      {/* Image area */}
-      <div className="relative overflow-hidden rounded-2xl mb-4" style={{ aspectRatio: "16/10" }}>
-        {/* Gradient background (simulates image) */}
-        <motion.div
-          className="project-image absolute inset-0"
-          style={{ background: project.gradient }}
-          animate={{ scale: hovered ? 1.04 : 1 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        />
-
-        {/* Accent glow */}
-        <motion.div
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(circle at 50% 50%, ${project.accent} 0%, transparent 65%)`,
-          }}
-          animate={{ opacity: hovered ? 1 : 0.4 }}
-          transition={{ duration: 0.5 }}
-        />
-
-        {/* Subtle grid */}
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-            backgroundSize: "40px 40px",
-          }}
-        />
-
-        {/* View overlay */}
-        <motion.div
-          className="absolute inset-0 flex items-center justify-center"
-          animate={{ opacity: hovered ? 1 : 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div
-            className="px-5 py-2.5 text-white text-xs tracking-widest uppercase rounded-full"
-            style={{
-              background: "rgba(0,0,0,0.5)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            View Case Study
-          </div>
-        </motion.div>
-
-        {/* Top-right year */}
-        <div className="absolute top-4 right-4 text-white/40 text-xs tracking-wide">
-          {project.year}
-        </div>
+      {/* Image container */}
+      <div
+        style={{
+          width: "100%",
+          aspectRatio: "16/10",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {project.visual}
       </div>
 
-      {/* Card info */}
-      <div className="flex items-start justify-between px-1">
-        <div>
-          <p className="text-[#A1A1AA] text-xs tracking-widest uppercase mb-1.5">
-            {project.id} — {project.category}
-          </p>
-          <h3 className="text-white text-xl md:text-2xl font-medium group-hover:text-white/80 transition-colors">
-            {project.title}
-          </h3>
-        </div>
-        <motion.div
-          animate={{ rotate: hovered ? 45 : 0, opacity: hovered ? 1 : 0.4 }}
-          transition={{ duration: 0.3 }}
-          className="text-white text-lg mt-1 shrink-0"
+      {/* Metadata */}
+      <div style={{ padding: "22px 24px 24px" }}>
+        <h3
+          style={{
+            fontSize: "clamp(18px, 1.8vw, 22px)",
+            fontWeight: 700,
+            color: "#0D0E12",
+            letterSpacing: "-0.02em",
+            marginBottom: 10,
+          }}
         >
-          ↗
-        </motion.div>
+          {project.title}
+        </h3>
+
+        <p
+          style={{
+            fontSize: 14,
+            color: "#666D80",
+            lineHeight: 1.55,
+            marginBottom: 14,
+          }}
+        >
+          {project.description}
+        </p>
+
+        {/* Tags */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {project.tags.map((tag) => (
+            <span
+              key={tag}
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: "#666D80",
+                background: "#F9F9FB",
+                border: "1px solid #E4E7EC",
+                borderRadius: 100,
+                padding: "4px 10px",
+              }}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
       </div>
     </motion.div>
+  );
+}
+
+/* ── Project visuals (light-theme redesigns) ── */
+
+function LuminaryVisual() {
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        background: "linear-gradient(135deg, #F0EDF8 0%, #E4DEF4 60%, #D9D2EF 100%)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: 0.08,
+          backgroundImage:
+            "linear-gradient(rgba(90,70,160,1) 1px, transparent 1px), linear-gradient(90deg, rgba(90,70,160,1) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 16,
+          left: 16,
+          right: 16,
+          height: 32,
+          background: "rgba(255,255,255,0.6)",
+          borderRadius: 8,
+          display: "flex",
+          alignItems: "center",
+          padding: "0 12px",
+          gap: 6,
+        }}
+      >
+        {[0.6, 0.4, 0.25].map((o, i) => (
+          <div
+            key={i}
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: `rgba(90,70,160,${o})`,
+            }}
+          />
+        ))}
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -45%)",
+          width: 90,
+          height: 90,
+          borderRadius: "50%",
+          border: "1.5px solid rgba(90,70,160,0.3)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "50%",
+            background: "rgba(90,70,160,0.12)",
+            border: "1.5px solid rgba(90,70,160,0.2)",
+          }}
+        />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          bottom: 16,
+          left: 16,
+          right: 16,
+          display: "flex",
+          gap: 6,
+          justifyContent: "center",
+        }}
+      >
+        {[1, 1.4, 1, 0.7, 1].map((h, i) => (
+          <div
+            key={i}
+            style={{
+              width: 20,
+              height: h * 14,
+              background: "rgba(90,70,160,0.18)",
+              borderRadius: 3,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AriaVisual() {
+  const pts = "40,110 70,82 100,96 130,54 160,70 190,34 220,48 250,26 280,42";
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        background: "linear-gradient(135deg, #EAF4FD 0%, #D9ECFA 60%, #C8E3F7 100%)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {[0.25, 0.5, 0.75].map((t) => (
+        <div
+          key={t}
+          style={{
+            position: "absolute",
+            left: 16,
+            right: 16,
+            top: `${t * 100}%`,
+            height: 1,
+            background: "rgba(30,100,200,0.07)",
+          }}
+        />
+      ))}
+      <svg
+        viewBox="0 0 320 140"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          <linearGradient id="areaFillLight" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(30,100,200,0.15)" />
+            <stop offset="100%" stopColor="rgba(30,100,200,0)" />
+          </linearGradient>
+        </defs>
+        <polygon
+          points={`${pts} 280,130 40,130`}
+          fill="url(#areaFillLight)"
+        />
+        <polyline
+          points={pts}
+          fill="none"
+          stroke="rgba(30,100,200,0.5)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {pts.split(" ").map((pt, i) => {
+          const [x, y] = pt.split(",").map(Number);
+          return (
+            <circle
+              key={i}
+              cx={x}
+              cy={y}
+              r="3"
+              fill="#FFFFFF"
+              stroke="rgba(30,100,200,0.5)"
+              strokeWidth="1.5"
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function SolsticeVisual() {
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        background: "linear-gradient(135deg, #FDF4EC 0%, #FAE9D6 60%, #F7DFC4 100%)",
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {[130, 90, 56, 30].map((size, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            width: size,
+            height: size,
+            borderRadius: "50%",
+            border: `1.5px solid rgba(180,100,30,${0.15 - i * 0.02})`,
+          }}
+        />
+      ))}
+      <div
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: "50%",
+          background: "rgba(180,100,30,0.2)",
+          position: "absolute",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          width: 150,
+          height: 1,
+          background: "rgba(180,100,30,0.1)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 150,
+          background: "rgba(180,100,30,0.1)",
+        }}
+      />
+      <span
+        style={{
+          position: "absolute",
+          bottom: 16,
+          right: 20,
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "rgba(180,100,30,0.4)",
+        }}
+      >
+        Solstice
+      </span>
+    </div>
+  );
+}
+
+function NexusVisual() {
+  const filled = new Set([0, 1, 2, 3, 4, 5, 7, 10, 12, 15, 17, 18, 19]);
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        background: "linear-gradient(135deg, #EBF2F0 0%, #DCE9E5 60%, #CDE0DA 100%)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 28,
+          background: "rgba(255,255,255,0.5)",
+          borderBottom: "1px solid rgba(30,120,80,0.1)",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          paddingLeft: 12,
+        }}
+      >
+        {[1, 1.8, 1].map((w, i) => (
+          <div
+            key={i}
+            style={{
+              height: 6,
+              width: w * 22,
+              background: "rgba(30,120,80,0.15)",
+              borderRadius: 3,
+            }}
+          />
+        ))}
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          top: 40,
+          left: 16,
+          right: 16,
+          bottom: 16,
+          display: "grid",
+          gridTemplateColumns: "repeat(5, 1fr)",
+          gridTemplateRows: "repeat(4, 1fr)",
+          gap: 6,
+        }}
+      >
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              borderRadius: 4,
+              background: filled.has(i)
+                ? "rgba(30,120,80,0.14)"
+                : "rgba(30,120,80,0.04)",
+              border: "1px solid rgba(30,120,80,0.08)",
+            }}
+          />
+        ))}
+      </div>
+    </div>
   );
 }

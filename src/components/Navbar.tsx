@@ -1,145 +1,253 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 
 const navLinks = [
-  { label: "Work", href: "#projects" },
+  { label: "Home", href: "#home" },
+  { label: "Portfolio", href: "#projects" },
   { label: "About", href: "#about" },
-  { label: "Experience", href: "#experience" },
-  { label: "Contact", href: "#contact" },
+  { label: "Blog", href: "#blog" },
 ];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const handleNavClick = (href: string) => {
     setMenuOpen(false);
-    const el = document.querySelector(href);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
+    if (href === "#home") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
     }
+    const el = document.querySelector(href);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <motion.nav
-      ref={navRef}
-      className="fixed top-0 left-0 right-0 z-[100] px-6 md:px-10 lg:px-16"
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+    <nav
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        backgroundColor: "rgba(255,255,255,0.92)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        borderBottom: scrolled ? "1px solid #E4E7EC" : "1px solid transparent",
+        transition: "border-color 0.3s ease",
+      }}
     >
       <div
-        className="flex items-center justify-between h-16 md:h-20 transition-all duration-500"
         style={{
-          borderBottom: scrolled
-            ? "1px solid rgba(255,255,255,0.08)"
-            : "1px solid transparent",
-          backdropFilter: scrolled ? "blur(20px)" : "none",
-          background: scrolled ? "rgba(0,0,0,0.6)" : "transparent",
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "0 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          height: 72,
         }}
       >
         {/* Logo */}
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="text-white font-semibold text-sm tracking-widest uppercase opacity-90 hover:opacity-100 transition-opacity"
-          data-cursor-hover
+          style={{
+            fontWeight: 700,
+            fontSize: 18,
+            color: "#0D0E12",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            letterSpacing: "-0.01em",
+          }}
         >
-          T.A
+          Turki Al-Malki
         </button>
 
-        {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-10">
+        {/* Desktop Nav */}
+        <div
+          className="hidden md:flex"
+          style={{ alignItems: "center", gap: 32 }}
+        >
+          {navLinks.map((link) => (
+            <NavLink
+              key={link.label}
+              label={link.label}
+              onClick={() => handleNavClick(link.href)}
+            />
+          ))}
+          <a
+            href="mailto:turkialmalki202200@gmail.com"
+            style={{
+              background: "#0D0E12",
+              color: "#FFFFFF",
+              padding: "10px 22px",
+              borderRadius: 100,
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: "none",
+              fontFamily: "inherit",
+              letterSpacing: "-0.01em",
+              transition: "opacity 0.2s ease",
+            }}
+            onMouseEnter={(e) =>
+              ((e.currentTarget as HTMLElement).style.opacity = "0.85")
+            }
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLElement).style.opacity = "1")
+            }
+          >
+            Connect
+          </a>
+        </div>
+
+        {/* Mobile hamburger */}
+        <button
+          className="md:hidden"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle menu"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            gap: 5,
+            padding: 4,
+          }}
+        >
+          <span
+            style={{
+              display: "block",
+              width: 22,
+              height: 2,
+              background: "#0D0E12",
+              borderRadius: 2,
+              transformOrigin: "center",
+              transform: menuOpen ? "translateY(7px) rotate(45deg)" : "none",
+              transition: "transform 0.25s ease",
+            }}
+          />
+          <span
+            style={{
+              display: "block",
+              width: 22,
+              height: 2,
+              background: "#0D0E12",
+              borderRadius: 2,
+              opacity: menuOpen ? 0 : 1,
+              transition: "opacity 0.2s ease",
+            }}
+          />
+          <span
+            style={{
+              display: "block",
+              width: 22,
+              height: 2,
+              background: "#0D0E12",
+              borderRadius: 2,
+              transformOrigin: "center",
+              transform: menuOpen ? "translateY(-7px) rotate(-45deg)" : "none",
+              transition: "transform 0.25s ease",
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Mobile menu */}
+      <div
+        className="md:hidden"
+        style={{
+          overflow: "hidden",
+          maxHeight: menuOpen ? 320 : 0,
+          transition: "max-height 0.35s cubic-bezier(0.4,0,0.2,1)",
+          borderTop: menuOpen ? "1px solid #E4E7EC" : "1px solid transparent",
+          backgroundColor: "#FFFFFF",
+        }}
+      >
+        <div
+          style={{
+            padding: "16px 24px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
           {navLinks.map((link) => (
             <button
               key={link.label}
               onClick={() => handleNavClick(link.href)}
-              className="text-[#A1A1AA] hover:text-white text-sm tracking-wide transition-colors duration-300"
-              data-cursor-hover
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: 16,
+                color: "#666D80",
+                fontFamily: "inherit",
+                textAlign: "left",
+                padding: "10px 0",
+              }}
             >
               {link.label}
             </button>
           ))}
           <a
             href="mailto:turkialmalki202200@gmail.com"
-            className="text-sm px-5 py-2 border border-white/20 text-white/70 hover:border-white/60 hover:text-white rounded-full transition-all duration-300 tracking-wide"
-            data-cursor-hover
+            style={{
+              display: "inline-block",
+              marginTop: 8,
+              background: "#0D0E12",
+              color: "#FFFFFF",
+              padding: "12px 22px",
+              borderRadius: 100,
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: "none",
+              fontFamily: "inherit",
+              textAlign: "center",
+            }}
           >
-            Hire Me
+            Connect
           </a>
         </div>
-
-        {/* Mobile hamburger */}
-        <button
-          className="md:hidden flex flex-col gap-1.5 p-2"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-          data-cursor-hover
-        >
-          <motion.span
-            className="block w-5 h-px bg-white"
-            animate={{ rotate: menuOpen ? 45 : 0, y: menuOpen ? 4 : 0 }}
-            transition={{ duration: 0.3 }}
-          />
-          <motion.span
-            className="block w-5 h-px bg-white"
-            animate={{ opacity: menuOpen ? 0 : 1 }}
-            transition={{ duration: 0.2 }}
-          />
-          <motion.span
-            className="block w-5 h-px bg-white"
-            animate={{ rotate: menuOpen ? -45 : 0, y: menuOpen ? -4 : 0 }}
-            transition={{ duration: 0.3 }}
-          />
-        </button>
       </div>
+    </nav>
+  );
+}
 
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            className="md:hidden absolute left-0 right-0 bg-black/95 backdrop-blur-xl border-b border-white/08 px-6 py-8"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            style={{ top: "100%" }}
-          >
-            <div className="flex flex-col gap-6">
-              {navLinks.map((link, i) => (
-                <motion.button
-                  key={link.label}
-                  onClick={() => handleNavClick(link.href)}
-                  className="text-left text-2xl font-light text-white/80 hover:text-white transition-colors"
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: i * 0.08, duration: 0.4 }}
-                  data-cursor-hover
-                >
-                  {link.label}
-                </motion.button>
-              ))}
-              <motion.a
-                href="mailto:turkialmalki202200@gmail.com"
-                className="text-[#A1A1AA] text-sm mt-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                turkialmalki202200@gmail.com
-              </motion.a>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.nav>
+function NavLink({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        fontWeight: 500,
+        fontSize: 14,
+        color: hovered ? "#0D0E12" : "#666D80",
+        fontFamily: "inherit",
+        transition: "color 0.2s ease",
+        letterSpacing: "-0.01em",
+      }}
+    >
+      {label}
+    </button>
   );
 }
