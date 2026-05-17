@@ -12,14 +12,16 @@ const PROJECTS = [
     tag: "AI · SaaS Platform",
     accent: "#0080FF",
     cardBg: "#EEF4FF",
-    image: null as string | null,
+    image: "/basebo.jpg" as string | null,
+    objectPosition: "center top",
   },
   {
     title: "Munaaseb Fintech",
     tag: "Fintech · Open Banking",
     accent: "#00A87A",
     cardBg: "#EDFAF6",
-    image: null as string | null,
+    image: "/screenshot.jpg" as string | null,
+    objectPosition: "center top",
   },
   {
     title: "Lean Technologies",
@@ -27,20 +29,23 @@ const PROJECTS = [
     accent: "#FFFFFF",
     cardBg: "#0F0A1A",
     image: "/1.jpg" as string | null,
+    objectPosition: "center 28%",
   },
   {
     title: "SAP Cloud CX",
     tag: "Enterprise · CX Suite",
     accent: "#0057B8",
     cardBg: "#EEF2FF",
-    image: null as string | null,
+    image: "/h1.jpg" as string | null,
+    objectPosition: "center 22%",
   },
   {
     title: "Hala Product",
     tag: "Product · Innovation",
     accent: "#E8541E",
     cardBg: "#FFF4EE",
-    image: null as string | null,
+    image: "/basebo.jpg" as string | null,
+    objectPosition: "center top",
   },
 ];
 
@@ -63,7 +68,6 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
         backgroundColor: "var(--bg-surface)",
         overflow: "hidden",
         transition: "background-color 0.45s ease",
-        minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
       }}
@@ -75,7 +79,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           maxWidth: 1280,
           width: "100%",
           margin: "0 auto",
-          padding: "clamp(88px, 11vw, 132px) clamp(24px, 4vw, 32px) 20px",
+          padding: "clamp(88px, 10vw, 120px) clamp(24px, 4vw, 32px) 16px",
           display: "grid",
           gap: "clamp(40px, 5vw, 80px)",
           alignItems: "center",
@@ -118,7 +122,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
               animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
               transition={{ duration: 1.05, ease: EASE, delay: 0.08 }}
               style={{
-                fontSize: "clamp(38px, 5.6vw, 82px)",
+                fontSize: "clamp(36px, 5.4vw, 80px)",
                 fontWeight: 800,
                 color: "var(--text-primary)",
                 lineHeight: 1.05,
@@ -127,26 +131,28 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
                 transition: "color 0.45s ease",
               }}
             >
-              Hello! 👋
+              Hello! 👋 I&apos;m
             </motion.h1>
           </div>
 
-          <div style={{ overflow: "hidden", marginBottom: 20 }}>
+          <div style={{ overflow: "hidden", marginBottom: 22 }}>
             <motion.h1
               initial={{ y: "110%", opacity: 0 }}
               animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
               transition={{ duration: 1.05, ease: EASE, delay: 0.14 }}
               style={{
-                fontSize: "clamp(38px, 5.6vw, 82px)",
+                fontSize: "clamp(36px, 5.4vw, 80px)",
                 fontWeight: 800,
-                color: "var(--text-primary)",
                 lineHeight: 1.05,
                 letterSpacing: "-0.04em",
                 display: "block",
-                transition: "color 0.45s ease",
+                background: "linear-gradient(135deg, #0091FF 0%, #00C8A0 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
               }}
             >
-              I&apos;m Turki Almalki
+              Turki Almalki
             </motion.h1>
           </div>
 
@@ -155,10 +161,10 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.9, ease: EASE, delay: 0.32 }}
             style={{
-              fontSize: "clamp(14px, 1.1vw, 16px)",
+              fontSize: "clamp(15px, 1.25vw, 17px)",
               color: "#6B7280",
-              lineHeight: 1.74,
-              maxWidth: 420,
+              lineHeight: 1.72,
+              maxWidth: 460,
               marginBottom: 36,
               fontWeight: 400,
             }}
@@ -212,12 +218,10 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
         animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 36 }}
         transition={{ duration: 0.95, ease: EASE, delay: 0.68 }}
         style={{
-          flex: 1,
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
-          gap: 14,
-          paddingBottom: 100,
+          gap: 12,
+          paddingBottom: 72,
           overflow: "hidden",
         }}
       >
@@ -282,8 +286,8 @@ function LargeProjectCard({
             src={project.image!}
             alt={project.title}
             fill
-            sizes="560px"
-            style={{ objectFit: "cover", objectPosition: "center 28%" }}
+            sizes="480px"
+            style={{ objectFit: "cover", objectPosition: project.objectPosition ?? "center 28%" }}
             priority={false}
           />
           <div
@@ -649,7 +653,7 @@ function PillButton({
 /* ── Profile image with multi-layer glow + floating badges ── */
 function AvatarVisual() {
   return (
-    <div style={{ position: "relative", width: 380, height: 380 }}>
+    <div style={{ position: "relative", width: 300, height: 300 }}>
       {([1.55, 1.32, 1.12] as const).map((scale, i) => (
         <motion.div
           key={i}
@@ -690,7 +694,7 @@ function AvatarVisual() {
           alt="Turki Almalki"
           fill
           priority
-          sizes="380px"
+          sizes="300px"
           style={{ objectFit: "cover", objectPosition: "center 12%" }}
         />
         <div
@@ -712,16 +716,16 @@ function AvatarVisual() {
         transition={{ duration: 1.0, ease: EASE, delay: 1.05 }}
         style={{
           position: "absolute",
-          bottom: 20,
-          right: -28,
+          bottom: 16,
+          right: -20,
           background: "rgba(255,255,255,0.96)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 18,
-          padding: "12px 16px",
+          borderRadius: 16,
+          padding: "10px 14px",
           border: "1px solid rgba(0,0,0,0.06)",
           boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
-          minWidth: 155,
+          minWidth: 138,
         }}
       >
         <p style={{ fontSize: 13, fontWeight: 700, color: "#0D0E12", letterSpacing: "-0.02em" }}>
@@ -739,13 +743,13 @@ function AvatarVisual() {
         transition={{ duration: 1.0, ease: EASE, delay: 1.25 }}
         style={{
           position: "absolute",
-          top: 24,
-          left: -32,
+          top: 20,
+          left: -24,
           background: "rgba(255,255,255,0.96)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 18,
-          padding: "12px 16px",
+          borderRadius: 16,
+          padding: "10px 14px",
           border: "1px solid rgba(0,0,0,0.06)",
           boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
         }}
