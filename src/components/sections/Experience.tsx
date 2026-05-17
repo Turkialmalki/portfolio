@@ -3,6 +3,9 @@
 import { useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 
+type Bezier = [number, number, number, number];
+const EASE: Bezier = [0.16, 1, 0.3, 1];
+
 const experiences = [
   {
     period: "2023 — Present",
@@ -46,29 +49,31 @@ export default function Experience() {
     <section
       id="experience"
       ref={ref}
-      className="px-6 md:px-10 lg:px-16 py-28 md:py-40"
+      className="px-6 md:px-10 lg:px-16 py-28 md:py-44"
       style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
     >
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-350 mx-auto">
+
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-[#A1A1AA] text-xs tracking-widest uppercase mb-16 md:mb-20"
+          className="text-gray-accent text-[10px] tracking-[0.25em] uppercase font-light mb-20 md:mb-28"
         >
           Experience
         </motion.p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-16 lg:gap-24">
-          {/* Left: heading */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-16 lg:gap-32">
+
+          {/* Left: sticky heading */}
           <div>
-            <div className="overflow-hidden">
+            <div className="clip-text-reveal lg:sticky lg:top-32">
               <motion.h2
                 initial={{ y: "100%" }}
                 animate={inView ? { y: 0 } : {}}
-                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-                className="text-white font-bold leading-tight lg:sticky lg:top-28"
-                style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}
+                transition={{ duration: 0.9, ease: EASE }}
+                className="text-white font-bold leading-tight"
+                style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)", letterSpacing: "-0.02em" }}
               >
                 Where I&apos;ve been building.
               </motion.h2>
@@ -76,9 +81,18 @@ export default function Experience() {
           </div>
 
           {/* Right: experience list */}
-          <div className="flex flex-col">
+          <div>
+            {/* Top rule */}
+            <motion.div
+              className="rule"
+              initial={{ scaleX: 0 }}
+              animate={inView ? { scaleX: 1 } : {}}
+              transition={{ duration: 0.8, ease: EASE, delay: 0.15 }}
+              style={{ transformOrigin: "left" }}
+            />
+
             {experiences.map((exp, i) => (
-              <ExperienceItem key={exp.company} exp={exp} index={i} inView={inView} />
+              <ExperienceRow key={exp.company} exp={exp} index={i} inView={inView} />
             ))}
           </div>
         </div>
@@ -87,7 +101,7 @@ export default function Experience() {
   );
 }
 
-function ExperienceItem({
+function ExperienceRow({
   exp,
   index,
   inView,
@@ -100,66 +114,71 @@ function ExperienceItem({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{
-        duration: 0.7,
-        ease: [0.16, 1, 0.3, 1],
-        delay: 0.2 + index * 0.08,
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="py-8 md:py-10 transition-all duration-300"
-      style={{
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
-        background: hovered ? "rgba(255,255,255,0.015)" : "transparent",
-        paddingLeft: "0.5rem",
-        paddingRight: "0.5rem",
-        borderRadius: "0.5rem",
-      }}
-      data-cursor-hover
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.2 + index * 0.09 }}
     >
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-[#A1A1AA] text-xs tracking-widest">
+      <motion.div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="py-8 md:py-10 cursor-pointer"
+        data-cursor-hover
+      >
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+
+          {/* Left: period + type */}
+          <div className="md:w-44 shrink-0">
+            <p className="text-gray-accent text-xs tracking-widest font-light editorial-num">
               {exp.period}
-            </span>
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-full tracking-widest"
-              style={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "rgba(255,255,255,0.4)",
-              }}
+            </p>
+            <p
+              className="text-[10px] tracking-[0.15em] uppercase font-light mt-1"
+              style={{ color: "rgba(255,255,255,0.25)" }}
             >
               {exp.type}
-            </span>
-          </div>
-          <h3 className="text-white text-xl md:text-2xl font-medium mb-1">
-            {exp.role}
-          </h3>
-          <p className="text-[#A1A1AA] text-sm mb-3">{exp.company}</p>
-          <motion.div
-            animate={{
-              opacity: hovered ? 1 : 0,
-              maxHeight: hovered ? 200 : 0,
-            }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
-            className="overflow-hidden"
-          >
-            <p className="text-white/40 text-sm leading-relaxed pt-1">
-              {exp.description}
             </p>
+          </div>
+
+          {/* Center: role + company + description */}
+          <div className="flex-1 min-w-0">
+            <motion.h3
+              animate={{ x: hovered ? 6 : 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="text-white font-medium mb-1"
+              style={{ fontSize: "clamp(1.05rem, 2vw, 1.3rem)", letterSpacing: "-0.01em" }}
+            >
+              {exp.role}
+            </motion.h3>
+            <p className="text-gray-accent text-sm font-light mb-0">{exp.company}</p>
+
+            {/* Expandable description */}
+            <motion.div
+              animate={{
+                opacity: hovered ? 1 : 0,
+                height: hovered ? "auto" : 0,
+                marginTop: hovered ? 10 : 0,
+              }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden"
+            >
+              <p className="text-white/35 text-sm font-light leading-[1.8]">
+                {exp.description}
+              </p>
+            </motion.div>
+          </div>
+
+          {/* Arrow */}
+          <motion.div
+            animate={{ opacity: hovered ? 1 : 0.18, x: hovered ? 0 : -5 }}
+            transition={{ duration: 0.3 }}
+            className="text-white text-sm shrink-0 md:mt-0.5"
+          >
+            ↗
           </motion.div>
         </div>
-        <motion.div
-          animate={{ opacity: hovered ? 1 : 0.2, x: hovered ? 0 : -4 }}
-          transition={{ duration: 0.3 }}
-          className="text-white text-sm shrink-0"
-        >
-          ↗
-        </motion.div>
-      </div>
+      </motion.div>
+
+      <div className="rule" />
     </motion.div>
   );
 }

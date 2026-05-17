@@ -1,253 +1,125 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { FiHome, FiBriefcase, FiGrid, FiMail } from "react-icons/fi";
 
-const navLinks = [
-  { label: "Home", href: "#home" },
-  { label: "Portfolio", href: "#projects" },
-  { label: "About", href: "#about" },
-  { label: "Blog", href: "#blog" },
+const NAV_ITEMS = [
+  { Icon: FiHome, label: "Home", section: "home" },
+  { Icon: FiBriefcase, label: "Work", section: "projects" },
+  { Icon: FiGrid, label: "About", section: "about" },
+  { Icon: FiMail, label: "Contact", section: "contact-footer" },
 ];
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [active, setActive] = useState("home");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    setMounted(true);
+
+    const targets = NAV_ITEMS.map((n) => {
+      const id = n.section === "contact-footer" ? undefined : n.section;
+      return id ? document.getElementById(id) : null;
+    }).filter(Boolean) as HTMLElement[];
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) setActive(entry.target.id);
+        });
+      },
+      { threshold: 0.35, rootMargin: "-10% 0px -10% 0px" }
+    );
+
+    targets.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
   }, []);
 
-  const handleNavClick = (href: string) => {
-    setMenuOpen(false);
-    if (href === "#home") {
+  const handleClick = (section: string) => {
+    if (section === "home") {
       window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
+    } else if (section === "contact-footer") {
+      document.querySelector("footer")?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
     }
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
+  if (!mounted) return null;
+
   return (
-    <nav
+    <motion.nav
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.9, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      aria-label="Site navigation"
       style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-        backgroundColor: "rgba(255,255,255,0.92)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        borderBottom: scrolled ? "1px solid #E4E7EC" : "1px solid transparent",
-        transition: "border-color 0.3s ease",
+        position: "fixed",
+        bottom: 28,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 200,
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        backgroundColor: "rgba(13, 14, 18, 0.72)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: 100,
+        padding: "8px 12px",
+        boxShadow:
+          "0 8px 32px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.08)",
       }}
     >
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "0 24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          height: 72,
-        }}
-      >
-        {/* Logo */}
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          style={{
-            fontWeight: 700,
-            fontSize: 18,
-            color: "#0D0E12",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          Turki Al-Malki
-        </button>
-
-        {/* Desktop Nav */}
-        <div
-          className="hidden md:flex"
-          style={{ alignItems: "center", gap: 32 }}
-        >
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.label}
-              label={link.label}
-              onClick={() => handleNavClick(link.href)}
-            />
-          ))}
-          <a
-            href="mailto:turkialmalki202200@gmail.com"
+      {NAV_ITEMS.map(({ Icon, label, section }) => {
+        const isActive = active === section || (section === "contact-footer" && active === "contact-footer");
+        return (
+          <motion.button
+            key={label}
+            onClick={() => handleClick(section)}
+            title={label}
+            whileTap={{ scale: 0.9 }}
             style={{
-              background: "#0D0E12",
-              color: "#FFFFFF",
-              padding: "10px 22px",
-              borderRadius: 100,
-              fontSize: 14,
-              fontWeight: 600,
-              textDecoration: "none",
-              fontFamily: "inherit",
-              letterSpacing: "-0.01em",
-              transition: "opacity 0.2s ease",
+              position: "relative",
+              width: 46,
+              height: 46,
+              borderRadius: "50%",
+              border: "none",
+              cursor: "pointer",
+              background: "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
             }}
-            onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.opacity = "0.85")
-            }
-            onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.opacity = "1")
-            }
           >
-            Connect
-          </a>
-        </div>
-
-        {/* Mobile hamburger */}
-        <button
-          className="md:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            gap: 5,
-            padding: 4,
-          }}
-        >
-          <span
-            style={{
-              display: "block",
-              width: 22,
-              height: 2,
-              background: "#0D0E12",
-              borderRadius: 2,
-              transformOrigin: "center",
-              transform: menuOpen ? "translateY(7px) rotate(45deg)" : "none",
-              transition: "transform 0.25s ease",
-            }}
-          />
-          <span
-            style={{
-              display: "block",
-              width: 22,
-              height: 2,
-              background: "#0D0E12",
-              borderRadius: 2,
-              opacity: menuOpen ? 0 : 1,
-              transition: "opacity 0.2s ease",
-            }}
-          />
-          <span
-            style={{
-              display: "block",
-              width: 22,
-              height: 2,
-              background: "#0D0E12",
-              borderRadius: 2,
-              transformOrigin: "center",
-              transform: menuOpen ? "translateY(-7px) rotate(-45deg)" : "none",
-              transition: "transform 0.25s ease",
-            }}
-          />
-        </button>
-      </div>
-
-      {/* Mobile menu */}
-      <div
-        className="md:hidden"
-        style={{
-          overflow: "hidden",
-          maxHeight: menuOpen ? 320 : 0,
-          transition: "max-height 0.35s cubic-bezier(0.4,0,0.2,1)",
-          borderTop: menuOpen ? "1px solid #E4E7EC" : "1px solid transparent",
-          backgroundColor: "#FFFFFF",
-        }}
-      >
-        <div
-          style={{
-            padding: "16px 24px 24px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-          }}
-        >
-          {navLinks.map((link) => (
-            <button
-              key={link.label}
-              onClick={() => handleNavClick(link.href)}
+            {isActive && (
+              <motion.div
+                layoutId="dock-pill"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "50%",
+                  background: "#FFFFFF",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 34 }}
+              />
+            )}
+            <Icon
+              size={17}
               style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 500,
-                fontSize: 16,
-                color: "#666D80",
-                fontFamily: "inherit",
-                textAlign: "left",
-                padding: "10px 0",
+                position: "relative",
+                zIndex: 1,
+                color: isActive ? "#0D0E12" : "rgba(255,255,255,0.45)",
+                transition: "color 0.25s ease",
               }}
-            >
-              {link.label}
-            </button>
-          ))}
-          <a
-            href="mailto:turkialmalki202200@gmail.com"
-            style={{
-              display: "inline-block",
-              marginTop: 8,
-              background: "#0D0E12",
-              color: "#FFFFFF",
-              padding: "12px 22px",
-              borderRadius: 100,
-              fontSize: 14,
-              fontWeight: 600,
-              textDecoration: "none",
-              fontFamily: "inherit",
-              textAlign: "center",
-            }}
-          >
-            Connect
-          </a>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-function NavLink({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        fontWeight: 500,
-        fontSize: 14,
-        color: hovered ? "#0D0E12" : "#666D80",
-        fontFamily: "inherit",
-        transition: "color 0.2s ease",
-        letterSpacing: "-0.01em",
-      }}
-    >
-      {label}
-    </button>
+            />
+          </motion.button>
+        );
+      })}
+    </motion.nav>
   );
 }

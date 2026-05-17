@@ -3,11 +3,14 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 
+type Bezier = [number, number, number, number];
+const EASE: Bezier = [0.16, 1, 0.3, 1];
+
 const stats = [
-  { value: "5+", label: "Years Experience" },
-  { value: "40+", label: "Projects Shipped" },
-  { value: "15+", label: "Happy Clients" },
-  { value: "3", label: "Awards Won" },
+  { value: "5+", label: "Years of\npractice" },
+  { value: "40+", label: "Projects\nshipped" },
+  { value: "15+", label: "Happy\nclients" },
+  { value: "3", label: "Awards\nearned" },
 ];
 
 export default function About() {
@@ -18,73 +21,78 @@ export default function About() {
     <section
       id="about"
       ref={ref}
-      className="px-6 md:px-10 lg:px-16 py-28 md:py-40"
+      className="px-6 md:px-10 lg:px-16 py-28 md:py-44"
+      style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
     >
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-350 mx-auto">
         {/* Section label */}
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-[#A1A1AA] text-xs tracking-widest uppercase mb-16 md:mb-20"
+          className="text-gray-accent text-[10px] tracking-[0.25em] uppercase font-light mb-20 md:mb-28"
         >
           About
         </motion.p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start">
-          {/* Text content */}
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-20 lg:gap-32 items-start">
+          {/* Left: editorial text */}
           <div>
-            <div className="overflow-hidden mb-8">
-              <motion.h2
-                initial={{ y: "100%" }}
-                animate={inView ? { y: 0 } : {}}
-                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-                className="text-white font-bold leading-tight"
-                style={{ fontSize: "clamp(2.2rem, 5vw, 4rem)" }}
-              >
-                Design meets code.
-              </motion.h2>
-            </div>
-            <div className="overflow-hidden mb-8">
-              <motion.h2
-                initial={{ y: "100%" }}
-                animate={inView ? { y: 0 } : {}}
-                transition={{
-                  duration: 0.9,
-                  ease: [0.16, 1, 0.3, 1],
-                  delay: 0.08,
-                }}
-                className="text-[#A1A1AA] font-bold leading-tight"
-                style={{ fontSize: "clamp(2.2rem, 5vw, 4rem)" }}
-              >
-                Vision meets craft.
-              </motion.h2>
+            {/* Statement headlines */}
+            <div className="mb-12 md:mb-16">
+              <div className="clip-text-reveal mb-2">
+                <motion.h2
+                  initial={{ y: "100%" }}
+                  animate={inView ? { y: 0 } : {}}
+                  transition={{ duration: 0.9, ease: EASE }}
+                  className="text-white font-bold leading-none"
+                  style={{ fontSize: "clamp(2.4rem, 5.5vw, 5rem)", letterSpacing: "-0.025em" }}
+                >
+                  Design meets code.
+                </motion.h2>
+              </div>
+              <div className="clip-text-reveal">
+                <motion.h2
+                  initial={{ y: "100%" }}
+                  animate={inView ? { y: 0 } : {}}
+                  transition={{ duration: 0.9, ease: EASE, delay: 0.09 }}
+                  className="font-bold leading-none"
+                  style={{
+                    fontSize: "clamp(2.4rem, 5.5vw, 5rem)",
+                    letterSpacing: "-0.025em",
+                    color: "#A1A1AA",
+                    fontStyle: "italic",
+                    fontFamily: "var(--font-playfair), Georgia, serif",
+                  }}
+                >
+                  Vision meets craft.
+                </motion.h2>
+              </div>
             </div>
 
+            {/* Bio */}
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="text-[#A1A1AA] text-base md:text-lg leading-relaxed mb-6"
+              transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
+              className="text-gray-accent text-base md:text-lg leading-[1.9] font-light mb-5 max-w-lg"
             >
-              I&apos;m a creative developer and product designer with a passion
-              for building digital experiences that feel both intuitive and
-              remarkable. I work at the intersection of design thinking and
-              modern engineering.
+              I&apos;m a creative developer and product designer with a passion for
+              building digital experiences that feel both intuitive and remarkable.
             </motion.p>
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="text-white/40 text-sm md:text-base leading-relaxed mb-12"
+              transition={{ duration: 0.8, delay: 0.38, ease: EASE }}
+              className="text-white/30 text-sm md:text-base leading-[1.9] font-light max-w-lg mb-14"
             >
               My approach combines systematic thinking with creative intuition —
               always asking &quot;why&quot; before &quot;how&quot;. From pixel-perfect interfaces to
-              complex web applications, I bring the same level of care and craft
-              to every project.
+              complex web applications, I bring the same level of care to every project.
             </motion.p>
 
+            {/* CTA link */}
             <motion.a
               href="#projects"
               initial={{ opacity: 0 }}
@@ -92,80 +100,71 @@ export default function About() {
               transition={{ duration: 0.6, delay: 0.5 }}
               onClick={(e) => {
                 e.preventDefault();
-                document
-                  .querySelector("#projects")
-                  ?.scrollIntoView({ behavior: "smooth" });
+                document.querySelector("#projects")?.scrollIntoView({ behavior: "smooth" });
               }}
-              className="inline-flex items-center gap-2 text-white text-sm border-b border-white/30 pb-0.5 hover:border-white transition-colors duration-300 group"
+              className="inline-flex items-center gap-3 text-white text-sm font-light group"
               data-cursor-hover
             >
-              View my work
-              <span className="group-hover:translate-x-1 transition-transform duration-300">
-                →
+              <motion.span
+                className="block h-px bg-white/40 group-hover:bg-white transition-colors duration-400"
+                style={{ width: 32 }}
+                whileHover={{ width: 48 }}
+              />
+              <span className="group-hover:text-white text-white/70 transition-colors duration-300 tracking-wide">
+                View my work
               </span>
+              <motion.span
+                className="text-white/40 group-hover:text-white transition-colors duration-300"
+                initial={{ x: 0 }}
+                whileHover={{ x: 4 }}
+                transition={{ duration: 0.3 }}
+              >
+                →
+              </motion.span>
             </motion.a>
           </div>
 
-          {/* Stats + visual */}
-          <div className="flex flex-col gap-8">
-            {/* Avatar placeholder */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={inView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-              className="relative aspect-[4/3] rounded-2xl overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
-            >
-              {/* Abstract visual */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.08) 0%, transparent 60%), radial-gradient(ellipse at 70% 70%, rgba(255,255,255,0.04) 0%, transparent 50%)",
-                }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span
-                  className="text-white/10 font-bold"
-                  style={{ fontSize: "clamp(6rem, 20vw, 16rem)", letterSpacing: "-0.05em" }}
+          {/* Right: stats as open typography, no boxes */}
+          <div className="grid grid-cols-2 gap-x-12 gap-y-14 lg:gap-x-16 lg:gap-y-20 pt-2">
+            {stats.map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 30 }}
+                animate={inView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.7, ease: EASE, delay: 0.35 + i * 0.1 }}
+              >
+                <p
+                  className="text-white font-bold leading-none mb-3 editorial-num"
+                  style={{ fontSize: "clamp(2.8rem, 5vw, 4rem)", letterSpacing: "-0.03em" }}
                 >
-                  T
-                </span>
-              </div>
-              <div
-                className="absolute bottom-0 left-0 right-0 h-px"
-                style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)" }}
-              />
-            </motion.div>
-
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 gap-4">
-              {stats.map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={inView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.6, delay: 0.4 + i * 0.08 }}
-                  className="p-5 rounded-xl"
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.02)",
-                  }}
+                  {stat.value}
+                </p>
+                <p
+                  className="text-gray-accent text-xs tracking-[0.15em] uppercase font-light leading-[1.8]"
+                  style={{ whiteSpace: "pre-line" }}
                 >
-                  <p
-                    className="text-white font-bold mb-1"
-                    style={{ fontSize: "clamp(1.8rem, 4vw, 2.5rem)" }}
-                  >
-                    {stat.value}
-                  </p>
-                  <p className="text-[#A1A1AA] text-xs tracking-wide">
-                    {stat.label}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
+                  {stat.label}
+                </p>
+              </motion.div>
+            ))}
           </div>
         </div>
+
+        {/* Bottom decorative line with location */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="flex items-center justify-between mt-24 pt-8"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <span className="text-white/20 text-xs tracking-widest font-light">
+            Based in Riyadh, Saudi Arabia
+          </span>
+          <span className="text-white/20 text-xs tracking-widest font-light">
+            Open to remote
+          </span>
+        </motion.div>
       </div>
     </section>
   );

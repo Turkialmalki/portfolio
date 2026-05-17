@@ -1,82 +1,106 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 
 type Bezier = [number, number, number, number];
-const EASE_OUT: Bezier = [0.0, 0.0, 0.2, 1.0];
+const EASE: Bezier = [0.16, 1, 0.3, 1];
 
-const projects = [
+const PROJECTS = [
   {
-    id: "01",
-    title: "Luminary OS",
-    tags: ["Product Design", "UI/UX", "Design System"],
-    description: "Next-generation OS interface concept built for creative professionals.",
-    visual: <LuminaryVisual />,
+    number: "01",
+    title: "BaseBox",
+    tag: "AI SaaS System Template",
+    description:
+      "An enterprise-grade AI SaaS boilerplate providing end-to-end system templates for rapid product innovation — from auth to deployment.",
+    accent: "#0091FF",
+    bg: "linear-gradient(148deg, #0A1628 0%, #0D1F3C 55%, #091422 100%)",
+    highlightColor: "rgba(0,145,255,0.35)",
   },
   {
-    id: "02",
-    title: "Aria Finance",
-    tags: ["Web App", "Fintech", "Data Viz"],
-    description: "Reinventing personal finance through intelligent data visualization.",
-    visual: <AriaVisual />,
+    number: "02",
+    title: "Munaaseb",
+    tag: "Fintech Innovation & Open Banking",
+    description:
+      "A fintech platform leveraging open banking APIs to deliver intelligent financial matching and personalized product recommendations.",
+    accent: "#00C8A0",
+    bg: "linear-gradient(148deg, #061A15 0%, #0A2820 55%, #071C18 100%)",
+    highlightColor: "rgba(0,200,160,0.35)",
   },
   {
-    id: "03",
-    title: "Solstice Brand",
-    tags: ["Brand Identity", "Motion Design", "Strategy"],
-    description: "Complete brand system and digital presence for a sustainable luxury brand.",
-    visual: <SolsticeVisual />,
+    number: "03",
+    title: "Hala Product Innovation",
+    tag: "Tech Vision & Integration",
+    description:
+      "Strategic product innovation program integrating cutting-edge technologies to reshape the digital experience and accelerate Hala's tech vision.",
+    accent: "#FF6B35",
+    bg: "linear-gradient(148deg, #1C0D06 0%, #2C1508 55%, #1A0B05 100%)",
+    highlightColor: "rgba(255,107,53,0.35)",
   },
   {
-    id: "04",
-    title: "Nexus Platform",
-    tags: ["Creative Dev", "TypeScript", "Framer Motion"],
-    description: "A collaborative design platform bridging design and engineering.",
-    visual: <NexusVisual />,
+    number: "04",
+    title: "SAP Cloud CX POC",
+    tag: "Full Digital Experience",
+    description:
+      "Proof-of-concept for SAP's Cloud CX suite — delivering a seamless end-to-end customer experience across sales, service, and commerce.",
+    accent: "#0070D2",
+    bg: "linear-gradient(148deg, #080E1C 0%, #0C1530 55%, #070C1A 100%)",
+    highlightColor: "rgba(0,112,210,0.35)",
+  },
+  {
+    number: "05",
+    title: "Lean Technologies Integration",
+    tag: "Open Banking Excellence",
+    description:
+      "Deep integration with Lean Technologies' open banking infrastructure, enabling real-time data access and payment initiation across Saudi banks.",
+    accent: "#9B59B6",
+    bg: "linear-gradient(148deg, #130C1C 0%, #1E1030 55%, #110A1A 100%)",
+    highlightColor: "rgba(155,89,182,0.35)",
   },
 ];
 
 export default function Projects() {
   const ref = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
     <section
       id="projects"
       ref={ref}
-      style={{ backgroundColor: "#FFFFFF" }}
+      style={{ backgroundColor: "#FFFFFF", overflow: "hidden" }}
     >
       <div
         style={{
-          maxWidth: 1200,
+          maxWidth: 1280,
           margin: "0 auto",
-          padding: "clamp(60px, 10vw, 120px) 24px",
+          padding: "clamp(80px, 11vw, 140px) 0",
         }}
       >
         {/* Header */}
         <div
           style={{
+            padding: "0 32px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-end",
-            marginBottom: 48,
+            marginBottom: 56,
             flexWrap: "wrap",
-            gap: 16,
+            gap: 20,
           }}
         >
           <div>
             <motion.p
               initial={{ opacity: 0, y: 16 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, ease: EASE_OUT }}
+              transition={{ duration: 0.7, ease: EASE }}
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: "#666D80",
-                letterSpacing: "0.08em",
+                color: "#6B7280",
+                letterSpacing: "0.09em",
                 textTransform: "uppercase",
-                marginBottom: 10,
+                marginBottom: 12,
               }}
             >
               Featured Work
@@ -84,73 +108,95 @@ export default function Projects() {
             <motion.h2
               initial={{ opacity: 0, y: 24 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.05 }}
+              transition={{ duration: 0.8, ease: EASE, delay: 0.06 }}
               style={{
-                fontSize: "clamp(28px, 3.5vw, 44px)",
+                fontSize: "clamp(32px, 4vw, 52px)",
                 fontWeight: 800,
                 color: "#0D0E12",
-                letterSpacing: "-0.03em",
-                lineHeight: 1.1,
+                letterSpacing: "-0.036em",
+                lineHeight: 1.08,
               }}
             >
               Selected projects.
             </motion.h2>
           </div>
 
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 1 } : {}}
-            transition={{ duration: 0.5, delay: 0.2 }}
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, ease: EASE, delay: 0.14 }}
             style={{
-              background: "none",
-              border: "1px solid #E4E7EC",
-              color: "#0D0E12",
-              padding: "10px 20px",
-              borderRadius: 100,
               fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: "inherit",
+              color: "#6B7280",
               letterSpacing: "-0.01em",
-              transition: "background 0.2s ease, border-color 0.2s ease",
-            }}
-            whileHover={{
-              backgroundColor: "#0D0E12",
-              color: "#FFFFFF",
-              borderColor: "#0D0E12",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            View all work →
-          </motion.button>
+            Drag to explore →
+          </motion.p>
         </div>
 
-        {/* 2×2 Grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 24,
-          }}
-          className="projects-grid"
+        {/* Horizontal drag carousel */}
+        <motion.div
+          initial={{ opacity: 0, y: 32 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.9, ease: EASE, delay: 0.18 }}
         >
-          {projects.map((project, i) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              index={i}
-              inView={inView}
+          <motion.div
+            ref={trackRef}
+            drag="x"
+            dragConstraints={{
+              left: -(PROJECTS.length - 1) * 420,
+              right: 0,
+            }}
+            dragElastic={0.08}
+            dragTransition={{ bounceStiffness: 200, bounceDamping: 30 }}
+            style={{
+              display: "flex",
+              gap: 20,
+              paddingLeft: 32,
+              paddingRight: 32,
+              cursor: "grab",
+              userSelect: "none",
+              width: "max-content",
+            }}
+            whileTap={{ cursor: "grabbing" }}
+          >
+            {PROJECTS.map((project, i) => (
+              <ProjectCard key={project.number} project={project} index={i} />
+            ))}
+          </motion.div>
+        </motion.div>
+
+        {/* Pagination dots */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={inView ? { opacity: 1 } : {}}
+          transition={{ duration: 0.7, delay: 0.5 }}
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 8,
+            marginTop: 40,
+            padding: "0 32px",
+          }}
+        >
+          {PROJECTS.map((_, i) => (
+            <div
+              key={i}
+              style={{
+                width: i === 0 ? 24 : 8,
+                height: 8,
+                borderRadius: 100,
+                background: i === 0 ? "#0D0E12" : "rgba(0,0,0,0.12)",
+                transition: "all 0.3s ease",
+              }}
             />
           ))}
-        </div>
+        </motion.div>
       </div>
-
-      <style>{`
-        @media (max-width: 640px) {
-          .projects-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </section>
   );
 }
@@ -158,50 +204,159 @@ export default function Projects() {
 function ProjectCard({
   project,
   index,
-  inView,
 }: {
-  project: (typeof projects)[0];
+  project: (typeof PROJECTS)[number];
   index: number;
-  inView: boolean;
 }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, ease: [0.0, 0.0, 0.2, 1.0], delay: 0.1 + index * 0.07 }}
-      whileHover={{
-        scale: 1.02,
-        boxShadow: "0 20px 40px rgba(0,0,0,0.08)",
-        transition: { duration: 0.25 },
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+      animate={{
+        boxShadow: hovered
+          ? `0 40px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.06)`
+          : "0 8px 32px rgba(0,0,0,0.12)",
+        y: hovered ? -6 : 0,
       }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       style={{
-        borderRadius: 24,
+        width: 400,
+        height: 520,
+        borderRadius: 32,
+        background: project.bg,
+        flexShrink: 0,
         overflow: "hidden",
-        border: "1px solid #E4E7EC",
+        position: "relative",
         cursor: "pointer",
-        background: "#FFFFFF",
       }}
     >
-      {/* Image container */}
+      {/* Glow blob */}
       <div
         style={{
-          width: "100%",
-          aspectRatio: "16/10",
-          position: "relative",
-          overflow: "hidden",
+          position: "absolute",
+          top: -60,
+          right: -60,
+          width: 280,
+          height: 280,
+          borderRadius: "50%",
+          background: project.highlightColor,
+          filter: "blur(60px)",
+          opacity: hovered ? 1 : 0.6,
+          transition: "opacity 0.4s ease",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Bottom gradient */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: "60%",
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Top row: number + arrow */}
+      <div
+        style={{
+          position: "absolute",
+          top: 28,
+          left: 28,
+          right: 28,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        {project.visual}
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "rgba(255,255,255,0.35)",
+            letterSpacing: "0.06em",
+          }}
+        >
+          {project.number}
+        </span>
+        <motion.div
+          animate={{ x: hovered ? 3 : 0, y: hovered ? -3 : 0 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.1)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 14,
+            color: "rgba(255,255,255,0.7)",
+          }}
+        >
+          ↗
+        </motion.div>
       </div>
 
-      {/* Metadata */}
-      <div style={{ padding: "22px 24px 24px" }}>
+      {/* Centre visual area: abstract tech pattern */}
+      <div
+        style={{
+          position: "absolute",
+          top: "18%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 200,
+          height: 200,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ProjectVisual accent={project.accent} index={index} />
+      </div>
+
+      {/* Bottom content */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: "28px 28px 32px",
+        }}
+      >
+        {/* Tag */}
+        <span
+          style={{
+            display: "inline-flex",
+            fontSize: 11,
+            fontWeight: 600,
+            color: project.accent,
+            background: `${project.accent}20`,
+            border: `1px solid ${project.accent}35`,
+            borderRadius: 100,
+            padding: "4px 12px",
+            marginBottom: 14,
+            letterSpacing: "0.01em",
+          }}
+        >
+          {project.tag}
+        </span>
+
         <h3
           style={{
-            fontSize: "clamp(18px, 1.8vw, 22px)",
-            fontWeight: 700,
-            color: "#0D0E12",
-            letterSpacing: "-0.02em",
+            fontSize: "clamp(20px, 2vw, 26px)",
+            fontWeight: 800,
+            color: "#FFFFFF",
+            letterSpacing: "-0.03em",
+            lineHeight: 1.12,
             marginBottom: 10,
           }}
         >
@@ -210,341 +365,149 @@ function ProjectCard({
 
         <p
           style={{
-            fontSize: 14,
-            color: "#666D80",
-            lineHeight: 1.55,
-            marginBottom: 14,
+            fontSize: 13,
+            color: "rgba(255,255,255,0.5)",
+            lineHeight: 1.65,
           }}
         >
           {project.description}
         </p>
-
-        {/* Tags */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {project.tags.map((tag) => (
-            <span
-              key={tag}
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: "#666D80",
-                background: "#F9F9FB",
-                border: "1px solid #E4E7EC",
-                borderRadius: 100,
-                padding: "4px 10px",
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
       </div>
     </motion.div>
   );
 }
 
-/* ── Project visuals (light-theme redesigns) ── */
-
-function LuminaryVisual() {
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        background: "linear-gradient(135deg, #F0EDF8 0%, #E4DEF4 60%, #D9D2EF 100%)",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          opacity: 0.08,
-          backgroundImage:
-            "linear-gradient(rgba(90,70,160,1) 1px, transparent 1px), linear-gradient(90deg, rgba(90,70,160,1) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: 16,
-          left: 16,
-          right: 16,
-          height: 32,
-          background: "rgba(255,255,255,0.6)",
-          borderRadius: 8,
-          display: "flex",
-          alignItems: "center",
-          padding: "0 12px",
-          gap: 6,
-        }}
-      >
-        {[0.6, 0.4, 0.25].map((o, i) => (
-          <div
-            key={i}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: `rgba(90,70,160,${o})`,
-            }}
-          />
-        ))}
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -45%)",
-          width: 90,
-          height: 90,
-          borderRadius: "50%",
-          border: "1.5px solid rgba(90,70,160,0.3)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: "50%",
-            background: "rgba(90,70,160,0.12)",
-            border: "1.5px solid rgba(90,70,160,0.2)",
-          }}
-        />
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          bottom: 16,
-          left: 16,
-          right: 16,
-          display: "flex",
-          gap: 6,
-          justifyContent: "center",
-        }}
-      >
-        {[1, 1.4, 1, 0.7, 1].map((h, i) => (
-          <div
-            key={i}
-            style={{
-              width: 20,
-              height: h * 14,
-              background: "rgba(90,70,160,0.18)",
-              borderRadius: 3,
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AriaVisual() {
-  const pts = "40,110 70,82 100,96 130,54 160,70 190,34 220,48 250,26 280,42";
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        background: "linear-gradient(135deg, #EAF4FD 0%, #D9ECFA 60%, #C8E3F7 100%)",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {[0.25, 0.5, 0.75].map((t) => (
-        <div
-          key={t}
-          style={{
-            position: "absolute",
-            left: 16,
-            right: 16,
-            top: `${t * 100}%`,
-            height: 1,
-            background: "rgba(30,100,200,0.07)",
-          }}
-        />
-      ))}
-      <svg
-        viewBox="0 0 320 140"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-        preserveAspectRatio="xMidYMid meet"
-      >
-        <defs>
-          <linearGradient id="areaFillLight" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(30,100,200,0.15)" />
-            <stop offset="100%" stopColor="rgba(30,100,200,0)" />
-          </linearGradient>
-        </defs>
-        <polygon
-          points={`${pts} 280,130 40,130`}
-          fill="url(#areaFillLight)"
-        />
-        <polyline
-          points={pts}
-          fill="none"
-          stroke="rgba(30,100,200,0.5)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {pts.split(" ").map((pt, i) => {
-          const [x, y] = pt.split(",").map(Number);
-          return (
-            <circle
-              key={i}
-              cx={x}
-              cy={y}
-              r="3"
-              fill="#FFFFFF"
-              stroke="rgba(30,100,200,0.5)"
-              strokeWidth="1.5"
+/* Abstract visual per project */
+function ProjectVisual({
+  accent,
+  index,
+}: {
+  accent: string;
+  index: number;
+}) {
+  if (index === 0) {
+    // BaseBox — grid of squares (SaaS dashboard)
+    return (
+      <svg width="160" height="160" viewBox="0 0 160 160" fill="none">
+        {[0, 1, 2].map((row) =>
+          [0, 1, 2].map((col) => (
+            <rect
+              key={`${row}-${col}`}
+              x={col * 54 + 2}
+              y={row * 54 + 2}
+              width={row === 0 && col === 0 ? 100 : 44}
+              height={44}
+              rx={8}
+              fill={accent}
+              fillOpacity={row === 0 && col === 0 ? 0.5 : 0.15}
+              stroke={accent}
+              strokeWidth={1}
+              strokeOpacity={0.3}
             />
-          );
-        })}
+          ))
+        )}
       </svg>
-    </div>
-  );
-}
-
-function SolsticeVisual() {
+    );
+  }
+  if (index === 1) {
+    // Munaaseb — chart bars (fintech)
+    const bars = [0.4, 0.7, 0.55, 0.9, 0.65, 0.8];
+    return (
+      <svg width="160" height="120" viewBox="0 0 160 120" fill="none">
+        {bars.map((h, i) => (
+          <rect
+            key={i}
+            x={i * 26 + 4}
+            y={120 - h * 100}
+            width={18}
+            height={h * 100}
+            rx={5}
+            fill={accent}
+            fillOpacity={i === 3 ? 0.7 : 0.25}
+          />
+        ))}
+        <polyline
+          points={bars
+            .map((h, i) => `${i * 26 + 13},${120 - h * 100}`)
+            .join(" ")}
+          stroke={accent}
+          strokeWidth="2"
+          fill="none"
+          strokeOpacity={0.6}
+        />
+      </svg>
+    );
+  }
+  if (index === 2) {
+    // Hala — concentric rings (innovation)
+    return (
+      <svg width="160" height="160" viewBox="0 0 160 160" fill="none">
+        {[70, 50, 30, 14].map((r, i) => (
+          <circle
+            key={i}
+            cx="80"
+            cy="80"
+            r={r}
+            stroke={accent}
+            strokeWidth={i === 0 ? 1.5 : 1}
+            strokeOpacity={0.15 + i * 0.12}
+            fill="none"
+          />
+        ))}
+        <circle cx="80" cy="80" r="8" fill={accent} fillOpacity={0.7} />
+        <line x1="80" y1="10" x2="80" y2="40" stroke={accent} strokeWidth="1" strokeOpacity="0.3" />
+        <line x1="150" y1="80" x2="120" y2="80" stroke={accent} strokeWidth="1" strokeOpacity="0.3" />
+        <line x1="80" y1="150" x2="80" y2="120" stroke={accent} strokeWidth="1" strokeOpacity="0.3" />
+        <line x1="10" y1="80" x2="40" y2="80" stroke={accent} strokeWidth="1" strokeOpacity="0.3" />
+      </svg>
+    );
+  }
+  if (index === 3) {
+    // SAP Cloud — hexagon grid (enterprise)
+    const pts = (cx: number, cy: number, r: number) =>
+      Array.from({ length: 6 }, (_, i) => {
+        const a = (Math.PI / 3) * i - Math.PI / 6;
+        return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
+      }).join(" ");
+    const positions = [
+      [80, 55], [55, 80], [105, 80], [80, 105],
+    ] as [number, number][];
+    return (
+      <svg width="160" height="160" viewBox="0 0 160 160" fill="none">
+        {positions.map(([cx, cy], i) => (
+          <polygon
+            key={i}
+            points={pts(cx, cy, 24)}
+            stroke={accent}
+            strokeWidth="1.5"
+            strokeOpacity={i === 0 ? 0.7 : 0.25}
+            fill={accent}
+            fillOpacity={i === 0 ? 0.2 : 0.06}
+          />
+        ))}
+      </svg>
+    );
+  }
+  // Lean — connected nodes (network)
+  const nodes = [[80, 60], [40, 100], [120, 100], [60, 130], [100, 130]] as [number, number][];
+  const edges = [[0, 1], [0, 2], [1, 3], [2, 4], [1, 2]];
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        background: "linear-gradient(135deg, #FDF4EC 0%, #FAE9D6 60%, #F7DFC4 100%)",
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {[130, 90, 56, 30].map((size, i) => (
-        <div
+    <svg width="160" height="160" viewBox="0 0 160 160" fill="none">
+      {edges.map(([a, b], i) => (
+        <line
           key={i}
-          style={{
-            position: "absolute",
-            width: size,
-            height: size,
-            borderRadius: "50%",
-            border: `1.5px solid rgba(180,100,30,${0.15 - i * 0.02})`,
-          }}
+          x1={nodes[a][0]} y1={nodes[a][1]}
+          x2={nodes[b][0]} y2={nodes[b][1]}
+          stroke={accent} strokeWidth="1.5" strokeOpacity="0.3"
         />
       ))}
-      <div
-        style={{
-          width: 18,
-          height: 18,
-          borderRadius: "50%",
-          background: "rgba(180,100,30,0.2)",
-          position: "absolute",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          width: 150,
-          height: 1,
-          background: "rgba(180,100,30,0.1)",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          width: 1,
-          height: 150,
-          background: "rgba(180,100,30,0.1)",
-        }}
-      />
-      <span
-        style={{
-          position: "absolute",
-          bottom: 16,
-          right: 20,
-          fontSize: 10,
-          fontWeight: 600,
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          color: "rgba(180,100,30,0.4)",
-        }}
-      >
-        Solstice
-      </span>
-    </div>
-  );
-}
-
-function NexusVisual() {
-  const filled = new Set([0, 1, 2, 3, 4, 5, 7, 10, 12, 15, 17, 18, 19]);
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        background: "linear-gradient(135deg, #EBF2F0 0%, #DCE9E5 60%, #CDE0DA 100%)",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 28,
-          background: "rgba(255,255,255,0.5)",
-          borderBottom: "1px solid rgba(30,120,80,0.1)",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          paddingLeft: 12,
-        }}
-      >
-        {[1, 1.8, 1].map((w, i) => (
-          <div
-            key={i}
-            style={{
-              height: 6,
-              width: w * 22,
-              background: "rgba(30,120,80,0.15)",
-              borderRadius: 3,
-            }}
-          />
-        ))}
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          top: 40,
-          left: 16,
-          right: 16,
-          bottom: 16,
-          display: "grid",
-          gridTemplateColumns: "repeat(5, 1fr)",
-          gridTemplateRows: "repeat(4, 1fr)",
-          gap: 6,
-        }}
-      >
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              borderRadius: 4,
-              background: filled.has(i)
-                ? "rgba(30,120,80,0.14)"
-                : "rgba(30,120,80,0.04)",
-              border: "1px solid rgba(30,120,80,0.08)",
-            }}
-          />
-        ))}
-      </div>
-    </div>
+      {nodes.map(([cx, cy], i) => (
+        <circle
+          key={i}
+          cx={cx} cy={cy} r={i === 0 ? 10 : 7}
+          fill={accent} fillOpacity={i === 0 ? 0.6 : 0.25}
+        />
+      ))}
+    </svg>
   );
 }

@@ -1,123 +1,180 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import Image from "next/image";
+import { motion, useScroll, useTransform } from "framer-motion";
 
-type Bezier = [number, number, number, number];
-const EASE_OUT: Bezier = [0.0, 0.0, 0.2, 1.0];
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 export default function Hero() {
-  const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+  const avatarY = useTransform(scrollYProgress, [0, 1], ["0%", "14%"]);
 
   return (
     <section
       id="home"
-      ref={ref}
-      style={{ backgroundColor: "#FFFFFF" }}
+      ref={sectionRef}
+      style={{ backgroundColor: "#F5F5F3", overflow: "hidden" }}
     >
       <div
+        className="hero-grid"
         style={{
-          maxWidth: 1200,
+          maxWidth: 1280,
           margin: "0 auto",
-          padding: "clamp(60px, 10vw, 120px) 24px",
+          padding:
+            "clamp(130px, 15vw, 200px) 32px clamp(100px, 12vw, 160px)",
           display: "grid",
-          gap: "clamp(32px, 5vw, 64px)",
+          gap: "clamp(56px, 7vw, 100px)",
           alignItems: "center",
         }}
-        className="hero-grid"
       >
-        {/* Left: Text Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, ease: EASE_OUT }}
-          style={{ display: "flex", flexDirection: "column", gap: 0 }}
-        >
-          {/* Badge */}
-          <div
+        {/* ── LEFT: Copy ── */}
+        <div>
+          {/* Availability badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: EASE }}
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "#F9F9FB",
-              border: "1px solid #E4E7EC",
+              marginBottom: 40,
+              background: "rgba(0,0,0,0.05)",
               borderRadius: 100,
-              padding: "7px 14px",
-              marginBottom: 28,
+              padding: "7px 16px",
+              border: "1px solid rgba(0,0,0,0.07)",
               width: "fit-content",
             }}
           >
-            <span style={{ fontSize: 14, lineHeight: 1 }}>👋</span>
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: "#22C55E",
+                boxShadow: "0 0 9px rgba(34,197,94,0.55)",
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
             <span
               style={{
                 fontSize: 13,
                 fontWeight: 500,
-                color: "#0D0E12",
+                color: "#6B7280",
                 letterSpacing: "-0.01em",
               }}
             >
-              Hello! I&apos;m Turki Al-Malki
+              Available for work
             </span>
+          </motion.div>
+
+          {/* Headline line 1 */}
+          <div style={{ overflow: "hidden" }}>
+            <motion.h1
+              initial={{ y: "110%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 1.05, ease: EASE, delay: 0.08 }}
+              style={{
+                fontSize: "clamp(44px, 6.2vw, 88px)",
+                fontWeight: 800,
+                color: "#0D0E12",
+                lineHeight: 1.05,
+                letterSpacing: "-0.042em",
+                display: "block",
+              }}
+            >
+              Hello! 👋
+            </motion.h1>
           </div>
 
-          {/* H1 */}
-          <h1
-            style={{
-              fontSize: "clamp(36px, 4.5vw, 64px)",
-              fontWeight: 800,
-              color: "#0D0E12",
-              lineHeight: 1.08,
-              letterSpacing: "-0.03em",
-              marginBottom: 20,
-            }}
-          >
-            Senior Creative Developer & Product Designer.
-          </h1>
+          {/* Headline line 2 */}
+          <div style={{ overflow: "hidden", marginBottom: 32 }}>
+            <motion.h1
+              initial={{ y: "110%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 1.05, ease: EASE, delay: 0.14 }}
+              style={{
+                fontSize: "clamp(44px, 6.2vw, 88px)",
+                fontWeight: 800,
+                color: "#0D0E12",
+                lineHeight: 1.05,
+                letterSpacing: "-0.042em",
+                display: "block",
+              }}
+            >
+              I&apos;m Turki Almalki
+            </motion.h1>
+          </div>
 
-          {/* Sub-headline */}
-          <p
+          {/* Subtext */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, ease: EASE, delay: 0.32 }}
             style={{
-              fontSize: 18,
+              fontSize: "clamp(15px, 1.15vw, 17px)",
+              color: "#6B7280",
+              lineHeight: 1.74,
+              maxWidth: 430,
+              marginBottom: 52,
               fontWeight: 400,
-              color: "#666D80",
-              lineHeight: 1.65,
-              marginBottom: 36,
-              maxWidth: 460,
             }}
           >
-            Crafting intuitive and impactful digital products that seamlessly
-            bridge user needs and business goals.
-          </p>
+            An engineering leader and designer based in Riyadh, SA. With over
+            6+ years of experience driving digital excellence and system
+            integrations.
+          </motion.p>
 
-          {/* CTA */}
-          <CTAButton
-            onClick={() =>
-              document
-                .querySelector("#projects")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
+          {/* CTA row */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: EASE, delay: 0.46 }}
+            style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
           >
-            View Portfolio
-          </CTAButton>
-        </motion.div>
+            <PillButton
+              color="#0091FF"
+              onClick={() =>
+                document
+                  .querySelector("#projects")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              View Portfolio
+            </PillButton>
+            <PillButton
+              color="#0D0E12"
+              onClick={() =>
+                document
+                  .querySelector("footer")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              Let&apos;s Connect
+            </PillButton>
+          </motion.div>
+        </div>
 
-        {/* Right: Headshot / Visual */}
+        {/* ── RIGHT: Avatar visual ── */}
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.1 }}
+          className="hidden md:flex"
+          initial={{ opacity: 0, scale: 0.88 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.4, ease: EASE, delay: 0.2 }}
           style={{
-            borderRadius: 24,
-            overflow: "hidden",
-            border: "1px solid #E4E7EC",
-            aspectRatio: "4/5",
-            minHeight: 400,
+            y: avatarY,
+            justifyContent: "center",
+            alignItems: "center",
             position: "relative",
           }}
-          className="hidden md:block"
         >
-          <HeadshotVisual />
+          <AvatarVisual />
         </motion.div>
       </div>
 
@@ -127,7 +184,7 @@ export default function Hero() {
         }
         @media (min-width: 768px) {
           .hero-grid {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1.12fr 0.88fr;
           }
         }
       `}</style>
@@ -135,229 +192,180 @@ export default function Hero() {
   );
 }
 
-function CTAButton({
+/* ── Pill CTA button ── */
+function PillButton({
   children,
   onClick,
+  color,
 }: {
   children: React.ReactNode;
   onClick?: () => void;
+  color: string;
 }) {
   return (
-    <button
+    <motion.button
+      whileHover={{ scale: 1.04, filter: "brightness(1.08)" }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: "spring", stiffness: 320, damping: 22 }}
       onClick={onClick}
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
-        background: "#0D0E12",
+        background: color,
         color: "#FFFFFF",
-        padding: "14px 28px",
+        padding: "14px 30px",
         borderRadius: 100,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: 600,
         border: "none",
         cursor: "pointer",
         fontFamily: "inherit",
-        letterSpacing: "-0.01em",
-        width: "fit-content",
-        transition: "opacity 0.2s ease, transform 0.2s ease",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.opacity = "0.85";
-        (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.opacity = "1";
-        (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+        letterSpacing: "-0.012em",
+        whiteSpace: "nowrap",
+        boxShadow:
+          color === "#0091FF"
+            ? "0 8px 24px rgba(0,145,255,0.35)"
+            : "0 8px 24px rgba(0,0,0,0.18)",
       }}
     >
       {children}
-      <span style={{ fontSize: 16, marginLeft: 2 }}>→</span>
-    </button>
+    </motion.button>
   );
 }
 
-function HeadshotVisual() {
+/* ── Memoji-style avatar with teal/blue glow ── */
+function AvatarVisual() {
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative" }}>
-      {/* Base gradient background */}
+    <div style={{ position: "relative", width: 340, height: 340 }}>
+      {/* Pulsing outer glow rings */}
+      {([1.55, 1.32, 1.12] as const).map((scale, i) => (
+        <motion.div
+          key={i}
+          animate={{
+            scale: [scale, scale * 1.05, scale],
+            opacity: [0.12, 0.2, 0.12],
+          }}
+          transition={{
+            duration: 3.5 + i * 0.8,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: i * 0.7,
+          }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            background: `radial-gradient(circle, rgba(0,145,255,${0.22 - i * 0.05}) 0%, rgba(0,200,200,${0.1 - i * 0.02}) 45%, transparent 70%)`,
+            transform: `scale(${scale})`,
+            transformOrigin: "center",
+          }}
+        />
+      ))}
+
+      {/* Main avatar circle — real photo */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background:
-            "linear-gradient(160deg, #EEF0F7 0%, #E2E6F0 40%, #D8DDED 100%)",
-        }}
-      />
-
-      {/* Soft light source top-right */}
-      <div
-        style={{
-          position: "absolute",
-          top: -60,
-          right: -60,
-          width: 280,
-          height: 280,
           borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(255,255,255,0.65) 0%, transparent 70%)",
-        }}
-      />
-
-      {/* Abstract presence silhouette */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "62%",
-          height: "72%",
-          background:
-            "linear-gradient(180deg, #B8C4DC 0%, #9AAAC8 50%, #7D93B8 100%)",
-          borderRadius: "50% 50% 0 0 / 60% 60% 0 0",
-          opacity: 0.55,
-        }}
-      />
-
-      {/* Inner glow center */}
-      <div
-        style={{
-          position: "absolute",
-          top: "25%",
-          left: "50%",
-          transform: "translate(-50%, 0)",
-          width: 120,
-          height: 140,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(ellipse, rgba(255,255,255,0.4) 0%, transparent 70%)",
-          filter: "blur(20px)",
-        }}
-      />
-
-      {/* Top decoration lines */}
-      <div
-        style={{
-          position: "absolute",
-          top: 24,
-          left: 24,
-          display: "flex",
-          flexDirection: "column",
-          gap: 7,
+          overflow: "hidden",
+          boxShadow:
+            "0 28px 72px rgba(0,145,255,0.4), 0 8px 32px rgba(0,145,255,0.18)",
+          border: "3px solid rgba(0,145,255,0.25)",
         }}
       >
-        <div
+        <Image
+          src="/avatar.jpg"
+          alt="Turki Almalki"
+          fill
+          priority
+          sizes="340px"
           style={{
-            height: 3,
-            width: 72,
-            background: "rgba(13,14,18,0.08)",
-            borderRadius: 2,
+            objectFit: "cover",
+            objectPosition: "center 12%",
           }}
         />
+        {/* Subtle vignette to blend edges */}
         <div
           style={{
-            height: 3,
-            width: 48,
-            background: "rgba(13,14,18,0.05)",
-            borderRadius: 2,
-          }}
-        />
-      </div>
-
-      {/* Status pill */}
-      <div
-        style={{
-          position: "absolute",
-          top: 20,
-          right: 20,
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(8px)",
-          borderRadius: 100,
-          padding: "6px 12px",
-          border: "1px solid rgba(228,231,236,0.8)",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        <span
-          style={{
-            width: 7,
-            height: 7,
+            position: "absolute",
+            inset: 0,
             borderRadius: "50%",
-            background: "#22C55E",
-            display: "block",
-            boxShadow: "0 0 6px rgba(34,197,94,0.6)",
+            background:
+              "radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(0,0,0,0.18) 100%)",
+            pointerEvents: "none",
           }}
         />
-        <span
-          style={{ fontSize: 11, fontWeight: 600, color: "#0D0E12" }}
-        >
-          Available
-        </span>
       </div>
 
-      {/* Name card */}
-      <div
+      {/* Floating card — name + role */}
+      <motion.div
+        initial={{ opacity: 0, x: 20, y: 8 }}
+        animate={{ opacity: 1, x: 0, y: 0 }}
+        transition={{ duration: 1.0, ease: EASE, delay: 1.05 }}
         style={{
           position: "absolute",
-          bottom: 24,
-          left: 24,
-          right: 24,
-          background: "rgba(255,255,255,0.88)",
-          backdropFilter: "blur(12px)",
-          borderRadius: 16,
-          padding: "14px 16px",
-          border: "1px solid rgba(228,231,236,0.7)",
+          bottom: 12,
+          right: -24,
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          borderRadius: 18,
+          padding: "14px 18px",
+          border: "1px solid rgba(0,0,0,0.06)",
+          boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
+          minWidth: 160,
         }}
       >
         <p
           style={{
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: 700,
             color: "#0D0E12",
-            margin: 0,
             letterSpacing: "-0.02em",
           }}
         >
-          Turki Al-Malki
+          Turki Almalki
         </p>
+        <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3, fontWeight: 400 }}>
+          📍 Riyadh, Saudi Arabia
+        </p>
+      </motion.div>
+
+      {/* Floating card — experience */}
+      <motion.div
+        initial={{ opacity: 0, x: -20, y: -8 }}
+        animate={{ opacity: 1, x: 0, y: 0 }}
+        transition={{ duration: 1.0, ease: EASE, delay: 1.25 }}
+        style={{
+          position: "absolute",
+          top: 20,
+          left: -28,
+          background: "rgba(255,255,255,0.96)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          borderRadius: 18,
+          padding: "14px 18px",
+          border: "1px solid rgba(0,0,0,0.06)",
+          boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
+        }}
+      >
         <p
           style={{
-            fontSize: 12,
-            color: "#666D80",
-            margin: "3px 0 0",
-            fontWeight: 400,
+            fontSize: 22,
+            fontWeight: 800,
+            color: "#0091FF",
+            letterSpacing: "-0.04em",
+            lineHeight: 1,
           }}
         >
-          Creative Developer & Product Designer
+          6+
         </p>
-        <div
-          style={{
-            marginTop: 10,
-            display: "flex",
-            gap: 6,
-          }}
-        >
-          {["Next.js", "Figma", "Framer"].map((tag) => (
-            <span
-              key={tag}
-              style={{
-                fontSize: 10,
-                fontWeight: 500,
-                color: "#666D80",
-                background: "#F9F9FB",
-                border: "1px solid #E4E7EC",
-                borderRadius: 100,
-                padding: "2px 8px",
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
+        <p style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontWeight: 400 }}>
+          Years Experience
+        </p>
+      </motion.div>
     </div>
   );
 }

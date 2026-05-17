@@ -3,27 +3,30 @@
 import { useRef, useState } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 
+type Bezier = [number, number, number, number];
+const EASE: Bezier = [0.16, 1, 0.3, 1];
+
 const testimonials = [
   {
     quote:
       "Turki doesn't just build interfaces — he crafts experiences. His ability to balance aesthetic precision with technical depth is genuinely rare. Our product engagement metrics jumped 60% after his redesign.",
     name: "Sarah Chen",
     title: "CPO at Meridian Labs",
-    initial: "SC",
+    index: "01",
   },
   {
     quote:
       "Working with Turki was transformative for our brand. He understood our vision before we could fully articulate it, then elevated it beyond what we imagined. The attention to detail in every micro-interaction was extraordinary.",
     name: "Marcus Williams",
     title: "Founder of Solstice",
-    initial: "MW",
+    index: "02",
   },
   {
     quote:
       "The best creative developer I've worked with in 15 years of building products. Turki moves fast, thinks deeply, and ships work that makes competitors uncomfortable.",
     name: "Priya Nair",
     title: "Head of Design at Studio Eleven",
-    initial: "PN",
+    index: "03",
   },
 ];
 
@@ -38,34 +41,89 @@ export default function Testimonials() {
   return (
     <section
       ref={ref}
-      className="px-6 md:px-10 lg:px-16 py-28 md:py-40"
+      className="px-6 md:px-10 lg:px-16 py-28 md:py-44"
       style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
     >
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-350 mx-auto">
+        {/* Label */}
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
-          className="text-[#A1A1AA] text-xs tracking-widest uppercase mb-16 md:mb-20"
+          className="text-gray-accent text-[10px] tracking-[0.25em] uppercase font-light mb-20 md:mb-28"
         >
           Testimonials
         </motion.p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-16 lg:gap-24 items-start">
-          {/* Left */}
-          <div className="overflow-hidden">
-            <motion.h2
-              initial={{ y: "100%" }}
-              animate={inView ? { y: 0 } : {}}
-              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-              className="text-white font-bold leading-tight"
-              style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-20 lg:gap-32 items-start">
+          {/* Left: heading + navigation */}
+          <div>
+            <div className="clip-text-reveal mb-16">
+              <motion.h2
+                initial={{ y: "100%" }}
+                animate={inView ? { y: 0 } : {}}
+                transition={{ duration: 0.9, ease: EASE }}
+                className="text-white font-bold leading-tight"
+                style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)", letterSpacing: "-0.02em" }}
+              >
+                What people say.
+              </motion.h2>
+            </div>
+
+            {/* Counter + nav */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={inView ? { opacity: 1 } : {}}
+              transition={{ delay: 0.4 }}
+              className="flex items-center gap-6"
             >
-              What people say.
-            </motion.h2>
+              <button
+                onClick={prev}
+                className="w-9 h-9 flex items-center justify-center text-white/40 hover:text-white transition-colors duration-300 text-sm"
+                style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50%" }}
+                data-cursor-hover
+              >
+                ←
+              </button>
+
+              <span className="text-gray-accent text-xs tracking-widest font-light editorial-num">
+                {String(active + 1).padStart(2, "0")} / {String(testimonials.length).padStart(2, "0")}
+              </span>
+
+              <button
+                onClick={next}
+                className="w-9 h-9 flex items-center justify-center text-white/40 hover:text-white transition-colors duration-300 text-sm"
+                style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50%" }}
+                data-cursor-hover
+              >
+                →
+              </button>
+            </motion.div>
+
+            {/* Dot indicators */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={inView ? { opacity: 1 } : {}}
+              transition={{ delay: 0.5 }}
+              className="flex gap-1.5 mt-8"
+            >
+              {testimonials.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActive(i)}
+                  className="rounded-full transition-all duration-500"
+                  style={{
+                    width: i === active ? 20 : 4,
+                    height: 4,
+                    background: i === active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)",
+                  }}
+                  data-cursor-hover
+                />
+              ))}
+            </motion.div>
           </div>
 
-          {/* Right: Testimonial card */}
+          {/* Right: open quote — no box, no border */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -74,78 +132,50 @@ export default function Testimonials() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={active}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="p-8 md:p-12 rounded-2xl"
-                style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}
+                exit={{ opacity: 0, y: -16 }}
+                transition={{ duration: 0.5, ease: EASE }}
               >
-                {/* Quote mark */}
+                {/* Large open-quote mark */}
                 <div
-                  className="text-5xl text-white/10 font-bold leading-none mb-6 select-none"
-                  style={{ fontFamily: "Georgia, serif" }}
+                  className="text-white/08 font-bold select-none leading-none mb-6"
+                  style={{
+                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    fontSize: "clamp(4rem, 8vw, 7rem)",
+                    lineHeight: 0.8,
+                    color: "rgba(255,255,255,0.07)",
+                  }}
+                  aria-hidden
                 >
                   &ldquo;
                 </div>
 
-                <p className="text-white/80 text-base md:text-xl leading-relaxed mb-8 font-light">
+                {/* Quote text */}
+                <p
+                  className="text-white font-light leading-[1.75] mb-12"
+                  style={{ fontSize: "clamp(1.05rem, 1.8vw, 1.35rem)", color: "rgba(255,255,255,0.75)" }}
+                >
                   {testimonials[active].quote}
                 </p>
 
-                <div className="flex items-center gap-4">
+                {/* Attribution — minimal, no avatar box */}
+                <div className="flex items-center gap-5">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold text-white"
-                    style={{ background: "rgba(255,255,255,0.1)" }}
-                  >
-                    {testimonials[active].initial}
-                  </div>
+                    className="w-px h-8"
+                    style={{ background: "rgba(255,255,255,0.15)" }}
+                  />
                   <div>
-                    <p className="text-white text-sm font-medium">
+                    <p className="text-white text-sm font-medium tracking-wide">
                       {testimonials[active].name}
                     </p>
-                    <p className="text-[#A1A1AA] text-xs">
+                    <p className="text-gray-accent text-xs font-light tracking-wide mt-0.5">
                       {testimonials[active].title}
                     </p>
                   </div>
                 </div>
               </motion.div>
             </AnimatePresence>
-
-            {/* Navigation */}
-            <div className="flex items-center gap-4 mt-6">
-              <button
-                onClick={prev}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white/50 hover:text-white transition-colors"
-                style={{ border: "1px solid rgba(255,255,255,0.12)" }}
-                data-cursor-hover
-              >
-                ←
-              </button>
-              <div className="flex gap-2">
-                {testimonials.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActive(i)}
-                    className="rounded-full transition-all duration-300"
-                    style={{
-                      width: i === active ? 24 : 6,
-                      height: 6,
-                      background: i === active ? "#ffffff" : "rgba(255,255,255,0.2)",
-                    }}
-                    data-cursor-hover
-                  />
-                ))}
-              </div>
-              <button
-                onClick={next}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white/50 hover:text-white transition-colors"
-                style={{ border: "1px solid rgba(255,255,255,0.12)" }}
-                data-cursor-hover
-              >
-                →
-              </button>
-            </div>
           </motion.div>
         </div>
       </div>

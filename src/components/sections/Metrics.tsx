@@ -4,12 +4,24 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 
 type Bezier = [number, number, number, number];
-const EASE_OUT: Bezier = [0.0, 0.0, 0.2, 1.0];
+const EASE: Bezier = [0.16, 1, 0.3, 1];
 
-const metrics = [
-  { value: "5+", label: "Years of Experience", sub: "Building digital products since 2019" },
-  { value: "40+", label: "Successful Projects", sub: "Shipped across web, mobile & brand" },
-  { value: "15+", label: "Happy Clients", sub: "From startups to global brands" },
+const METRICS = [
+  {
+    value: "6+",
+    label: "Years of Experience",
+    sub: "Driving digital excellence since 2018 across MENA",
+  },
+  {
+    value: "+25",
+    label: "Successful Projects",
+    sub: "Enterprise systems, fintech, and product innovation",
+  },
+  {
+    value: "95%",
+    label: "Digital Quality Increase",
+    sub: "Measurable improvement in platform performance & UX",
+  },
 ];
 
 export default function Metrics() {
@@ -17,119 +29,123 @@ export default function Metrics() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section
-      ref={ref}
-      style={{ backgroundColor: "#0D0E12" }}
-    >
+    <section ref={ref} style={{ backgroundColor: "#0D0E12" }}>
       <div
         style={{
-          maxWidth: 1200,
+          maxWidth: 1280,
           margin: "0 auto",
-          padding: "clamp(60px, 10vw, 120px) 24px",
+          padding: "clamp(80px, 11vw, 140px) 32px",
         }}
       >
-        {/* Top row: label + description */}
+        {/* Header row */}
         <div
           style={{
             display: "flex",
-            flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "flex-end",
-            marginBottom: 72,
+            marginBottom: 80,
             flexWrap: "wrap",
             gap: 24,
           }}
         >
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 28 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, ease: EASE_OUT }}
+            transition={{ duration: 0.9, ease: EASE }}
           >
             <p
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: "rgba(255,255,255,0.3)",
-                letterSpacing: "0.08em",
+                color: "rgba(255,255,255,0.28)",
+                letterSpacing: "0.09em",
                 textTransform: "uppercase",
-                marginBottom: 12,
+                marginBottom: 14,
               }}
             >
-              By the numbers
+              By the Numbers
             </p>
             <h2
               style={{
-                fontSize: "clamp(28px, 3.5vw, 44px)",
+                fontSize: "clamp(30px, 4vw, 50px)",
                 fontWeight: 800,
                 color: "#FFFFFF",
-                letterSpacing: "-0.03em",
-                lineHeight: 1.1,
+                letterSpacing: "-0.036em",
+                lineHeight: 1.08,
               }}
             >
-              Impact that speaks for itself.
+              Impact that speaks
+              <br />
+              for itself.
             </h2>
           </motion.div>
 
           <motion.p
             initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.08 }}
+            transition={{ duration: 0.9, ease: EASE, delay: 0.1 }}
             style={{
               fontSize: 15,
-              color: "rgba(255,255,255,0.4)",
-              lineHeight: 1.65,
-              maxWidth: 340,
+              color: "rgba(255,255,255,0.35)",
+              lineHeight: 1.72,
+              maxWidth: 320,
             }}
           >
-            Five years of building products with clients across the Middle East,
-            Europe, and North America.
+            Years of building enterprise-grade products with clients across
+            Saudi Arabia, the Middle East, and beyond.
           </motion.p>
         </div>
 
-        {/* Metrics grid */}
+        {/* Metric columns */}
         <div
+          className="metrics-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 0,
-            borderTop: "1px solid rgba(255,255,255,0.08)",
+            borderTop: "1px solid rgba(255,255,255,0.07)",
           }}
-          className="metrics-grid"
         >
-          {metrics.map((metric, i) => (
+          {METRICS.map((metric, i) => (
             <motion.div
               key={metric.label}
-              initial={{ opacity: 0, y: 32 }}
+              initial={{ opacity: 0, y: 40 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.1 + i * 0.08 }}
+              transition={{ duration: 0.9, ease: EASE, delay: 0.12 + i * 0.1 }}
               style={{
-                padding: "48px 0",
+                padding: "56px 0",
                 paddingRight: i < 2 ? 48 : 0,
                 paddingLeft: i > 0 ? 48 : 0,
                 borderRight:
-                  i < 2 ? "1px solid rgba(255,255,255,0.08)" : "none",
+                  i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none",
               }}
             >
-              <p
+              <motion.p
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={inView ? { opacity: 1, scale: 1 } : {}}
+                transition={{
+                  duration: 1.0,
+                  ease: EASE,
+                  delay: 0.25 + i * 0.1,
+                }}
                 style={{
-                  fontSize: "clamp(52px, 6vw, 72px)",
+                  fontSize: "clamp(64px, 8vw, 112px)",
                   fontWeight: 800,
                   color: "#FFFFFF",
-                  letterSpacing: "-0.04em",
-                  lineHeight: 1,
-                  marginBottom: 12,
+                  letterSpacing: "-0.048em",
+                  lineHeight: 0.95,
+                  marginBottom: 22,
                   fontVariantNumeric: "tabular-nums",
                 }}
               >
                 {metric.value}
-              </p>
+              </motion.p>
               <p
                 style={{
                   fontSize: 15,
                   fontWeight: 600,
-                  color: "rgba(255,255,255,0.7)",
-                  letterSpacing: "-0.01em",
-                  marginBottom: 6,
+                  color: "rgba(255,255,255,0.65)",
+                  letterSpacing: "-0.015em",
+                  marginBottom: 8,
                 }}
               >
                 {metric.label}
@@ -137,8 +153,8 @@ export default function Metrics() {
               <p
                 style={{
                   fontSize: 13,
-                  color: "rgba(255,255,255,0.3)",
-                  lineHeight: 1.5,
+                  color: "rgba(255,255,255,0.27)",
+                  lineHeight: 1.6,
                 }}
               >
                 {metric.sub}
@@ -157,7 +173,7 @@ export default function Metrics() {
             padding-left: 0 !important;
             padding-right: 0 !important;
             border-right: none !important;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid rgba(255,255,255,0.07);
           }
           .metrics-grid > div:last-child {
             border-bottom: none;

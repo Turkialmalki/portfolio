@@ -1,13 +1,15 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-bg-primary: #FFFFFF;
-  --color-bg-secondary: #F9F9FB;
+  --color-bg-primary: #F5F5F3;
+  --color-bg-surface: #FFFFFF;
   --color-bg-dark: #0D0E12;
   --color-text-primary: #0D0E12;
-  --color-text-muted: #666D80;
-  --color-border: #E4E7EC;
+  --color-text-secondary: #6B7280;
+  --color-border: rgba(0, 0, 0, 0.06);
+  --color-accent: #111111;
   --font-sans: var(--font-inter);
+  --font-script: var(--font-dancing-script);
 }
 
 * {
@@ -39,7 +41,7 @@ html.lenis body {
 }
 
 body {
-  background-color: #FFFFFF;
+  background-color: #F5F5F3;
   color: #0D0E12;
   font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -48,24 +50,33 @@ body {
   overflow-x: hidden;
 }
 
+/* Scroll offsets — bottom dock height clearance */
+section[id] {
+  scroll-margin-top: 40px;
+  scroll-margin-bottom: 96px;
+}
+
+/* Extra bottom padding so last section isn't obscured by dock */
+main > section:last-of-type {
+  padding-bottom: clamp(80px, 10vw, 120px);
+}
+
 ::selection {
   background: rgba(13, 14, 18, 0.1);
   color: #0D0E12;
 }
 
-/* Thin scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 ::-webkit-scrollbar-track {
-  background: #F9F9FB;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #E4E7EC;
-  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
 }
 
-/* Horizontal marquee */
 @keyframes marquee {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
