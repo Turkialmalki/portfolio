@@ -19,7 +19,14 @@ export default function BentoGrid() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section id="about" ref={ref} style={{ backgroundColor: "#F5F5F3" }}>
+    <section
+      id="about"
+      ref={ref}
+      style={{
+        backgroundColor: "var(--bg-primary)",
+        transition: "background-color 0.45s ease",
+      }}
+    >
       <div
         style={{
           maxWidth: 1280,
@@ -35,10 +42,11 @@ export default function BentoGrid() {
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: "#6B7280",
+            color: "var(--text-secondary)",
             letterSpacing: "0.09em",
             textTransform: "uppercase",
             marginBottom: 14,
+            transition: "color 0.45s ease",
           }}
         >
           About Me
@@ -51,10 +59,11 @@ export default function BentoGrid() {
           style={{
             fontSize: "clamp(32px, 4vw, 52px)",
             fontWeight: 800,
-            color: "#0D0E12",
+            color: "var(--text-primary)",
             letterSpacing: "-0.036em",
             lineHeight: 1.08,
             marginBottom: 52,
+            transition: "color 0.45s ease",
           }}
         >
           Engineering at the edge of design.
@@ -64,12 +73,9 @@ export default function BentoGrid() {
         <div className="bento-grid-outer">
           {/* Row 1 */}
           <div className="bento-row-1">
-            {/* Card 1: 6+ years */}
             <BentoCard inView={inView} delay={0.1} className="bento-card-experience">
               <ExperienceCard />
             </BentoCard>
-
-            {/* Card 2: Tech skills */}
             <BentoCard inView={inView} delay={0.18} className="bento-card-tech">
               <TechCard />
             </BentoCard>
@@ -77,17 +83,12 @@ export default function BentoGrid() {
 
           {/* Row 2 */}
           <div className="bento-row-2">
-            {/* Card 3: Engineering Leader */}
             <BentoCard inView={inView} delay={0.26} className="bento-card-leader">
               <LeaderCard />
             </BentoCard>
-
-            {/* Card 4: 95% Quality */}
             <BentoCard inView={inView} delay={0.32} className="bento-card-quality">
               <QualityCard />
             </BentoCard>
-
-            {/* Card 5: Stats */}
             <BentoCard inView={inView} delay={0.38} className="bento-card-stats">
               <StatsCard />
             </BentoCard>
@@ -96,39 +97,20 @@ export default function BentoGrid() {
       </div>
 
       <style>{`
-        .bento-grid-outer {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-        .bento-row-1 {
-          display: grid;
-          grid-template-columns: 2fr 1fr;
-          gap: 20px;
-        }
-        .bento-row-2 {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 20px;
-        }
+        .bento-grid-outer { display: flex; flex-direction: column; gap: 20px; }
+        .bento-row-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .bento-row-2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
         .bento-card-experience { min-height: 320px; }
         .bento-card-tech { min-height: 320px; }
         .bento-card-leader { min-height: 260px; }
         .bento-card-quality { min-height: 260px; }
         .bento-card-stats { min-height: 260px; }
-
         @media (max-width: 900px) {
-          .bento-row-1 {
-            grid-template-columns: 1fr;
-          }
-          .bento-row-2 {
-            grid-template-columns: 1fr 1fr;
-          }
+          .bento-row-1 { grid-template-columns: 1fr; }
+          .bento-row-2 { grid-template-columns: 1fr 1fr; }
         }
         @media (max-width: 580px) {
-          .bento-row-2 {
-            grid-template-columns: 1fr;
-          }
+          .bento-row-2 { grid-template-columns: 1fr; }
         }
       `}</style>
     </section>
@@ -154,38 +136,35 @@ function BentoCard({
       transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1], delay }}
       whileHover={{
         scale: 1.015,
-        boxShadow: "0 28px 56px rgba(0,0,0,0.07)",
+        boxShadow: "0 28px 56px rgba(0,0,0,0.08)",
         transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] },
       }}
-      style={{
-        borderRadius: 28,
-        overflow: "hidden",
-        position: "relative",
-      }}
+      style={{ borderRadius: 28, overflow: "hidden", position: "relative" }}
     >
       {children}
     </motion.div>
   );
 }
 
-/* ── Card 1: 6+ Years of Experience ── */
+/* ── Card 1: 9+ Years of Experience ── */
 function ExperienceCard() {
   return (
     <div
       style={{
         width: "100%",
         height: "100%",
-        background: "#FFFFFF",
-        border: "1px solid rgba(0,0,0,0.06)",
+        background: "var(--bento-surface)",
+        border: "1px solid var(--border-color)",
         padding: "44px 44px 40px",
         position: "relative",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
+        transition: "background 0.45s ease",
       }}
     >
-      {/* Background number */}
+      {/* Background watermark number */}
       <div
         style={{
           position: "absolute",
@@ -208,10 +187,11 @@ function ExperienceCard() {
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: "#6B7280",
+            color: "var(--text-secondary)",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
             marginBottom: 18,
+            transition: "color 0.45s ease",
           }}
         >
           Experience
@@ -220,10 +200,11 @@ function ExperienceCard() {
           style={{
             fontSize: "clamp(24px, 2.8vw, 36px)",
             fontWeight: 800,
-            color: "#0D0E12",
+            color: "var(--text-primary)",
             letterSpacing: "-0.034em",
             lineHeight: 1.1,
             marginBottom: 16,
+            transition: "color 0.45s ease",
           }}
         >
           9+ Years of experience
@@ -231,9 +212,10 @@ function ExperienceCard() {
         <p
           style={{
             fontSize: 15,
-            color: "#6B7280",
+            color: "var(--text-secondary)",
             lineHeight: 1.7,
             maxWidth: 480,
+            transition: "color 0.45s ease",
           }}
         >
           Driving digital transformation and building enterprise-grade systems
@@ -264,9 +246,10 @@ function ExperienceCard() {
             <p
               style={{
                 fontSize: 12,
-                color: "#6B7280",
+                color: "var(--text-secondary)",
                 marginTop: 4,
                 fontWeight: 500,
+                transition: "color 0.45s ease",
               }}
             >
               {label}
@@ -285,17 +268,18 @@ function TechCard() {
       style={{
         width: "100%",
         height: "100%",
-        background: "linear-gradient(148deg, #EEF7FF 0%, #E4F0FF 100%)",
-        border: "1px solid rgba(0,145,255,0.12)",
+        background: "var(--bento-tech-bg)",
+        border: "1px solid var(--bento-tech-border)",
         padding: "36px 32px",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
         overflow: "hidden",
         position: "relative",
+        transition: "background 0.45s ease",
       }}
     >
-      {/* Subtle circle */}
+      {/* Subtle circle highlight */}
       <div
         style={{
           position: "absolute",
@@ -314,10 +298,11 @@ function TechCard() {
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: "rgba(0,145,255,0.7)",
+            color: "var(--bento-tech-label)",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
             marginBottom: 14,
+            transition: "color 0.45s ease",
           }}
         >
           Tech Stack
@@ -326,10 +311,11 @@ function TechCard() {
           style={{
             fontSize: "clamp(18px, 2vw, 24px)",
             fontWeight: 800,
-            color: "#0D0E12",
+            color: "var(--text-primary)",
             letterSpacing: "-0.03em",
             lineHeight: 1.18,
             marginBottom: 28,
+            transition: "color 0.45s ease",
           }}
         >
           Skilled in modern design &amp; tech
@@ -376,7 +362,7 @@ function TechCard() {
   );
 }
 
-/* ── Card 3: Engineering Leader ── */
+/* ── Card 3: Engineering Leader (always dark) ── */
 function LeaderCard() {
   return (
     <div
@@ -470,13 +456,14 @@ function QualityCard() {
       style={{
         width: "100%",
         height: "100%",
-        background: "#FFFFFF",
-        border: "1px solid rgba(0,0,0,0.06)",
+        background: "var(--bento-surface)",
+        border: "1px solid var(--border-color)",
         padding: "36px 32px",
         overflow: "hidden",
         position: "relative",
         display: "flex",
         flexDirection: "column",
+        transition: "background 0.45s ease",
       }}
     >
       {/* Mobile mockup visual */}
@@ -493,38 +480,12 @@ function QualityCard() {
           overflow: "hidden",
         }}
       >
-        {/* Screen content */}
         <div style={{ position: "absolute", inset: 0, padding: 10 }}>
-          <div
-            style={{
-              height: 3,
-              width: "60%",
-              background: "rgba(255,255,255,0.4)",
-              borderRadius: 2,
-              margin: "8px auto 6px",
-            }}
-          />
+          <div style={{ height: 3, width: "60%", background: "rgba(255,255,255,0.4)", borderRadius: 2, margin: "8px auto 6px" }} />
           {[0.9, 0.65, 0.8].map((w, i) => (
-            <div
-              key={i}
-              style={{
-                height: 4,
-                width: `${w * 100}%`,
-                background: "rgba(255,255,255,0.2)",
-                borderRadius: 2,
-                marginBottom: 5,
-              }}
-            />
+            <div key={i} style={{ height: 4, width: `${w * 100}%`, background: "rgba(255,255,255,0.2)", borderRadius: 2, marginBottom: 5 }} />
           ))}
-          <div
-            style={{
-              marginTop: 8,
-              height: 50,
-              borderRadius: 8,
-              background: "rgba(255,255,255,0.15)",
-              border: "1px solid rgba(255,255,255,0.2)",
-            }}
-          />
+          <div style={{ marginTop: 8, height: 50, borderRadius: 8, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }} />
         </div>
       </div>
 
@@ -533,10 +494,11 @@ function QualityCard() {
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: "#6B7280",
+            color: "var(--text-secondary)",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
             marginBottom: 14,
+            transition: "color 0.45s ease",
           }}
         >
           Quality
@@ -557,10 +519,11 @@ function QualityCard() {
           style={{
             fontSize: "clamp(15px, 1.5vw, 18px)",
             fontWeight: 700,
-            color: "#0D0E12",
+            color: "var(--text-primary)",
             letterSpacing: "-0.025em",
             lineHeight: 1.25,
             maxWidth: 140,
+            transition: "color 0.45s ease",
           }}
         >
           Quality Improvement
@@ -570,7 +533,7 @@ function QualityCard() {
   );
 }
 
-/* ── Card 5: Turning Vision into Reality ── */
+/* ── Card 5: Turning Vision into Reality (always blue gradient) ── */
 function StatsCard() {
   return (
     <div
@@ -615,14 +578,11 @@ function StatsCard() {
           Impact
         </p>
         <div>
-          {/* 5 star icons */}
           <div style={{ display: "flex", gap: 3, marginBottom: 10 }}>
             {[0, 1, 2, 3, 4].map((s) => (
               <svg key={s} width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M7 1l1.545 3.13L12 4.635l-2.5 2.435.59 3.44L7 8.985l-3.09 1.525.59-3.44L2 4.635l3.455-.505L7 1z"
-                  fill="rgba(255,255,255,0.75)"
-                />
+                <path d="M7 1l1.545 3.13L12 4.635l-2.5 2.435.59 3.44L7 8.985l-3.09 1.525.59-3.44L2 4.635l3.455-.505L7 1z"
+                  fill="rgba(255,255,255,0.75)" />
               </svg>
             ))}
           </div>
@@ -657,14 +617,7 @@ function StatsCard() {
             >
               {n}
             </p>
-            <p
-              style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.65)",
-                marginTop: 4,
-                fontWeight: 500,
-              }}
-            >
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 4, fontWeight: 500 }}>
               {label}
             </p>
           </div>

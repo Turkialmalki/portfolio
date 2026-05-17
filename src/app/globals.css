@@ -30,6 +30,13 @@
   --topbar-name-color: #0D0E12;
   --topbar-toggle-bg: rgba(0, 0, 0, 0.05);
   --topbar-toggle-color: #0D0E12;
+  /* Bento grid card backgrounds */
+  --bento-surface: #FFFFFF;
+  --bento-tech-bg: linear-gradient(148deg, #EEF7FF 0%, #E4F0FF 100%);
+  --bento-tech-border: rgba(0, 145, 255, 0.12);
+  --bento-tech-label: rgba(0, 145, 255, 0.7);
+  /* Marquee edge fade */
+  --marquee-edge-fade: linear-gradient(90deg, var(--bg-surface) 0%, transparent 10%, transparent 90%, var(--bg-surface) 100%);
 }
 
 [data-theme="dark"] {
@@ -48,6 +55,13 @@
   --topbar-name-color: #F0F0EF;
   --topbar-toggle-bg: rgba(255, 255, 255, 0.08);
   --topbar-toggle-color: #F0F0EF;
+  /* Bento dark variants */
+  --bento-surface: #1C1D24;
+  --bento-tech-bg: linear-gradient(148deg, #0D1A2D 0%, #0A1528 100%);
+  --bento-tech-border: rgba(0, 145, 255, 0.20);
+  --bento-tech-label: rgba(80, 160, 255, 0.75);
+  /* Marquee edge fade (dark) */
+  --marquee-edge-fade: linear-gradient(90deg, #141519 0%, transparent 10%, transparent 90%, #141519 100%);
 }
 
 * {
@@ -115,6 +129,9 @@ main > section:last-of-type {
   background: rgba(0, 0, 0, 0.12);
   border-radius: 2px;
 }
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
 
 /* ── Infinite marquee ── */
 @keyframes marquee {
@@ -153,4 +170,19 @@ main > section:last-of-type {
 /* Pause marquee on hover — true pause, not slowdown */
 .marquee-container:hover .marquee-track {
   animation-play-state: paused;
+}
+
+/* Edge-fade mask applied to the marquee wrapper */
+.marquee-edges {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 9%, #000 91%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 9%, #000 91%, transparent 100%);
+}
+
+/* Hover-lift for interactive cards */
+.card-lift {
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.14);
 }

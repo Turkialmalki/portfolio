@@ -78,6 +78,7 @@ export default function TopBar() {
               transition: "color 0.45s ease",
             }}
           >
+            Turki Almalki
           </span>
         </div>
 

@@ -47,15 +47,14 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
   const drawProgress = useMotionValue(0);
 
   /*
-   * "to left" direction: 0 % = RIGHT edge, 100 % = LEFT edge.
-   * Pen starts at the right (first Arabic character, حياك) and sweeps left (الله).
+   * "to right" direction: pen starts at the left (W) and sweeps right.
    * p <= 0 → fully transparent (hidden before draw delay fires).
-   * p = 1  → 92 % solid black + 8 % soft feather on the left trailing edge.
+   * p = 1  → 92 % solid black + 8 % soft feather on the right trailing edge.
    */
   const maskImage = useTransform(drawProgress, (p) => {
-    if (p <= 0) return "linear-gradient(to left, transparent 0%, transparent 100%)";
+    if (p <= 0) return "linear-gradient(to right, transparent 0%, transparent 100%)";
     const pct = p * 92;
-    return `linear-gradient(to left, black 0%, black ${pct.toFixed(1)}%, rgba(0,0,0,0.4) ${(pct + 4).toFixed(1)}%, transparent ${(pct + 8).toFixed(1)}%, transparent 100%)`;
+    return `linear-gradient(to right, black 0%, black ${pct.toFixed(1)}%, rgba(0,0,0,0.4) ${(pct + 4).toFixed(1)}%, transparent ${(pct + 8).toFixed(1)}%, transparent 100%)`;
   });
 
   /* 5 px → 0 px vertical shift simulates pen pressure during the stroke */
@@ -165,7 +164,7 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
       />
 
       {/*
-       * حياك الله — outer wrapper handles:
+       * "Welcome to my world" — outer wrapper handles:
        *   draw stage  → no glow, normal state
        *   glow stage  → single pulse: scale + drop-shadow + color drift
        *   exit stage  → opacity fades at 0.8× curtain speed (parallax depth)
@@ -226,7 +225,7 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
 
         {/*
          * Live mask-image driven by drawProgress motion value.
-         * Feathered RTL reveal: pen writes حياك (right) → الله (left).
+         * Feathered LTR reveal: pen writes left (W) → right (d).
          * textY provides a 5 px pen-pressure drop that resolves to 0.
          */}
         <motion.div
@@ -237,32 +236,33 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
           }}
         >
           {/*
-           * SVG <text> avoids CSS-variable timing issues on Next.js font load.
+           * SVG <text> with Dancing Script — the font is loaded globally so
+           * the browser resolves it in the SVG context.
            * fill="currentColor" lets the parent motion.svg animate the colour.
-           * Color drifts: #FFFFFF → faint lavender #EDE8FF on glow (matches mesh).
+           * Color drifts: #FFFFFF → faint lavender #EDE8FF on glow.
            */}
           <motion.svg
             animate={{ color: stage === "draw" ? "#FFFFFF" : "#EDE8FF" }}
             transition={{ duration: 0.84, ease: "easeInOut" }}
-            viewBox="0 0 560 110"
+            viewBox="0 0 820 120"
             style={{
               display: "block",
-              width: "min(88vw, 560px)",
+              width: "min(92vw, 820px)",
               height: "auto",
               overflow: "visible",
             }}
-            aria-label="حياك الله"
+            aria-label="Welcome to my world"
           >
             <text
-              x="280"
-              y="80"
+              x="410"
+              y="88"
               textAnchor="middle"
-              fontFamily="'Noto Naskh Arabic', 'SF Arabic', 'Traditional Arabic', serif"
+              fontFamily="'Dancing Script', cursive"
               fontWeight="700"
-              fontSize="72"
+              fontSize="82"
               fill="currentColor"
             >
-              حياك الله
+              Welcome to my world
             </text>
           </motion.svg>
         </motion.div>

@@ -108,9 +108,9 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
               fontWeight: 400,
             }}
           >
-            Software Engineering Leader at Monsha&apos;at. 9+ years driving
-            digital transformation and enterprise-grade innovation across
-            fintech, product, and government sectors.
+            Software Engineering Leader focused on digital transformation,
+            enterprise platforms, AI solutions, fintech innovation, and
+            scalable system integrations.
           </motion.p>
 
           {/* CTA row */}
@@ -124,9 +124,15 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             <PillButton color="#0091FF" href="/projects">
               View Portfolio
             </PillButton>
-            {/* Secondary: ghost/outline */}
-            <PillButton color="transparent" href="/about" outline>
-              About Me
+            {/* Secondary: scroll to footer contact */}
+            <PillButton
+              color="transparent"
+              onClick={() =>
+                document.querySelector("footer")?.scrollIntoView({ behavior: "smooth" })
+              }
+              outline
+            >
+              Let&apos;s Connect
             </PillButton>
           </motion.div>
         </div>
@@ -155,21 +161,6 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
         transition={{ duration: 0.8, ease: EASE, delay: 0.7 }}
         style={{ paddingBottom: 110, overflow: "hidden" }}
       >
-        <p
-          style={{
-            fontSize: 10,
-            fontWeight: 600,
-            color: "var(--text-secondary)",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            padding: "0 32px",
-            marginBottom: 14,
-            opacity: 0.65,
-          }}
-        >
-          Selected Work
-        </p>
-
         <div className="marquee-container">
           <div className="marquee-track" style={{ gap: 0 }}>
             {MARQUEE_TRACK.map((p, i) => (
@@ -193,7 +184,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
   );
 }
 
-/* ── Compact marquee pill inside hero viewport ── */
+/* ── Premium mini project card inside hero viewport ── */
 function HeroMarqueeCard({
   project,
 }: {
@@ -201,47 +192,88 @@ function HeroMarqueeCard({
 }) {
   return (
     <motion.div
-      whileHover={{ scale: 1.04, y: -3 }}
+      whileHover={{ scale: 1.04, y: -4 }}
       transition={{ type: "spring", stiffness: 320, damping: 24 }}
       style={{
         display: "inline-flex",
-        alignItems: "center",
-        gap: 14,
+        flexDirection: "column",
         flexShrink: 0,
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border-color)",
-        borderRadius: 32,
-        padding: "14px 22px",
-        margin: "0 8px",
+        borderRadius: 20,
+        margin: "0 10px",
         cursor: "pointer",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-        minWidth: 220,
-        whiteSpace: "nowrap",
+        width: 240,
+        overflow: "hidden",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.07)",
+        border: "1px solid var(--border-color)",
       }}
     >
+      {/* Accent gradient visual area */}
       <div
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: "50%",
-          background: `${project.accent}22`,
-          border: `1.5px solid ${project.accent}44`,
+          height: 52,
+          background: `linear-gradient(135deg, ${project.accent}18 0%, ${project.accent}0a 100%)`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          flexShrink: 0,
+          position: "relative",
+          overflow: "hidden",
         }}
       >
+        {/* Decorative glow circles */}
         <div
           style={{
-            width: 10,
-            height: 10,
+            width: 30,
+            height: 30,
             borderRadius: "50%",
-            background: project.accent,
+            background: `${project.accent}20`,
+            border: `1.5px solid ${project.accent}38`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: project.accent,
+            }}
+          />
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            right: 14,
+            top: 8,
+            width: 22,
+            height: 22,
+            borderRadius: "50%",
+            background: `${project.accent}10`,
+            border: `1px solid ${project.accent}1c`,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 14,
+            bottom: 6,
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: `${project.accent}08`,
           }}
         />
       </div>
-      <div>
+
+      {/* Content footer */}
+      <div
+        style={{
+          background: "var(--bg-surface)",
+          padding: "11px 15px 13px",
+          transition: "background 0.45s ease",
+        }}
+      >
         <p
           style={{
             fontSize: 13,
@@ -249,6 +281,9 @@ function HeroMarqueeCard({
             color: "var(--text-primary)",
             letterSpacing: "-0.018em",
             transition: "color 0.45s ease",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
           {project.title}
@@ -256,9 +291,10 @@ function HeroMarqueeCard({
         <p
           style={{
             fontSize: 11,
-            color: "var(--text-secondary)",
-            fontWeight: 400,
-            marginTop: 1,
+            color: project.accent,
+            marginTop: 3,
+            fontWeight: 500,
+            whiteSpace: "nowrap",
           }}
         >
           {project.tag}
@@ -274,11 +310,13 @@ function PillButton({
   href,
   color,
   outline,
+  onClick,
 }: {
   children: React.ReactNode;
   href?: string;
   color: string;
   outline?: boolean;
+  onClick?: () => void;
 }) {
   const style: React.CSSProperties = {
     display: "inline-flex",
@@ -304,10 +342,11 @@ function PillButton({
   return (
     <motion.a
       href={href}
+      onClick={onClick}
       whileHover={{ scale: 1.04 }}
       whileTap={{ scale: 0.96 }}
       transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      style={style}
+      style={{ ...style, cursor: "pointer" }}
     >
       {children}
     </motion.a>

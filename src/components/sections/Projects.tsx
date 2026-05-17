@@ -1,10 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, useMotionValue } from "framer-motion";
 
 type Bezier = [number, number, number, number];
 const EASE: Bezier = [0.16, 1, 0.3, 1];
+
+const CARD_WIDTH = 400;
+const CARD_GAP = 20;
+const CARD_STEP = CARD_WIDTH + CARD_GAP;
 
 const PROJECTS = [
   {
@@ -61,14 +65,21 @@ const PROJECTS = [
 
 export default function Projects() {
   const ref = useRef<HTMLElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [activeIndex, setActiveIndex] = useState(0);
+  const dragX = useMotionValue(0);
+
+  const handleDragEnd = () => {
+    const raw = dragX.get();
+    const idx = Math.round(Math.abs(raw) / CARD_STEP);
+    setActiveIndex(Math.min(Math.max(idx, 0), PROJECTS.length - 1));
+  };
 
   return (
     <section
       id="projects"
       ref={ref}
-      style={{ backgroundColor: "#FFFFFF", overflow: "hidden" }}
+      style={{ backgroundColor: "var(--bg-surface)", overflow: "hidden", transition: "background-color 0.45s ease" }}
     >
       <div
         style={{
@@ -90,34 +101,20 @@ export default function Projects() {
           }}
         >
           <div>
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.7, ease: EASE }}
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#6B7280",
-                letterSpacing: "0.09em",
-                textTransform: "uppercase",
-                marginBottom: 12,
-              }}
-            >
-              Featured Work
-            </motion.p>
             <motion.h2
               initial={{ opacity: 0, y: 24 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, ease: EASE, delay: 0.06 }}
+              transition={{ duration: 0.8, ease: EASE }}
               style={{
                 fontSize: "clamp(32px, 4vw, 52px)",
                 fontWeight: 800,
-                color: "#0D0E12",
+                color: "var(--text-primary)",
                 letterSpacing: "-0.036em",
                 lineHeight: 1.08,
+                transition: "color 0.45s ease",
               }}
             >
-              Selected projects.
+              Case studies.
             </motion.h2>
           </div>
 
@@ -127,11 +124,9 @@ export default function Projects() {
             transition={{ duration: 0.7, ease: EASE, delay: 0.14 }}
             style={{
               fontSize: 13,
-              color: "#6B7280",
+              color: "var(--text-secondary)",
               letterSpacing: "-0.01em",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
+              transition: "color 0.45s ease",
             }}
           >
             Drag to explore →
@@ -145,23 +140,24 @@ export default function Projects() {
           transition={{ duration: 0.9, ease: EASE, delay: 0.18 }}
         >
           <motion.div
-            ref={trackRef}
             drag="x"
             dragConstraints={{
-              left: -(PROJECTS.length - 1) * 420,
+              left: -(PROJECTS.length - 1) * CARD_STEP,
               right: 0,
             }}
             dragElastic={0.08}
             dragTransition={{ bounceStiffness: 200, bounceDamping: 30 }}
             style={{
               display: "flex",
-              gap: 20,
+              gap: CARD_GAP,
               paddingLeft: 32,
               paddingRight: 32,
               cursor: "grab",
               userSelect: "none",
               width: "max-content",
+              x: dragX,
             }}
+            onDragEnd={handleDragEnd}
             whileTap={{ cursor: "grabbing" }}
           >
             {PROJECTS.map((project, i) => (
@@ -184,14 +180,24 @@ export default function Projects() {
           }}
         >
           {PROJECTS.map((_, i) => (
-            <div
+            <motion.div
               key={i}
+              animate={{
+                width: i === activeIndex ? 24 : 8,
+                background:
+                  i === activeIndex
+                    ? "var(--text-primary)"
+                    : "rgba(0,0,0,0.12)",
+              }}
+              transition={{ duration: 0.35, ease: EASE }}
               style={{
-                width: i === 0 ? 24 : 8,
                 height: 8,
                 borderRadius: 100,
-                background: i === 0 ? "#0D0E12" : "rgba(0,0,0,0.12)",
-                transition: "all 0.3s ease",
+                cursor: "pointer",
+              }}
+              onClick={() => {
+                dragX.set(-i * CARD_STEP);
+                setActiveIndex(i);
               }}
             />
           ))}
@@ -222,7 +228,7 @@ function ProjectCard({
       }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       style={{
-        width: 400,
+        width: CARD_WIDTH,
         height: 520,
         borderRadius: 32,
         background: project.bg,
@@ -257,8 +263,7 @@ function ProjectCard({
           left: 0,
           right: 0,
           height: "60%",
-          background:
-            "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)",
+          background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)",
           pointerEvents: "none",
         }}
       />
@@ -305,7 +310,7 @@ function ProjectCard({
         </motion.div>
       </div>
 
-      {/* Centre visual area: abstract tech pattern */}
+      {/* Centre visual area */}
       <div
         style={{
           position: "absolute",
@@ -332,7 +337,6 @@ function ProjectCard({
           padding: "28px 28px 32px",
         }}
       >
-        {/* Tag */}
         <span
           style={{
             display: "inline-flex",
@@ -363,13 +367,7 @@ function ProjectCard({
           {project.title}
         </h3>
 
-        <p
-          style={{
-            fontSize: 13,
-            color: "rgba(255,255,255,0.5)",
-            lineHeight: 1.65,
-          }}
-        >
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.65 }}>
           {project.description}
         </p>
       </div>
@@ -377,82 +375,42 @@ function ProjectCard({
   );
 }
 
-/* Abstract visual per project */
-function ProjectVisual({
-  accent,
-  index,
-}: {
-  accent: string;
-  index: number;
-}) {
+function ProjectVisual({ accent, index }: { accent: string; index: number }) {
   if (index === 0) {
-    // BaseBox — grid of squares (SaaS dashboard)
     return (
       <svg width="160" height="160" viewBox="0 0 160 160" fill="none">
         {[0, 1, 2].map((row) =>
           [0, 1, 2].map((col) => (
-            <rect
-              key={`${row}-${col}`}
-              x={col * 54 + 2}
-              y={row * 54 + 2}
-              width={row === 0 && col === 0 ? 100 : 44}
-              height={44}
-              rx={8}
-              fill={accent}
-              fillOpacity={row === 0 && col === 0 ? 0.5 : 0.15}
-              stroke={accent}
-              strokeWidth={1}
-              strokeOpacity={0.3}
-            />
+            <rect key={`${row}-${col}`}
+              x={col * 54 + 2} y={row * 54 + 2}
+              width={row === 0 && col === 0 ? 100 : 44} height={44} rx={8}
+              fill={accent} fillOpacity={row === 0 && col === 0 ? 0.5 : 0.15}
+              stroke={accent} strokeWidth={1} strokeOpacity={0.3} />
           ))
         )}
       </svg>
     );
   }
   if (index === 1) {
-    // Munaaseb — chart bars (fintech)
     const bars = [0.4, 0.7, 0.55, 0.9, 0.65, 0.8];
     return (
       <svg width="160" height="120" viewBox="0 0 160 120" fill="none">
         {bars.map((h, i) => (
-          <rect
-            key={i}
-            x={i * 26 + 4}
-            y={120 - h * 100}
-            width={18}
-            height={h * 100}
-            rx={5}
-            fill={accent}
-            fillOpacity={i === 3 ? 0.7 : 0.25}
-          />
+          <rect key={i} x={i * 26 + 4} y={120 - h * 100} width={18} height={h * 100} rx={5}
+            fill={accent} fillOpacity={i === 3 ? 0.7 : 0.25} />
         ))}
         <polyline
-          points={bars
-            .map((h, i) => `${i * 26 + 13},${120 - h * 100}`)
-            .join(" ")}
-          stroke={accent}
-          strokeWidth="2"
-          fill="none"
-          strokeOpacity={0.6}
-        />
+          points={bars.map((h, i) => `${i * 26 + 13},${120 - h * 100}`).join(" ")}
+          stroke={accent} strokeWidth="2" fill="none" strokeOpacity={0.6} />
       </svg>
     );
   }
   if (index === 2) {
-    // Hala — concentric rings (innovation)
     return (
       <svg width="160" height="160" viewBox="0 0 160 160" fill="none">
         {[70, 50, 30, 14].map((r, i) => (
-          <circle
-            key={i}
-            cx="80"
-            cy="80"
-            r={r}
-            stroke={accent}
-            strokeWidth={i === 0 ? 1.5 : 1}
-            strokeOpacity={0.15 + i * 0.12}
-            fill="none"
-          />
+          <circle key={i} cx="80" cy="80" r={r}
+            stroke={accent} strokeWidth={i === 0 ? 1.5 : 1} strokeOpacity={0.15 + i * 0.12} fill="none" />
         ))}
         <circle cx="80" cy="80" r="8" fill={accent} fillOpacity={0.7} />
         <line x1="80" y1="10" x2="80" y2="40" stroke={accent} strokeWidth="1" strokeOpacity="0.3" />
@@ -463,50 +421,33 @@ function ProjectVisual({
     );
   }
   if (index === 3) {
-    // SAP Cloud — hexagon grid (enterprise)
     const pts = (cx: number, cy: number, r: number) =>
       Array.from({ length: 6 }, (_, i) => {
         const a = (Math.PI / 3) * i - Math.PI / 6;
         return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
       }).join(" ");
-    const positions = [
-      [80, 55], [55, 80], [105, 80], [80, 105],
-    ] as [number, number][];
+    const positions: [number, number][] = [[80, 55], [55, 80], [105, 80], [80, 105]];
     return (
       <svg width="160" height="160" viewBox="0 0 160 160" fill="none">
         {positions.map(([cx, cy], i) => (
-          <polygon
-            key={i}
-            points={pts(cx, cy, 24)}
-            stroke={accent}
-            strokeWidth="1.5"
-            strokeOpacity={i === 0 ? 0.7 : 0.25}
-            fill={accent}
-            fillOpacity={i === 0 ? 0.2 : 0.06}
-          />
+          <polygon key={i} points={pts(cx, cy, 24)}
+            stroke={accent} strokeWidth="1.5" strokeOpacity={i === 0 ? 0.7 : 0.25}
+            fill={accent} fillOpacity={i === 0 ? 0.2 : 0.06} />
         ))}
       </svg>
     );
   }
-  // Lean — connected nodes (network)
-  const nodes = [[80, 60], [40, 100], [120, 100], [60, 130], [100, 130]] as [number, number][];
+  const nodes: [number, number][] = [[80, 60], [40, 100], [120, 100], [60, 130], [100, 130]];
   const edges = [[0, 1], [0, 2], [1, 3], [2, 4], [1, 2]];
   return (
     <svg width="160" height="160" viewBox="0 0 160 160" fill="none">
       {edges.map(([a, b], i) => (
-        <line
-          key={i}
-          x1={nodes[a][0]} y1={nodes[a][1]}
-          x2={nodes[b][0]} y2={nodes[b][1]}
-          stroke={accent} strokeWidth="1.5" strokeOpacity="0.3"
-        />
+        <line key={i} x1={nodes[a][0]} y1={nodes[a][1]} x2={nodes[b][0]} y2={nodes[b][1]}
+          stroke={accent} strokeWidth="1.5" strokeOpacity="0.3" />
       ))}
       {nodes.map(([cx, cy], i) => (
-        <circle
-          key={i}
-          cx={cx} cy={cy} r={i === 0 ? 10 : 7}
-          fill={accent} fillOpacity={i === 0 ? 0.6 : 0.25}
-        />
+        <circle key={i} cx={cx} cy={cy} r={i === 0 ? 10 : 7}
+          fill={accent} fillOpacity={i === 0 ? 0.6 : 0.25} />
       ))}
     </svg>
   );

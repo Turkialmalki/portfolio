@@ -8,9 +8,9 @@ const EASE: Bezier = [0.16, 1, 0.3, 1];
 
 const METRICS = [
   {
-    value: "6+",
+    value: "9+",
     label: "Years of Experience",
-    sub: "Driving digital excellence since 2018 across MENA",
+    sub: "Driving digital excellence since 2016 across MENA",
   },
   {
     value: "+25",
@@ -91,7 +91,7 @@ export default function Metrics() {
               maxWidth: 320,
             }}
           >
-            Years of building enterprise-grade products with clients across
+            9+ years building enterprise-grade products with clients across
             Saudi Arabia, the Middle East, and beyond.
           </motion.p>
         </div>
