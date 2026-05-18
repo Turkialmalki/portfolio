@@ -90,32 +90,14 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           {/* Mobile-only avatar — hidden on md+ where the right column appears */}
           <motion.div
             className="flex justify-center md:hidden"
-            style={{ marginBottom: 40 }}
+            style={{ marginBottom: 40, paddingLeft: 32, paddingRight: 32 }}
             initial={{ opacity: 0, scale: 0.88 }}
-            animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
+            animate={
+              ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }
+            }
             transition={{ duration: 0.9, ease: EASE, delay: 0.05 }}
           >
-            <div
-              style={{
-                width: 160,
-                height: 160,
-                borderRadius: "50%",
-                overflow: "hidden",
-                border: "2.5px solid rgba(0,145,255,0.28)",
-                boxShadow: "0 8px 32px rgba(0,145,255,0.25)",
-                flexShrink: 0,
-                background: "#f3f4f6",
-              }}
-            >
-              <Image
-                src="/avatar.jpg"
-                alt="Turki Almalki"
-                width={160}
-                height={160}
-                priority
-                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 28%" }}
-              />
-            </div>
+            <AvatarVisual mobile />
           </motion.div>
 
           <div style={{ overflow: "hidden" }}>
@@ -163,18 +145,16 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.9, ease: EASE, delay: 0.32 }}
             style={{
-              fontSize: "clamp(15px, 1.25vw, 17px)",
-              color: "#6B7280",
+              fontSize: "clamp(20px, 1.25vw, 20px)",
+              color: "#707070",
               lineHeight: 1.72,
-              maxWidth: 460,
-              marginBottom: 36,
-              fontWeight: 400,
+              maxWidth: 500,
+              marginBottom: 30,
+              fontWeight: 700,
+              fontFamily: "Inter, sans-serif",
             }}
           >
-            Software Engineering Leader focused on digital transformation,
-            enterprise platforms, AI solutions, fintech innovation, and
-            scalable system integrations.
-          </motion.p>
+Driving innovation through <span style={{ color: "#111" }}>engineering excellence</span>.          </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 18 }}
@@ -185,15 +165,6 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             <PillButton color="#0091FF" href="/projects">
               View Portfolio
             </PillButton>
-            <PillButton
-              color="transparent"
-              onClick={() =>
-                document.querySelector("footer")?.scrollIntoView({ behavior: "smooth" })
-              }
-              outline
-            >
-              Let&apos;s Connect
-            </PillButton>
           </motion.div>
         </div>
 
@@ -201,7 +172,9 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
         <motion.div
           className="hidden md:flex"
           initial={{ opacity: 0, scale: 0.88 }}
-          animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
+          animate={
+            ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }
+          }
           transition={{ duration: 1.4, ease: EASE, delay: 0.2 }}
           style={{
             y: avatarY,
@@ -231,7 +204,11 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
         <div className="marquee-container marquee-edges">
           <div className="marquee-track">
             {ROW_1.map((p, i) => (
-              <LargeProjectCard key={i} project={p} index={i % PROJECTS.length} />
+              <LargeProjectCard
+                key={i}
+                project={p}
+                index={i % PROJECTS.length}
+              />
             ))}
           </div>
         </div>
@@ -240,7 +217,11 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
         <div className="marquee-container marquee-edges">
           <div className="marquee-track-right">
             {ROW_2.map((p, i) => (
-              <LargeProjectCard key={i} project={p} index={i % PROJECTS.length} />
+              <LargeProjectCard
+                key={i}
+                project={p}
+                index={i % PROJECTS.length}
+              />
             ))}
           </div>
         </div>
@@ -321,11 +302,23 @@ function LargeProjectCard({
 }
 
 /* ── Per-project light-background SVG mockups ── */
-function ProjectMockup({ index, accent: a }: { index: number; accent: string }) {
+function ProjectMockup({
+  index,
+  accent: a,
+}: {
+  index: number;
+  accent: string;
+}) {
   /* index 0: BaseBox AI — clean SaaS dashboard */
   if (index === 0) {
     return (
-      <svg viewBox="0 0 560 218" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" fill="none">
+      <svg
+        viewBox="0 0 560 218"
+        width="100%"
+        height="100%"
+        preserveAspectRatio="xMidYMid slice"
+        fill="none"
+      >
         <rect width="560" height="218" fill="#FAFBFF" />
 
         {/* Sidebar */}
@@ -333,43 +326,139 @@ function ProjectMockup({ index, accent: a }: { index: number; accent: string }) 
         <rect x="13" y="13" width="24" height="24" rx="7" fill={a} />
         {[52, 84, 116, 148, 180].map((y, i) => (
           <g key={y}>
-            <rect x="13" y={y} width="24" height="20" rx="5" fill={i === 0 ? `${a}20` : "transparent"} />
-            <rect x="17" y={y + 7} width="16" height="6" rx="3" fill={i === 0 ? a : "#BCC4D8"} opacity={i === 0 ? 0.9 : 0.6} />
+            <rect
+              x="13"
+              y={y}
+              width="24"
+              height="20"
+              rx="5"
+              fill={i === 0 ? `${a}20` : "transparent"}
+            />
+            <rect
+              x="17"
+              y={y + 7}
+              width="16"
+              height="6"
+              rx="3"
+              fill={i === 0 ? a : "#BCC4D8"}
+              opacity={i === 0 ? 0.9 : 0.6}
+            />
           </g>
         ))}
         <rect x="0" y="52" width="3" height="20" rx="1.5" fill={a} />
-        <line x1="50" y1="0" x2="50" y2="218" stroke="#E4E8F0" strokeWidth="1" />
+        <line
+          x1="50"
+          y1="0"
+          x2="50"
+          y2="218"
+          stroke="#E4E8F0"
+          strokeWidth="1"
+        />
 
         {/* Top bar */}
         <rect x="50" width="510" height="42" fill="white" />
-        <line x1="50" y1="42" x2="560" y2="42" stroke="#E4E8F0" strokeWidth="1" />
-        <rect x="62" y="14" width="96" height="14" rx="5" fill="#111827" opacity="0.78" />
+        <line
+          x1="50"
+          y1="42"
+          x2="560"
+          y2="42"
+          stroke="#E4E8F0"
+          strokeWidth="1"
+        />
+        <rect
+          x="62"
+          y="14"
+          width="96"
+          height="14"
+          rx="5"
+          fill="#111827"
+          opacity="0.78"
+        />
         <rect x="452" y="13" width="62" height="16" rx="8" fill={a} />
         <circle cx="534" cy="21" r="9" fill="#EEF0F8" />
         <circle cx="534" cy="21" r="5" fill="#BCC4D8" opacity="0.7" />
 
         {/* Stat cards */}
-        {[0, 1, 2].map(i => {
+        {[0, 1, 2].map((i) => {
           const x = 62 + i * 162;
           return (
             <g key={i}>
-              <rect x={x} y="54" width="150" height="60" rx="10" fill={i === 0 ? `${a}0E` : "white"} stroke={i === 0 ? `${a}28` : "#E8ECF4"} strokeWidth="1" />
-              <rect x={x + 12} y="65" width="42" height="6" rx="3" fill="#9CA3AF" />
-              <rect x={x + 12} y="77" width={i === 0 ? 64 : 50} height="14" rx="4" fill={i === 0 ? a : "#111827"} opacity={i === 0 ? 0.88 : 0.72} />
-              <rect x={x + 12} y="98" width="28" height="7" rx="3.5" fill="#ECFDF5" />
-              <rect x={x + 17} y="101" width="16" height="1" rx="0.5" fill="#10B981" />
+              <rect
+                x={x}
+                y="54"
+                width="150"
+                height="60"
+                rx="10"
+                fill={i === 0 ? `${a}0E` : "white"}
+                stroke={i === 0 ? `${a}28` : "#E8ECF4"}
+                strokeWidth="1"
+              />
+              <rect
+                x={x + 12}
+                y="65"
+                width="42"
+                height="6"
+                rx="3"
+                fill="#9CA3AF"
+              />
+              <rect
+                x={x + 12}
+                y="77"
+                width={i === 0 ? 64 : 50}
+                height="14"
+                rx="4"
+                fill={i === 0 ? a : "#111827"}
+                opacity={i === 0 ? 0.88 : 0.72}
+              />
+              <rect
+                x={x + 12}
+                y="98"
+                width="28"
+                height="7"
+                rx="3.5"
+                fill="#ECFDF5"
+              />
+              <rect
+                x={x + 17}
+                y="101"
+                width="16"
+                height="1"
+                rx="0.5"
+                fill="#10B981"
+              />
             </g>
           );
         })}
 
         {/* Area chart */}
-        <rect x="62" y="126" width="486" height="80" rx="10" fill="white" stroke="#E8ECF4" strokeWidth="1" />
-        {[140, 154, 168, 182, 196].map(y => (
-          <line key={y} x1="76" y1={y} x2="536" y2={y} stroke="#F3F4F6" strokeWidth="1" />
+        <rect
+          x="62"
+          y="126"
+          width="486"
+          height="80"
+          rx="10"
+          fill="white"
+          stroke="#E8ECF4"
+          strokeWidth="1"
+        />
+        {[140, 154, 168, 182, 196].map((y) => (
+          <line
+            key={y}
+            x1="76"
+            y1={y}
+            x2="536"
+            y2={y}
+            stroke="#F3F4F6"
+            strokeWidth="1"
+          />
         ))}
         <path
           d="M76,198 C114,186 152,192 200,176 C248,160 280,168 320,152 C360,136 400,144 440,126 C476,111 508,118 536,104"
-          stroke={a} strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"
+          stroke={a}
+          strokeWidth="2.2"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
         <path
           d="M76,198 C114,186 152,192 200,176 C248,160 280,168 320,152 C360,136 400,144 440,126 C476,111 508,118 536,104 L536,198 Z"
@@ -378,23 +467,58 @@ function ProjectMockup({ index, accent: a }: { index: number; accent: string }) 
         <circle cx="320" cy="152" r="3.5" fill={a} />
         <circle cx="536" cy="104" r="3.5" fill={a} />
         <rect x="304" y="136" width="38" height="13" rx="5" fill={a} />
-        <rect x="309" y="141" width="24" height="3" rx="1.5" fill="white" opacity="0.9" />
+        <rect
+          x="309"
+          y="141"
+          width="24"
+          height="3"
+          rx="1.5"
+          fill="white"
+          opacity="0.9"
+        />
       </svg>
     );
   }
 
   /* index 1: Munaaseb Fintech — banking app */
   if (index === 1) {
-    const bars = [0.44, 0.6, 0.5, 0.76, 0.64, 0.88, 0.72, 0.94, 0.82, 0.98, 0.86, 1.0];
-    const barW = 30, gap = 14, startX = 20;
+    const bars = [
+      0.44, 0.6, 0.5, 0.76, 0.64, 0.88, 0.72, 0.94, 0.82, 0.98, 0.86, 1.0,
+    ];
+    const barW = 30,
+      gap = 14,
+      startX = 20;
     return (
-      <svg viewBox="0 0 560 218" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" fill="none">
+      <svg
+        viewBox="0 0 560 218"
+        width="100%"
+        height="100%"
+        preserveAspectRatio="xMidYMid slice"
+        fill="none"
+      >
         <rect width="560" height="218" fill="white" />
 
         {/* Balance card */}
-        <rect x="16" y="12" width="260" height="72" rx="14" fill={`${a}10`} stroke={`${a}20`} strokeWidth="1" />
+        <rect
+          x="16"
+          y="12"
+          width="260"
+          height="72"
+          rx="14"
+          fill={`${a}10`}
+          stroke={`${a}20`}
+          strokeWidth="1"
+        />
         <rect x="28" y="24" width="56" height="6" rx="3" fill="#9CA3AF" />
-        <rect x="28" y="36" width="130" height="18" rx="5" fill="#111827" opacity="0.85" />
+        <rect
+          x="28"
+          y="36"
+          width="130"
+          height="18"
+          rx="5"
+          fill="#111827"
+          opacity="0.85"
+        />
         <rect x="28" y="62" width="38" height="10" rx="5" fill="#ECFDF5" />
         <rect x="33" y="65" width="24" height="4" rx="2" fill="#10B981" />
 
@@ -420,13 +544,56 @@ function ProjectMockup({ index, accent: a }: { index: number; accent: string }) 
         ))}
 
         {/* Transactions */}
-        {[["Salary", "+SAR 18,500"], ["Rent", "-SAR 3,200"], ["Transfer", "+SAR 5,000"]].map(([_name, amt], i) => (
+        {[
+          ["Salary", "+SAR 18,500"],
+          ["Rent", "-SAR 3,200"],
+          ["Transfer", "+SAR 5,000"],
+        ].map(([_name, amt], i) => (
           <g key={i}>
-            <rect x="300" y={20 + i * 60} width="246" height="52" rx="10" fill={i % 2 === 0 ? "#FAFBFF" : "white"} stroke="#F0F2F8" strokeWidth="1" />
-            <rect x="316" y={32 + i * 60} width="28" height="28" rx="8" fill={`${a}15`} />
-            <rect x="352" y={34 + i * 60} width={60 - i * 8} height="7" rx="3.5" fill="#111827" opacity="0.7" />
-            <rect x="352" y={46 + i * 60} width="40" height="5" rx="2.5" fill="#9CA3AF" />
-            <rect x="468" y={36 + i * 60} width="62" height="7" rx="3.5" fill={amt.startsWith("+") ? "#10B981" : "#EF4444"} opacity="0.8" />
+            <rect
+              x="300"
+              y={20 + i * 60}
+              width="246"
+              height="52"
+              rx="10"
+              fill={i % 2 === 0 ? "#FAFBFF" : "white"}
+              stroke="#F0F2F8"
+              strokeWidth="1"
+            />
+            <rect
+              x="316"
+              y={32 + i * 60}
+              width="28"
+              height="28"
+              rx="8"
+              fill={`${a}15`}
+            />
+            <rect
+              x="352"
+              y={34 + i * 60}
+              width={60 - i * 8}
+              height="7"
+              rx="3.5"
+              fill="#111827"
+              opacity="0.7"
+            />
+            <rect
+              x="352"
+              y={46 + i * 60}
+              width="40"
+              height="5"
+              rx="2.5"
+              fill="#9CA3AF"
+            />
+            <rect
+              x="468"
+              y={36 + i * 60}
+              width="62"
+              height="7"
+              rx="3.5"
+              fill={amt.startsWith("+") ? "#10B981" : "#EF4444"}
+              opacity="0.8"
+            />
           </g>
         ))}
       </svg>
@@ -436,15 +603,37 @@ function ProjectMockup({ index, accent: a }: { index: number; accent: string }) 
   /* index 3: SAP Cloud CX — enterprise CRM */
   if (index === 3) {
     return (
-      <svg viewBox="0 0 560 218" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" fill="none">
+      <svg
+        viewBox="0 0 560 218"
+        width="100%"
+        height="100%"
+        preserveAspectRatio="xMidYMid slice"
+        fill="none"
+      >
         <rect width="560" height="218" fill="white" />
 
         {/* Top navigation */}
         <rect width="560" height="44" fill={`${a}0C`} />
         <rect x="0" y="44" width="560" height="1" fill={`${a}20`} />
-        <rect x="14" y="15" width="30" height="14" rx="5" fill={a} opacity="0.9" />
-        {[56, 96, 136, 176].map(x => (
-          <rect key={x} x={x} y="17" width="28" height="10" rx="4" fill={`${a}30`} />
+        <rect
+          x="14"
+          y="15"
+          width="30"
+          height="14"
+          rx="5"
+          fill={a}
+          opacity="0.9"
+        />
+        {[56, 96, 136, 176].map((x) => (
+          <rect
+            key={x}
+            x={x}
+            y="17"
+            width="28"
+            height="10"
+            rx="4"
+            fill={`${a}30`}
+          />
         ))}
         <rect x="460" y="14" width="60" height="16" rx="8" fill={a} />
         <circle cx="540" cy="22" r="10" fill={`${a}20`} />
@@ -453,25 +642,89 @@ function ProjectMockup({ index, accent: a }: { index: number; accent: string }) 
         {/* Table header */}
         <rect x="0" y="44" width="560" height="26" fill="#F8F9FC" />
         {[16, 140, 248, 346, 436].map((x, i) => (
-          <rect key={x} x={x} y="53" width={[100, 86, 72, 62, 52][i]} height="8" rx="4" fill="#9CA3AF" />
+          <rect
+            key={x}
+            x={x}
+            y="53"
+            width={[100, 86, 72, 62, 52][i]}
+            height="8"
+            rx="4"
+            fill="#9CA3AF"
+          />
         ))}
 
         {/* Table rows */}
-        {[0, 1, 2, 3, 4].map(row => {
+        {[0, 1, 2, 3, 4].map((row) => {
           const y = 70 + row * 28;
           const statuses = ["Active", "New", "Pending", "Active", "Closed"];
           const statusColors = [a, "#10B981", "#F59E0B", a, "#6B7280"];
-          const statusBgs = [`${a}15`, "#ECFDF5", "#FFFBEB", `${a}15`, "#F3F4F6"];
+          const statusBgs = [
+            `${a}15`,
+            "#ECFDF5",
+            "#FFFBEB",
+            `${a}15`,
+            "#F3F4F6",
+          ];
           return (
             <g key={row}>
-              <rect x="0" y={y} width="560" height="28" fill={row % 2 === 0 ? "white" : "#FAFBFF"} />
+              <rect
+                x="0"
+                y={y}
+                width="560"
+                height="28"
+                fill={row % 2 === 0 ? "white" : "#FAFBFF"}
+              />
               <circle cx="28" cy={y + 14} r="10" fill={`${a}18`} />
-              <rect x="42" y={y + 10} width={80 - row * 6} height="8" rx="4" fill="#374151" opacity="0.75" />
-              <rect x="148" y={y + 10} width="68" height="8" rx="4" fill="#9CA3AF" />
-              <rect x="256" y={y + 10} width="60" height="8" rx="4" fill="#9CA3AF" />
-              <rect x="348" y={y + 7} width="52" height="14" rx="7" fill={statusBgs[row]} />
-              <rect x="356" y={y + 11} width={statuses[row].length * 4.2} height="6" rx="3" fill={statusColors[row]} opacity="0.8" />
-              <rect x="444" y={y + 10} width="48" height="8" rx="4" fill="#D1D5DB" />
+              <rect
+                x="42"
+                y={y + 10}
+                width={80 - row * 6}
+                height="8"
+                rx="4"
+                fill="#374151"
+                opacity="0.75"
+              />
+              <rect
+                x="148"
+                y={y + 10}
+                width="68"
+                height="8"
+                rx="4"
+                fill="#9CA3AF"
+              />
+              <rect
+                x="256"
+                y={y + 10}
+                width="60"
+                height="8"
+                rx="4"
+                fill="#9CA3AF"
+              />
+              <rect
+                x="348"
+                y={y + 7}
+                width="52"
+                height="14"
+                rx="7"
+                fill={statusBgs[row]}
+              />
+              <rect
+                x="356"
+                y={y + 11}
+                width={statuses[row].length * 4.2}
+                height="6"
+                rx="3"
+                fill={statusColors[row]}
+                opacity="0.8"
+              />
+              <rect
+                x="444"
+                y={y + 10}
+                width="48"
+                height="8"
+                rx="4"
+                fill="#D1D5DB"
+              />
             </g>
           );
         })}
@@ -481,47 +734,162 @@ function ProjectMockup({ index, accent: a }: { index: number; accent: string }) 
 
   /* index 4: Hala Product — marketing landing page */
   return (
-    <svg viewBox="0 0 560 218" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" fill="none">
+    <svg
+      viewBox="0 0 560 218"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid slice"
+      fill="none"
+    >
       <rect width="560" height="218" fill="white" />
 
       {/* Nav */}
       <rect width="560" height="40" fill="white" />
       <line x1="0" y1="40" x2="560" y2="40" stroke="#F0F2F6" strokeWidth="1" />
-      <rect x="16" y="13" width="32" height="14" rx="5" fill={a} opacity="0.9" />
-      {[64, 102, 140, 178].map(x => (
-        <rect key={x} x={x} y="15" width="26" height="10" rx="4" fill="#E5E7EB" />
+      <rect
+        x="16"
+        y="13"
+        width="32"
+        height="14"
+        rx="5"
+        fill={a}
+        opacity="0.9"
+      />
+      {[64, 102, 140, 178].map((x) => (
+        <rect
+          key={x}
+          x={x}
+          y="15"
+          width="26"
+          height="10"
+          rx="4"
+          fill="#E5E7EB"
+        />
       ))}
       <rect x="474" y="12" width="70" height="16" rx="8" fill={a} />
 
       {/* Hero section */}
-      <rect x="30" y="58" width="224" height="18" rx="6" fill="#111827" opacity="0.86" />
-      <rect x="30" y="82" width="200" height="18" rx="6" fill="#111827" opacity="0.72" />
+      <rect
+        x="30"
+        y="58"
+        width="224"
+        height="18"
+        rx="6"
+        fill="#111827"
+        opacity="0.86"
+      />
+      <rect
+        x="30"
+        y="82"
+        width="200"
+        height="18"
+        rx="6"
+        fill="#111827"
+        opacity="0.72"
+      />
       <rect x="30" y="106" width="290" height="8" rx="4" fill="#D1D5DB" />
       <rect x="30" y="118" width="260" height="8" rx="4" fill="#E5E7EB" />
 
       {/* CTA buttons */}
       <rect x="30" y="134" width="100" height="22" rx="11" fill={a} />
-      <rect x="138" y="134" width="84" height="22" rx="11" fill="transparent" stroke="#D1D5DB" strokeWidth="1.5" />
-      <rect x="40" y="140" width="72" height="10" rx="3" fill="white" opacity="0.9" />
+      <rect
+        x="138"
+        y="134"
+        width="84"
+        height="22"
+        rx="11"
+        fill="transparent"
+        stroke="#D1D5DB"
+        strokeWidth="1.5"
+      />
+      <rect
+        x="40"
+        y="140"
+        width="72"
+        height="10"
+        rx="3"
+        fill="white"
+        opacity="0.9"
+      />
       <rect x="148" y="140" width="60" height="10" rx="3" fill="#6B7280" />
 
       {/* Feature cards */}
-      {[0, 1, 2].map(i => (
+      {[0, 1, 2].map((i) => (
         <g key={i}>
-          <rect x={30 + i * 110} y="168" width="100" height="40" rx="10" fill="#FAFBFF" stroke="#E8ECF4" strokeWidth="1" />
-          <rect x={40 + i * 110} y="178" width="14" height="14" rx="4" fill={`${a}20`} />
-          <rect x={59 + i * 110} y="180" width={50 - i * 6} height="6" rx="3" fill="#374151" opacity="0.7" />
-          <rect x={59 + i * 110} y="190" width={38 - i * 4} height="5" rx="2.5" fill="#9CA3AF" />
+          <rect
+            x={30 + i * 110}
+            y="168"
+            width="100"
+            height="40"
+            rx="10"
+            fill="#FAFBFF"
+            stroke="#E8ECF4"
+            strokeWidth="1"
+          />
+          <rect
+            x={40 + i * 110}
+            y="178"
+            width="14"
+            height="14"
+            rx="4"
+            fill={`${a}20`}
+          />
+          <rect
+            x={59 + i * 110}
+            y="180"
+            width={50 - i * 6}
+            height="6"
+            rx="3"
+            fill="#374151"
+            opacity="0.7"
+          />
+          <rect
+            x={59 + i * 110}
+            y="190"
+            width={38 - i * 4}
+            height="5"
+            rx="2.5"
+            fill="#9CA3AF"
+          />
         </g>
       ))}
 
       {/* Decorative illustration right */}
-      <circle cx="450" cy="130" r="58" fill={`${a}08`} stroke={`${a}15`} strokeWidth="1" />
-      <circle cx="450" cy="130" r="38" fill={`${a}12`} stroke={`${a}20`} strokeWidth="1" />
+      <circle
+        cx="450"
+        cy="130"
+        r="58"
+        fill={`${a}08`}
+        stroke={`${a}15`}
+        strokeWidth="1"
+      />
+      <circle
+        cx="450"
+        cy="130"
+        r="38"
+        fill={`${a}12`}
+        stroke={`${a}20`}
+        strokeWidth="1"
+      />
       <circle cx="450" cy="130" r="20" fill={`${a}25`} />
       <circle cx="450" cy="130" r="8" fill={`${a}60`} />
-      {([[0, -38], [38, 0], [0, 38], [-38, 0]] as [number, number][]).map(([dx, dy], i) => (
-        <circle key={i} cx={450 + dx} cy={130 + dy} r="7" fill={`${a}30`} stroke={`${a}40`} strokeWidth="1" />
+      {(
+        [
+          [0, -38],
+          [38, 0],
+          [0, 38],
+          [-38, 0],
+        ] as [number, number][]
+      ).map(([dx, dy], i) => (
+        <circle
+          key={i}
+          cx={450 + dx}
+          cy={130 + dy}
+          r="7"
+          fill={`${a}30`}
+          stroke={`${a}40`}
+          strokeWidth="1"
+        />
       ))}
     </svg>
   );
@@ -576,32 +944,35 @@ function PillButton({
 }
 
 /* ── Profile image with multi-layer glow + floating badges ── */
-function AvatarVisual() {
+function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
+  const size = mobile ? 180 : 300;
+
   return (
-    <div style={{ position: "relative", width: 300, height: 300 }}>
-      {([1.55, 1.32, 1.12] as const).map((scale, i) => (
-        <motion.div
-          key={i}
-          animate={{
-            scale: [scale, scale * 1.06, scale],
-            opacity: [0.14, 0.28, 0.14],
-          }}
-          transition={{
-            duration: 3.5 + i * 0.8,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: i * 0.7,
-          }}
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "50%",
-            background: `radial-gradient(circle, rgba(0,145,255,${0.28 - i * 0.07}) 0%, rgba(0,200,220,${0.13 - i * 0.03}) 45%, transparent 70%)`,
-            transform: `scale(${scale})`,
-            transformOrigin: "center",
-          }}
-        />
-      ))}
+    <div style={{ position: "relative", width: size, height: size }}>
+      {!mobile &&
+        ([1.55, 1.32, 1.12] as const).map((scale, i) => (
+          <motion.div
+            key={i}
+            animate={{
+              scale: [scale, scale * 1.06, scale],
+              opacity: [0.14, 0.28, 0.14],
+            }}
+            transition={{
+              duration: 3.5 + i * 0.8,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * 0.7,
+            }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "50%",
+              background: `radial-gradient(circle, rgba(0,145,255,${0.28 - i * 0.07}) 0%, rgba(0,200,220,${0.13 - i * 0.03}) 45%, transparent 70%)`,
+              transform: `scale(${scale})`,
+              transformOrigin: "center",
+            }}
+          />
+        ))}
 
       <div
         style={{
@@ -609,9 +980,11 @@ function AvatarVisual() {
           inset: 0,
           borderRadius: "50%",
           overflow: "hidden",
-          boxShadow:
-            "0 32px 80px rgba(0,145,255,0.44), 0 10px 36px rgba(0,145,255,0.20)",
+          boxShadow: mobile
+            ? "0 8px 32px rgba(0,145,255,0.28)"
+            : "0 32px 80px rgba(0,145,255,0.44), 0 10px 36px rgba(0,145,255,0.20)",
           border: "3px solid rgba(0,145,255,0.28)",
+          background: "#f3f4f6",
         }}
       >
         <Image
@@ -619,8 +992,8 @@ function AvatarVisual() {
           alt="Turki Almalki"
           fill
           priority
-          sizes="300px"
-          style={{ objectFit: "cover", objectPosition: "center 12%" }}
+          sizes={mobile ? "180px" : "300px"}
+          style={{ objectFit: "cover", objectPosition: "center 28%" }}
         />
         <div
           style={{
@@ -641,22 +1014,36 @@ function AvatarVisual() {
         transition={{ duration: 1.0, ease: EASE, delay: 1.05 }}
         style={{
           position: "absolute",
-          bottom: 16,
-          right: -20,
+          bottom: mobile ? 8 : 16,
+          right: mobile ? -12 : -20,
           background: "rgba(255,255,255,0.96)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 16,
-          padding: "10px 14px",
+          borderRadius: 14,
+          padding: mobile ? "8px 11px" : "10px 14px",
           border: "1px solid rgba(0,0,0,0.06)",
           boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
-          minWidth: 138,
+          minWidth: mobile ? 118 : 138,
         }}
       >
-        <p style={{ fontSize: 13, fontWeight: 700, color: "#0D0E12", letterSpacing: "-0.02em" }}>
+        <p
+          style={{
+            fontSize: mobile ? 12 : 13,
+            fontWeight: 700,
+            color: "#0D0E12",
+            letterSpacing: "-0.02em",
+          }}
+        >
           Turki Almalki
         </p>
-        <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3, fontWeight: 400 }}>
+        <p
+          style={{
+            fontSize: 11,
+            color: "#6B7280",
+            marginTop: 3,
+            fontWeight: 400,
+          }}
+        >
           📍 Riyadh, Saudi Arabia
         </p>
       </motion.div>
@@ -668,20 +1055,20 @@ function AvatarVisual() {
         transition={{ duration: 1.0, ease: EASE, delay: 1.25 }}
         style={{
           position: "absolute",
-          top: 20,
-          left: -24,
+          top: mobile ? 10 : 20,
+          left: mobile ? -14 : -24,
           background: "rgba(255,255,255,0.96)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 16,
-          padding: "10px 14px",
+          borderRadius: 14,
+          padding: mobile ? "8px 11px" : "10px 14px",
           border: "1px solid rgba(0,0,0,0.06)",
           boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
         }}
       >
         <p
           style={{
-            fontSize: 22,
+            fontSize: mobile ? 18 : 22,
             fontWeight: 800,
             color: "#0091FF",
             letterSpacing: "-0.04em",
@@ -690,7 +1077,14 @@ function AvatarVisual() {
         >
           9+
         </p>
-        <p style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontWeight: 400 }}>
+        <p
+          style={{
+            fontSize: 11,
+            color: "#6B7280",
+            marginTop: 4,
+            fontWeight: 400,
+          }}
+        >
           Years Experience
         </p>
       </motion.div>
