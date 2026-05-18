@@ -98,20 +98,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             <AvatarVisual mobile />
           </motion.div>
 
-                    {/* Eyebrow badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-            transition={{ duration: 0.7, ease: EASE, delay: 0.0 }}
-            style={{ marginBottom: 24 }}
-          >
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "7px 18px 7px 12px", background: "rgba(0,145,255,0.06)", border: "1px solid rgba(0,145,255,0.18)", borderRadius: 100 }}>
-              <motion.span animate={{ opacity: [1, 0.35, 1] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }} style={{ display: "block", width: 7, height: 7, borderRadius: "50%", background: "#0091FF", boxShadow: "0 0 0 3px rgba(0,145,255,0.22)", flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#0091FF", letterSpacing: "-0.01em", lineHeight: 1 }}>Engineering Leader · Riyadh, Saudi Arabia</span>
-            </div>
-          </motion.div>
-
-          {/* Headline */}
+{/* Headline */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ overflow: "hidden" }}>
               <motion.h1
@@ -189,15 +176,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             <PillButton color="#0091FF" href="/projects">
               View Portfolio
             </PillButton>
-            <PillButton
-              color="transparent"
-              outline
-              onClick={() =>
-                document.querySelector("footer")?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              Let&apos;s Connect
-            </PillButton>
+
           </motion.div>
         </div>
 
