@@ -235,14 +235,14 @@ main > section:last-of-type {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
-  object-position: center top !important;
+  object-position: center 35% !important;
   display: block !important;
   border-radius: 50% !important;
 }
 
 @media (max-width: 767px) {
   .topbar-avatar-wrapper {
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
   }
 }

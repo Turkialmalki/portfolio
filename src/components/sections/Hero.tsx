@@ -79,7 +79,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           maxWidth: 1280,
           width: "100%",
           margin: "0 auto",
-          padding: "clamp(88px, 10vw, 120px) clamp(24px, 4vw, 32px) 16px",
+          padding: "clamp(100px, 10vw, 120px) clamp(24px, 4vw, 32px) 16px",
           display: "grid",
           gap: "clamp(40px, 5vw, 80px)",
           alignItems: "center",
@@ -89,29 +89,31 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
         <div>
           {/* Mobile-only avatar — hidden on md+ where the right column appears */}
           <motion.div
-            className="flex justify-center mb-6 md:hidden"
+            className="flex justify-center md:hidden"
+            style={{ marginBottom: 40 }}
             initial={{ opacity: 0, scale: 0.88 }}
             animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
             transition={{ duration: 0.9, ease: EASE, delay: 0.05 }}
           >
             <div
               style={{
-                width: 100,
-                height: 100,
+                width: 160,
+                height: 160,
                 borderRadius: "50%",
                 overflow: "hidden",
                 border: "2.5px solid rgba(0,145,255,0.28)",
                 boxShadow: "0 8px 32px rgba(0,145,255,0.25)",
                 flexShrink: 0,
+                background: "#f3f4f6",
               }}
             >
               <Image
                 src="/avatar.jpg"
                 alt="Turki Almalki"
-                width={100}
-                height={100}
+                width={160}
+                height={160}
                 priority
-                style={{ objectFit: "cover", objectPosition: "center 12%" }}
+                style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 28%" }}
               />
             </div>
           </motion.div>
