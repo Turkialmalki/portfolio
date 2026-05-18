@@ -79,7 +79,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           maxWidth: 1280,
           width: "100%",
           margin: "0 auto",
-          padding: "clamp(100px, 10vw, 124px) clamp(24px, 4vw, 48px) clamp(80px, 8vw, 112px)",
+          padding: "clamp(100px, 10vw, 124px) clamp(24px, 4vw, 48px) clamp(48px, 5vw, 72px)",
           display: "grid",
           gap: "clamp(40px, 5vw, 80px)",
           alignItems: "center",
@@ -90,7 +90,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           {/* Mobile-only avatar */}
           <motion.div
             className="flex justify-center md:hidden"
-            style={{ marginBottom: 48, paddingLeft: 32, paddingRight: 32 }}
+            style={{ marginBottom: 36, paddingLeft: 16, paddingRight: 16 }}
             initial={{ opacity: 0, scale: 0.88 }}
             animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
             transition={{ duration: 0.9, ease: EASE, delay: 0.05 }}
@@ -98,53 +98,21 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             <AvatarVisual mobile />
           </motion.div>
 
-          {/* Eyebrow badge */}
+                    {/* Eyebrow badge */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.0 }}
-            style={{ marginBottom: 28 }}
+            style={{ marginBottom: 24 }}
           >
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 9,
-                padding: "7px 18px 7px 12px",
-                background: "rgba(0,145,255,0.06)",
-                border: "1px solid rgba(0,145,255,0.18)",
-                borderRadius: 100,
-              }}
-            >
-              <motion.span
-                animate={{ opacity: [1, 0.35, 1] }}
-                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                  display: "block",
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: "#0091FF",
-                  boxShadow: "0 0 0 3px rgba(0,145,255,0.22)",
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: "#0091FF",
-                  letterSpacing: "-0.01em",
-                  lineHeight: 1,
-                }}
-              >
-                Engineering Leader · Riyadh, Saudi Arabia
-              </span>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "7px 18px 7px 12px", background: "rgba(0,145,255,0.06)", border: "1px solid rgba(0,145,255,0.18)", borderRadius: 100 }}>
+              <motion.span animate={{ opacity: [1, 0.35, 1] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }} style={{ display: "block", width: 7, height: 7, borderRadius: "50%", background: "#0091FF", boxShadow: "0 0 0 3px rgba(0,145,255,0.22)", flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#0091FF", letterSpacing: "-0.01em", lineHeight: 1 }}>Engineering Leader · Riyadh, Saudi Arabia</span>
             </div>
           </motion.div>
 
           {/* Headline */}
-          <div style={{ marginBottom: 22 }}>
+          <div style={{ marginBottom: 20 }}>
             <div style={{ overflow: "hidden" }}>
               <motion.h1
                 initial={{ y: "110%", opacity: 0 }}
@@ -160,7 +128,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
                   transition: "color 0.45s ease",
                 }}
               >
-                Hello, I&apos;m
+                Hello! 👋 I&apos;m
               </motion.h1>
             </div>
             <div style={{ overflow: "hidden" }}>
@@ -195,21 +163,20 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
               color: "var(--text-secondary, #6B7280)",
               lineHeight: 1.68,
               maxWidth: 460,
-              marginBottom: 40,
+              marginBottom: 36,
               fontWeight: 400,
               letterSpacing: "-0.01em",
             }}
           >
-            Software engineering leader building{" "}
+           Driving innovation through {" "}
             <span
               style={{
                 color: "var(--text-primary)",
                 fontWeight: 600,
               }}
             >
-              AI, fintech, and enterprise platforms
+             engineering excellence.
             </span>{" "}
-            that scale across teams, markets, and technology stacks.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -261,7 +228,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           margin: "0 auto",
           width: "100%",
           padding: "0 clamp(24px, 4vw, 48px)",
-          marginBottom: 48,
+          marginBottom: 20,
         }}
       >
         <div
@@ -1031,34 +998,105 @@ function PillButton({
 
 /* ── Profile image with multi-layer glow + floating badges ── */
 function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
-  const size = mobile ? 180 : 300;
-
-  return (
-    <div style={{ position: "relative", width: size, height: size }}>
-      {!mobile &&
-        ([1.55, 1.32, 1.12] as const).map((scale, i) => (
-          <motion.div
-            key={i}
-            animate={{
-              scale: [scale, scale * 1.06, scale],
-              opacity: [0.14, 0.28, 0.14],
-            }}
-            transition={{
-              duration: 3.5 + i * 0.8,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: i * 0.7,
-            }}
+  /* ── Mobile: circle + badges stacked in a column, no overlap ── */
+  if (mobile) {
+    return (
+      <div
+        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}
+      >
+        {/* Circle */}
+        <div style={{ position: "relative", width: 176, height: 176, flexShrink: 0 }}>
+          <div
             style={{
               position: "absolute",
               inset: 0,
               borderRadius: "50%",
-              background: `radial-gradient(circle, rgba(0,145,255,${0.28 - i * 0.07}) 0%, rgba(0,200,220,${0.13 - i * 0.03}) 45%, transparent 70%)`,
-              transform: `scale(${scale})`,
-              transformOrigin: "center",
+              overflow: "hidden",
+              boxShadow: "0 8px 40px rgba(0,145,255,0.30)",
+              border: "3px solid rgba(0,145,255,0.28)",
+              background: "#f3f4f6",
             }}
-          />
-        ))}
+          >
+            <Image
+              src="/avatar.jpg"
+              alt="Turki Almalki"
+              fill
+              priority
+              sizes="176px"
+              style={{ objectFit: "cover", objectPosition: "center 28%" }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,0.10) 100%)",
+                pointerEvents: "none",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Badges row — below the circle, never overlapping */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: EASE, delay: 1.0 }}
+          style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}
+        >
+          <div
+            style={{
+              background: "rgba(255,255,255,0.96)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              borderRadius: 14,
+              padding: "9px 14px",
+              border: "1px solid rgba(0,0,0,0.06)",
+              boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
+            }}
+          >
+            <p style={{ fontSize: 19, fontWeight: 800, color: "#0091FF", letterSpacing: "-0.04em", lineHeight: 1 }}>9+</p>
+            <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3, fontWeight: 400 }}>Years Experience</p>
+          </div>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.96)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              borderRadius: 14,
+              padding: "9px 14px",
+              border: "1px solid rgba(0,0,0,0.06)",
+              boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
+              minWidth: 120,
+            }}
+          >
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#0D0E12", letterSpacing: "-0.02em" }}>Turki Almalki</p>
+            <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3, fontWeight: 400 }}>📍 Riyadh, Saudi Arabia</p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  /* ── Desktop: 300×300 with absolutely-positioned floating badges ── */
+  return (
+    <div style={{ position: "relative", width: 300, height: 300 }}>
+      {([1.55, 1.32, 1.12] as const).map((scale, i) => (
+        <motion.div
+          key={i}
+          animate={{ scale: [scale, scale * 1.06, scale], opacity: [0.14, 0.28, 0.14] }}
+          transition={{ duration: 3.5 + i * 0.8, repeat: Infinity, ease: "easeInOut", delay: i * 0.7 }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            background: `radial-gradient(circle, rgba(0,145,255,${0.28 - i * 0.07}) 0%, rgba(0,200,220,${0.13 - i * 0.03}) 45%, transparent 70%)`,
+            transform: `scale(${scale})`,
+            transformOrigin: "center",
+          }}
+        />
+      ))}
 
       <div
         style={{
@@ -1066,9 +1104,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           inset: 0,
           borderRadius: "50%",
           overflow: "hidden",
-          boxShadow: mobile
-            ? "0 8px 32px rgba(0,145,255,0.28)"
-            : "0 32px 80px rgba(0,145,255,0.44), 0 10px 36px rgba(0,145,255,0.20)",
+          boxShadow: "0 32px 80px rgba(0,145,255,0.44), 0 10px 36px rgba(0,145,255,0.20)",
           border: "3px solid rgba(0,145,255,0.28)",
           background: "#f3f4f6",
         }}
@@ -1078,7 +1114,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           alt="Turki Almalki"
           fill
           priority
-          sizes={mobile ? "180px" : "300px"}
+          sizes="300px"
           style={{ objectFit: "cover", objectPosition: "center 28%" }}
         />
         <div
@@ -1086,8 +1122,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
             position: "absolute",
             inset: 0,
             borderRadius: "50%",
-            background:
-              "radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,0.12) 100%)",
+            background: "radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,0.12) 100%)",
             pointerEvents: "none",
           }}
         />
@@ -1100,38 +1135,20 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
         transition={{ duration: 1.0, ease: EASE, delay: 1.05 }}
         style={{
           position: "absolute",
-          bottom: mobile ? 8 : 16,
-          right: mobile ? -12 : -20,
+          bottom: 16,
+          right: -20,
           background: "rgba(255,255,255,0.96)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 14,
-          padding: mobile ? "8px 11px" : "10px 14px",
+          borderRadius: 16,
+          padding: "10px 14px",
           border: "1px solid rgba(0,0,0,0.06)",
           boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
-          minWidth: mobile ? 118 : 138,
+          minWidth: 138,
         }}
       >
-        <p
-          style={{
-            fontSize: mobile ? 12 : 13,
-            fontWeight: 700,
-            color: "#0D0E12",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Turki Almalki
-        </p>
-        <p
-          style={{
-            fontSize: 11,
-            color: "#6B7280",
-            marginTop: 3,
-            fontWeight: 400,
-          }}
-        >
-          📍 Riyadh, Saudi Arabia
-        </p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: "#0D0E12", letterSpacing: "-0.02em" }}>Turki Almalki</p>
+        <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3, fontWeight: 400 }}>📍 Riyadh, Saudi Arabia</p>
       </motion.div>
 
       {/* Floating badge — experience */}
@@ -1141,38 +1158,19 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
         transition={{ duration: 1.0, ease: EASE, delay: 1.25 }}
         style={{
           position: "absolute",
-          top: mobile ? 10 : 20,
-          left: mobile ? -14 : -24,
+          top: 20,
+          left: -24,
           background: "rgba(255,255,255,0.96)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 14,
-          padding: mobile ? "8px 11px" : "10px 14px",
+          borderRadius: 16,
+          padding: "10px 14px",
           border: "1px solid rgba(0,0,0,0.06)",
           boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
         }}
       >
-        <p
-          style={{
-            fontSize: mobile ? 18 : 22,
-            fontWeight: 800,
-            color: "#0091FF",
-            letterSpacing: "-0.04em",
-            lineHeight: 1,
-          }}
-        >
-          9+
-        </p>
-        <p
-          style={{
-            fontSize: 11,
-            color: "#6B7280",
-            marginTop: 4,
-            fontWeight: 400,
-          }}
-        >
-          Years Experience
-        </p>
+        <p style={{ fontSize: 22, fontWeight: 800, color: "#0091FF", letterSpacing: "-0.04em", lineHeight: 1 }}>9+</p>
+        <p style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontWeight: 400 }}>Years Experience</p>
       </motion.div>
     </div>
   );
