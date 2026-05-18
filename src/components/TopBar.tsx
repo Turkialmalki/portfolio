@@ -51,21 +51,15 @@ export default function TopBar() {
         {/* Left: Avatar + Name */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
           <div
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: "50%",
-              overflow: "hidden",
-              flexShrink: 0,
-              border: "1.5px solid var(--border-subtle)",
-            }}
+            className="topbar-avatar-wrapper"
+            style={{ border: "1.5px solid var(--border-subtle)" }}
           >
             <Image
               src="/avatar.jpg"
               alt="Turki Almalki"
-              width={34}
-              height={34}
-              style={{ objectFit: "cover", objectPosition: "center 12%" }}
+              width={52}
+              height={52}
+              className="topbar-avatar-img"
             />
           </div>
           <span
@@ -78,7 +72,6 @@ export default function TopBar() {
               transition: "color 0.45s ease",
             }}
           >
-            Turki Almalki
           </span>
         </div>
 

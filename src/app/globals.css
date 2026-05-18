@@ -217,3 +217,32 @@ main > section:last-of-type {
   transform: translateY(-6px);
   box-shadow: 0 32px 64px rgba(0, 0, 0, 0.14);
 }
+
+/* ── TopBar avatar ── */
+.topbar-avatar-wrapper {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+}
+
+.topbar-avatar-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center top !important;
+  display: block !important;
+  border-radius: 50% !important;
+}
+
+@media (max-width: 767px) {
+  .topbar-avatar-wrapper {
+    width: 48px;
+    height: 48px;
+  }
+}
