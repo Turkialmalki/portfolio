@@ -79,7 +79,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           maxWidth: 1280,
           width: "100%",
           margin: "0 auto",
-          padding: "clamp(100px, 10vw, 120px) clamp(24px, 4vw, 32px) 16px",
+          padding: "clamp(100px, 10vw, 124px) clamp(24px, 4vw, 48px) clamp(80px, 8vw, 112px)",
           display: "grid",
           gap: "clamp(40px, 5vw, 80px)",
           alignItems: "center",
@@ -87,83 +87,149 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
       >
         {/* LEFT: Copy */}
         <div>
-          {/* Mobile-only avatar — hidden on md+ where the right column appears */}
+          {/* Mobile-only avatar */}
           <motion.div
             className="flex justify-center md:hidden"
-            style={{ marginBottom: 40, paddingLeft: 32, paddingRight: 32 }}
+            style={{ marginBottom: 48, paddingLeft: 32, paddingRight: 32 }}
             initial={{ opacity: 0, scale: 0.88 }}
-            animate={
-              ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }
-            }
+            animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
             transition={{ duration: 0.9, ease: EASE, delay: 0.05 }}
           >
             <AvatarVisual mobile />
           </motion.div>
 
-          <div style={{ overflow: "hidden" }}>
-            <motion.h1
-              initial={{ y: "110%", opacity: 0 }}
-              animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
-              transition={{ duration: 1.05, ease: EASE, delay: 0.08 }}
+          {/* Eyebrow badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            transition={{ duration: 0.7, ease: EASE, delay: 0.0 }}
+            style={{ marginBottom: 28 }}
+          >
+            <div
               style={{
-                fontSize: "clamp(36px, 5.4vw, 80px)",
-                fontWeight: 800,
-                color: "var(--text-primary)",
-                lineHeight: 1.05,
-                letterSpacing: "-0.04em",
-                display: "block",
-                transition: "color 0.45s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 9,
+                padding: "7px 18px 7px 12px",
+                background: "rgba(0,145,255,0.06)",
+                border: "1px solid rgba(0,145,255,0.18)",
+                borderRadius: 100,
               }}
             >
-              Hello! 👋 I&apos;m
-            </motion.h1>
+              <motion.span
+                animate={{ opacity: [1, 0.35, 1] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  display: "block",
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "#0091FF",
+                  boxShadow: "0 0 0 3px rgba(0,145,255,0.22)",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#0091FF",
+                  letterSpacing: "-0.01em",
+                  lineHeight: 1,
+                }}
+              >
+                Engineering Leader · Riyadh, Saudi Arabia
+              </span>
+            </div>
+          </motion.div>
+
+          {/* Headline */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ overflow: "hidden" }}>
+              <motion.h1
+                initial={{ y: "110%", opacity: 0 }}
+                animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
+                transition={{ duration: 1.05, ease: EASE, delay: 0.08 }}
+                style={{
+                  fontSize: "clamp(40px, 5.6vw, 84px)",
+                  fontWeight: 800,
+                  color: "var(--text-primary)",
+                  lineHeight: 1.04,
+                  letterSpacing: "-0.04em",
+                  display: "block",
+                  transition: "color 0.45s ease",
+                }}
+              >
+                Hello, I&apos;m
+              </motion.h1>
+            </div>
+            <div style={{ overflow: "hidden" }}>
+              <motion.h1
+                initial={{ y: "110%", opacity: 0 }}
+                animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
+                transition={{ duration: 1.05, ease: EASE, delay: 0.14 }}
+                style={{
+                  fontSize: "clamp(40px, 5.6vw, 84px)",
+                  fontWeight: 800,
+                  lineHeight: 1.04,
+                  letterSpacing: "-0.04em",
+                  display: "block",
+                  background: "linear-gradient(135deg, #0091FF 0%, #00C8A0 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                Turki Almalki
+              </motion.h1>
+            </div>
           </div>
 
-          <div style={{ overflow: "hidden", marginBottom: 22 }}>
-            <motion.h1
-              initial={{ y: "110%", opacity: 0 }}
-              animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
-              transition={{ duration: 1.05, ease: EASE, delay: 0.14 }}
-              style={{
-                fontSize: "clamp(36px, 5.4vw, 80px)",
-                fontWeight: 800,
-                lineHeight: 1.05,
-                letterSpacing: "-0.04em",
-                display: "block",
-                background: "linear-gradient(135deg, #0091FF 0%, #00C8A0 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
-              Turki Almalki
-            </motion.h1>
-          </div>
-
+          {/* Description */}
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.9, ease: EASE, delay: 0.32 }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+            transition={{ duration: 0.9, ease: EASE, delay: 0.26 }}
             style={{
-              fontSize: "clamp(20px, 1.25vw, 20px)",
-              color: "#707070",
-              lineHeight: 1.72,
-              maxWidth: 500,
-              marginBottom: 30,
-              fontWeight: 700,
-              fontFamily: "Inter, sans-serif",
+              fontSize: "clamp(15px, 1.1vw, 17px)",
+              color: "var(--text-secondary, #6B7280)",
+              lineHeight: 1.68,
+              maxWidth: 460,
+              marginBottom: 40,
+              fontWeight: 400,
+              letterSpacing: "-0.01em",
             }}
           >
-Driving innovation through <span style={{ color: "#111" }}>engineering excellence</span>.          </motion.p>
+            Software engineering leader building{" "}
+            <span
+              style={{
+                color: "var(--text-primary)",
+                fontWeight: 600,
+              }}
+            >
+              AI, fintech, and enterprise platforms
+            </span>{" "}
+            that scale across teams, markets, and technology stacks.
+          </motion.p>
 
+          {/* CTA Buttons */}
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
-            transition={{ duration: 0.8, ease: EASE, delay: 0.46 }}
-            style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+            initial={{ opacity: 0, y: 14 }}
+            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
+            transition={{ duration: 0.8, ease: EASE, delay: 0.38 }}
+            style={{ display: "flex", gap: 14, flexWrap: "wrap" }}
           >
             <PillButton color="#0091FF" href="/projects">
               View Portfolio
+            </PillButton>
+            <PillButton
+              color="transparent"
+              outline
+              onClick={() =>
+                document.querySelector("footer")?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              Let&apos;s Connect
             </PillButton>
           </motion.div>
         </div>
@@ -172,9 +238,7 @@ Driving innovation through <span style={{ color: "#111" }}>engineering excellenc
         <motion.div
           className="hidden md:flex"
           initial={{ opacity: 0, scale: 0.88 }}
-          animate={
-            ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }
-          }
+          animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
           transition={{ duration: 1.4, ease: EASE, delay: 0.2 }}
           style={{
             y: avatarY,
@@ -187,16 +251,38 @@ Driving innovation through <span style={{ color: "#111" }}>engineering excellenc
         </motion.div>
       </div>
 
+      {/* ── Subtle section separator ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={ready ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 1.2, ease: EASE, delay: 0.5 }}
+        style={{
+          maxWidth: 1280,
+          margin: "0 auto",
+          width: "100%",
+          padding: "0 clamp(24px, 4vw, 48px)",
+          marginBottom: 48,
+        }}
+      >
+        <div
+          style={{
+            height: 1,
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(0,145,255,0.14) 30%, rgba(0,200,160,0.14) 70%, transparent 100%)",
+          }}
+        />
+      </motion.div>
+
       {/* ── Two-row infinite image gallery ── */}
       <motion.div
         initial={{ opacity: 0, y: 36 }}
         animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 36 }}
-        transition={{ duration: 0.95, ease: EASE, delay: 0.68 }}
+        transition={{ duration: 0.95, ease: EASE, delay: 0.55 }}
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: 12,
-          paddingBottom: 72,
+          gap: 14,
+          paddingBottom: 80,
           overflow: "hidden",
         }}
       >
@@ -233,7 +319,7 @@ Driving innovation through <span style={{ color: "#111" }}>engineering excellenc
         }
         @media (min-width: 768px) {
           .hero-grid {
-            grid-template-columns: 1.15fr 0.85fr;
+            grid-template-columns: 1.2fr 0.8fr;
           }
         }
       `}</style>
