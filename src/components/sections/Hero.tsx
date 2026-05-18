@@ -258,7 +258,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
   );
 }
 
-/* ── Premium image-forward project card ── */
+/* ── Premium contained image card — light gray bg, image with breathing room ── */
 function LargeProjectCard({
   project,
   index,
@@ -272,123 +272,46 @@ function LargeProjectCard({
     <div
       className="project-card"
       style={{
-        background: project.cardBg,
-        boxShadow: isPhoto
-          ? "0 8px 40px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.12)"
-          : "0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        background: "#EDEDED",
+        boxShadow: "0 2px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
         position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
       {isPhoto ? (
-        /* ── Full-bleed photo card ── */
-        <>
+        /* ── Contained photo — padded, rounded, not cropped ── */
+        <div
+          style={{
+            position: "relative",
+            width: "86%",
+            height: "86%",
+            borderRadius: 25,
+            overflow: "hidden",
+          }}
+        >
           <Image
             src={project.image!}
             alt={project.title}
             fill
-            sizes="480px"
-            style={{ objectFit: "cover", objectPosition: project.objectPosition ?? "center 28%" }}
+            sizes="440px"
+            style={{ objectFit: "contain", objectPosition: "center" }}
             priority={false}
           />
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to bottom, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.72) 100%)",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              bottom: 20,
-              left: 20,
-              right: 20,
-            }}
-          >
-            <span
-              style={{
-                display: "inline-block",
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: "0.07em",
-                textTransform: "uppercase" as const,
-                color: "rgba(255,255,255,0.75)",
-                background: "rgba(255,255,255,0.14)",
-                borderRadius: 100,
-                padding: "3px 10px",
-                marginBottom: 7,
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-              }}
-            >
-              {project.tag}
-            </span>
-            <h3
-              style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: "#FFFFFF",
-                letterSpacing: "-0.025em",
-                lineHeight: 1.2,
-              }}
-            >
-              {project.title}
-            </h3>
-          </div>
-        </>
+        </div>
       ) : (
-        /* ── Light card with inset mockup window ── */
+        /* ── Inset SVG mockup window ── */
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
+            width: "88%",
+            height: "88%",
+            borderRadius: 25,
+            overflow: "hidden",
+            border: "1px solid rgba(0,0,0,0.07)",
           }}
         >
-          {/* Inset screenshot window */}
-          <div
-            style={{
-              margin: "10px 10px 0",
-              borderRadius: 18,
-              overflow: "hidden",
-              flex: 1,
-              border: "1px solid rgba(0,0,0,0.07)",
-            }}
-          >
-            <ProjectMockup index={index} accent={project.accent} />
-          </div>
-
-          {/* Label strip */}
-          <div style={{ padding: "14px 18px 18px", flexShrink: 0 }}>
-            <span
-              style={{
-                display: "inline-block",
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: "0.07em",
-                textTransform: "uppercase" as const,
-                color: project.accent,
-                background: `${project.accent}18`,
-                borderRadius: 100,
-                padding: "3px 9px",
-                marginBottom: 5,
-              }}
-            >
-              {project.tag}
-            </span>
-            <h3
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                color: "#0D0E12",
-                letterSpacing: "-0.025em",
-                lineHeight: 1.2,
-              }}
-            >
-              {project.title}
-            </h3>
-          </div>
+          <ProjectMockup index={index} accent={project.accent} />
         </div>
       )}
     </div>
