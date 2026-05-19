@@ -136,50 +136,53 @@ main > section:last-of-type {
 
 /* ── Infinite marquee ── */
 @keyframes marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(calc(-50% - 20px), 0, 0); }
 }
 
 @keyframes marquee-right {
-  from { transform: translateX(-50%); }
-  to   { transform: translateX(0); }
+  from { transform: translate3d(calc(-50% - 20px), 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
 }
 
+
+
 .marquee-container {
-  overflow: hidden;
   width: 100%;
+  overflow: hidden;
+  padding: 0 0 22px;
+}
+
+.marquee-track,
+.marquee-track-right {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  gap: 40px;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
 
 .marquee-track {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  width: max-content;
   animation: marquee 58s linear infinite;
-  will-change: transform;
 }
 
 .marquee-track-right {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  width: max-content;
   animation: marquee-right 64s linear infinite;
-  will-change: transform;
 }
 
 /* Project cards — compact premium style matching Austin Pratik reference */
 .project-card {
-  width: 480px;
-  height: 260px;
-  flex-shrink: 0;
+  width: 560px;
+  height: 310px;
+  flex: 0 0 560px;
   border-radius: 32px;
   overflow: hidden;
   cursor: pointer;
-  margin: 0 16px;
-  transition:
-    transform 0.38s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .project-card:hover {
@@ -190,7 +193,12 @@ main > section:last-of-type {
   .project-card {
     width: 380px;
     height: 220px;
-    margin: 0 14px;
+    flex-basis: 380px;
+  }
+
+  .marquee-track,
+  .marquee-track-right {
+    gap: 32px;
   }
 }
 
@@ -199,7 +207,12 @@ main > section:last-of-type {
     width: 84vw;
     height: auto;
     aspect-ratio: 480 / 260;
-    margin: 0 10px;
+    flex: 0 0 84vw;
+  }
+
+  .marquee-track,
+  .marquee-track-right {
+    gap: 24px;
   }
 }
 

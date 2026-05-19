@@ -10,9 +10,9 @@ const PROJECTS = [
   {
     title: "BaseBox AI SaaS",
     tag: "AI · SaaS Platform",
-    accent: "#0080FF",
+    accent: "#fff",
     cardBg: "#EEF4FF",
-    image: "/basebo.jpg" as string | null,
+    image: "/alrajhi2022.png" as string | null,
     objectPosition: "center top",
   },
   {
@@ -20,7 +20,7 @@ const PROJECTS = [
     tag: "Fintech · Open Banking",
     accent: "#00A87A",
     cardBg: "#EDFAF6",
-    image: "/screenshot.jpg" as string | null,
+    image: "/emkan2025.png" as string | null,
     objectPosition: "center top",
   },
   {
@@ -28,7 +28,7 @@ const PROJECTS = [
     tag: "Enterprise · Digital",
     accent: "#FFFFFF",
     cardBg: "#0F0A1A",
-    image: "/1.jpg" as string | null,
+    image: "ithnin20221.png" as string | null,
     objectPosition: "center 28%",
   },
   {
@@ -79,7 +79,8 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
           maxWidth: 1280,
           width: "100%",
           margin: "0 auto",
-          padding: "clamp(100px, 10vw, 124px) clamp(24px, 4vw, 48px) clamp(48px, 5vw, 72px)",
+          padding:
+            "clamp(100px, 10vw, 124px) clamp(24px, 4vw, 48px) clamp(48px, 5vw, 72px)",
           display: "grid",
           gap: "clamp(40px, 5vw, 80px)",
           alignItems: "center",
@@ -92,18 +93,22 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             className="flex justify-center md:hidden"
             style={{ marginBottom: 36, paddingLeft: 16, paddingRight: 16 }}
             initial={{ opacity: 0, scale: 0.88 }}
-            animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
+            animate={
+              ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }
+            }
             transition={{ duration: 0.9, ease: EASE, delay: 0.05 }}
           >
             <AvatarVisual mobile />
           </motion.div>
 
-{/* Headline */}
+          {/* Headline */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ overflow: "hidden" }}>
               <motion.h1
                 initial={{ y: "110%", opacity: 0 }}
-                animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
+                animate={
+                  ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }
+                }
                 transition={{ duration: 1.05, ease: EASE, delay: 0.08 }}
                 style={{
                   fontSize: "clamp(40px, 5.6vw, 84px)",
@@ -121,7 +126,9 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             <div style={{ overflow: "hidden" }}>
               <motion.h1
                 initial={{ y: "110%", opacity: 0 }}
-                animate={ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }}
+                animate={
+                  ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }
+                }
                 transition={{ duration: 1.05, ease: EASE, delay: 0.14 }}
                 style={{
                   fontSize: "clamp(40px, 5.6vw, 84px)",
@@ -129,7 +136,8 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
                   lineHeight: 1.04,
                   letterSpacing: "-0.04em",
                   display: "block",
-                  background: "linear-gradient(135deg, #0091FF 0%, #00C8A0 100%)",
+                  background:
+                    "linear-gradient(135deg, #0091FF 0%, #00C8A0 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -155,14 +163,14 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
               letterSpacing: "-0.01em",
             }}
           >
-           Driving innovation through {" "}
+            Driving innovation through {" "}
             <span
               style={{
                 color: "var(--text-primary)",
                 fontWeight: 600,
               }}
             >
-             engineering excellence.
+             {" "} Engineering Excellence.
             </span>{" "}
           </motion.p>
 
@@ -176,7 +184,6 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             <PillButton color="#0091FF" href="/projects">
               View Portfolio
             </PillButton>
-
           </motion.div>
         </div>
 
@@ -184,7 +191,9 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
         <motion.div
           className="hidden md:flex"
           initial={{ opacity: 0, scale: 0.88 }}
-          animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }}
+          animate={
+            ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }
+          }
           transition={{ duration: 1.4, ease: EASE, delay: 0.2 }}
           style={{
             y: avatarY,
@@ -287,12 +296,15 @@ function LargeProjectCard({
     <div
       className="project-card"
       style={{
-        background: "#EDEDED",
-        boxShadow: "0 2px 20px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
         position: "relative",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        borderRadius: 32,
+        overflow: "hidden",
+        background: "transparent",
+        boxShadow: "none",
+        border: "none",
       }}
     >
       {isPhoto ? (
@@ -300,9 +312,9 @@ function LargeProjectCard({
         <div
           style={{
             position: "relative",
-            width: "86%",
-            height: "86%",
-            borderRadius: 25,
+            width: "100%",
+            height: "100%",
+            borderRadius: 28,
             overflow: "hidden",
           }}
         >
@@ -310,8 +322,11 @@ function LargeProjectCard({
             src={project.image!}
             alt={project.title}
             fill
-            sizes="440px"
-            style={{ objectFit: "contain", objectPosition: "center" }}
+            sizes="560px"
+            style={{
+              objectFit: "cover",
+              objectPosition: project.objectPosition || "center",
+            }}
             priority={false}
           />
         </div>
@@ -981,10 +996,22 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
   if (mobile) {
     return (
       <div
-        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 24,
+        }}
       >
         {/* Circle */}
-        <div style={{ position: "relative", width: 176, height: 176, flexShrink: 0 }}>
+        <div
+          style={{
+            position: "relative",
+            width: 176,
+            height: 176,
+            flexShrink: 0,
+          }}
+        >
           <div
             style={{
               position: "absolute",
@@ -1022,7 +1049,12 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, ease: EASE, delay: 1.0 }}
-          style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}
+          style={{
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+            justifyContent: "center",
+          }}
         >
           <div
             style={{
@@ -1035,8 +1067,27 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
               boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
             }}
           >
-            <p style={{ fontSize: 19, fontWeight: 800, color: "#0091FF", letterSpacing: "-0.04em", lineHeight: 1 }}>9+</p>
-            <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3, fontWeight: 400 }}>Years Experience</p>
+            <p
+              style={{
+                fontSize: 19,
+                fontWeight: 800,
+                color: "#0091FF",
+                letterSpacing: "-0.04em",
+                lineHeight: 1,
+              }}
+            >
+              9+
+            </p>
+            <p
+              style={{
+                fontSize: 11,
+                color: "#6B7280",
+                marginTop: 3,
+                fontWeight: 400,
+              }}
+            >
+              Years Experience
+            </p>
           </div>
           <div
             style={{
@@ -1050,8 +1101,26 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
               minWidth: 120,
             }}
           >
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#0D0E12", letterSpacing: "-0.02em" }}>Turki Almalki</p>
-            <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3, fontWeight: 400 }}>📍 Riyadh, Saudi Arabia</p>
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#0D0E12",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              Turki Almalki
+            </p>
+            <p
+              style={{
+                fontSize: 11,
+                color: "#6B7280",
+                marginTop: 3,
+                fontWeight: 400,
+              }}
+            >
+              📍 Riyadh, Saudi Arabia
+            </p>
           </div>
         </motion.div>
       </div>
@@ -1064,8 +1133,16 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
       {([1.55, 1.32, 1.12] as const).map((scale, i) => (
         <motion.div
           key={i}
-          animate={{ scale: [scale, scale * 1.06, scale], opacity: [0.14, 0.28, 0.14] }}
-          transition={{ duration: 3.5 + i * 0.8, repeat: Infinity, ease: "easeInOut", delay: i * 0.7 }}
+          animate={{
+            scale: [scale, scale * 1.06, scale],
+            opacity: [0.14, 0.28, 0.14],
+          }}
+          transition={{
+            duration: 3.5 + i * 0.8,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: i * 0.7,
+          }}
           style={{
             position: "absolute",
             inset: 0,
@@ -1083,7 +1160,8 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           inset: 0,
           borderRadius: "50%",
           overflow: "hidden",
-          boxShadow: "0 32px 80px rgba(0,145,255,0.44), 0 10px 36px rgba(0,145,255,0.20)",
+          boxShadow:
+            "0 32px 80px rgba(0,145,255,0.44), 0 10px 36px rgba(0,145,255,0.20)",
           border: "3px solid rgba(0,145,255,0.28)",
           background: "#f3f4f6",
         }}
@@ -1101,7 +1179,8 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
             position: "absolute",
             inset: 0,
             borderRadius: "50%",
-            background: "radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,0.12) 100%)",
+            background:
+              "radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,0.12) 100%)",
             pointerEvents: "none",
           }}
         />
@@ -1126,8 +1205,26 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           minWidth: 138,
         }}
       >
-        <p style={{ fontSize: 13, fontWeight: 700, color: "#0D0E12", letterSpacing: "-0.02em" }}>Turki Almalki</p>
-        <p style={{ fontSize: 11, color: "#6B7280", marginTop: 3, fontWeight: 400 }}>📍 Riyadh, Saudi Arabia</p>
+        <p
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#0D0E12",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Turki Almalki
+        </p>
+        <p
+          style={{
+            fontSize: 11,
+            color: "#6B7280",
+            marginTop: 3,
+            fontWeight: 400,
+          }}
+        >
+          📍 Riyadh, Saudi Arabia
+        </p>
       </motion.div>
 
       {/* Floating badge — experience */}
@@ -1148,8 +1245,27 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
         }}
       >
-        <p style={{ fontSize: 22, fontWeight: 800, color: "#0091FF", letterSpacing: "-0.04em", lineHeight: 1 }}>9+</p>
-        <p style={{ fontSize: 11, color: "#6B7280", marginTop: 4, fontWeight: 400 }}>Years Experience</p>
+        <p
+          style={{
+            fontSize: 22,
+            fontWeight: 800,
+            color: "#0091FF",
+            letterSpacing: "-0.04em",
+            lineHeight: 1,
+          }}
+        >
+          9+
+        </p>
+        <p
+          style={{
+            fontSize: 11,
+            color: "#6B7280",
+            marginTop: 4,
+            fontWeight: 400,
+          }}
+        >
+          Years Experience
+        </p>
       </motion.div>
     </div>
   );
