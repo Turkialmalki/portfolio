@@ -152,16 +152,14 @@ main > section:last-of-type {
   overflow: hidden;
   padding: 0 0 22px;
 }
-
 .marquee-track,
 .marquee-track-right {
   display: flex;
   flex-wrap: nowrap;
+  gap: 14px;
   width: max-content;
-  gap: 40px;
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
 }
+
 
 .marquee-track {
   animation: marquee 58s linear infinite;
@@ -173,16 +171,10 @@ main > section:last-of-type {
 
 /* Project cards — compact premium style matching Austin Pratik reference */
 .project-card {
-  width: 560px;
-  height: 310px;
-  flex: 0 0 560px;
-  border-radius: 32px;
-  overflow: hidden;
-  cursor: pointer;
-  margin: 0;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+  width: clamp(300px, 28vw, 430px);
+  height: clamp(180px, 15vw, 240px);
+  flex: 0 0 auto;
+  margin: 5;
 }
 
 .project-card:hover {

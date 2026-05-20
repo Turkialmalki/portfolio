@@ -36,7 +36,7 @@ const PROJECTS = [
     tag: "Enterprise · CX Suite",
     accent: "#0057B8",
     cardBg: "#EEF2FF",
-    image: "/h1.jpg" as string | null,
+    image: "munasib.png" as string | null,
     objectPosition: "center 22%",
   },
   {
@@ -44,7 +44,7 @@ const PROJECTS = [
     tag: "Product · Innovation",
     accent: "#E8541E",
     cardBg: "#FFF4EE",
-    image: "/basebo.jpg" as string | null,
+    image: "/wijhut.png" as string | null,
     objectPosition: "center top",
   },
 ];
@@ -154,24 +154,30 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
             transition={{ duration: 0.9, ease: EASE, delay: 0.26 }}
             style={{
-              fontSize: "clamp(15px, 1.1vw, 17px)",
-              color: "var(--text-secondary, #6B7280)",
-              lineHeight: 1.68,
-              maxWidth: 460,
-              marginBottom: 36,
+              fontSize: "clamp(20px, 1.6vw, 22px)",
+              color: "#6B7280",
+              lineHeight: 1.32,
+              maxWidth: 920,
+              marginBottom: 42,
               fontWeight: 400,
-              letterSpacing: "-0.01em",
+              letterSpacing: "-0.03em",
+              fontFamily:
+                "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
             }}
           >
-            Driving innovation through {" "}
+            Driving innovation through{" "}
             <span
               style={{
-                color: "var(--text-primary)",
-                fontWeight: 600,
+                color: "#111111",
+                fontWeight: 700,
               }}
             >
-             {" "} Engineering Excellence.
+              {" "}
+              Engineering Excellence.
             </span>{" "}
+            
+            Crafting seamless design and scalable code to build impactful
+            digital products.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -302,7 +308,7 @@ function LargeProjectCard({
         justifyContent: "center",
         borderRadius: 32,
         overflow: "hidden",
-        background: "transparent",
+        background: "#eeeeee",
         boxShadow: "none",
         border: "none",
       }}
