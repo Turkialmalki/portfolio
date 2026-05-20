@@ -998,24 +998,26 @@ function PillButton({
 
 /* ── Profile image with multi-layer glow + floating badges ── */
 function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
-  /* ── Mobile: circle + badges stacked in a column, no overlap ── */
+  /* ── Mobile: badges float around the circle, no overlap ── */
   if (mobile) {
     return (
       <div
         style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 24,
+          position: "relative",
+          width: 320,
+          height: 280,
+          margin: "0 auto",
         }}
       >
-        {/* Circle */}
+        {/* Circle — centered horizontally, offset from top to leave room for experience badge */}
         <div
           style={{
-            position: "relative",
+            position: "absolute",
             width: 176,
             height: 176,
-            flexShrink: 0,
+            top: 30,
+            left: "50%",
+            transform: "translateX(-50%)",
           }}
         >
           <div
@@ -1050,84 +1052,89 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           </div>
         </div>
 
-        {/* Badges row — below the circle, never overlapping */}
+        {/* Experience badge — upper-left, corner clears the circular image */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, x: -12, y: -6 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
           transition={{ duration: 0.9, ease: EASE, delay: 1.0 }}
           style={{
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            justifyContent: "center",
+            position: "absolute",
+            top: 4,
+            left: 0,
+            background: "rgba(255,255,255,0.96)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            borderRadius: 14,
+            padding: "9px 14px",
+            border: "1px solid rgba(0,0,0,0.06)",
+            boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
+            zIndex: 2,
+            whiteSpace: "nowrap",
           }}
         >
-          <div
+          <p
             style={{
-              background: "rgba(255,255,255,0.96)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              borderRadius: 14,
-              padding: "9px 14px",
-              border: "1px solid rgba(0,0,0,0.06)",
-              boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
+              fontSize: 19,
+              fontWeight: 800,
+              color: "#0091FF",
+              letterSpacing: "-0.04em",
+              lineHeight: 1,
             }}
           >
-            <p
-              style={{
-                fontSize: 19,
-                fontWeight: 800,
-                color: "#0091FF",
-                letterSpacing: "-0.04em",
-                lineHeight: 1,
-              }}
-            >
-              9+
-            </p>
-            <p
-              style={{
-                fontSize: 11,
-                color: "#6B7280",
-                marginTop: 3,
-                fontWeight: 400,
-              }}
-            >
-              Years Experience
-            </p>
-          </div>
-          <div
+            9+
+          </p>
+          <p
             style={{
-              background: "rgba(255,255,255,0.96)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              borderRadius: 14,
-              padding: "9px 14px",
-              border: "1px solid rgba(0,0,0,0.06)",
-              boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
-              minWidth: 120,
+              fontSize: 11,
+              color: "#6B7280",
+              marginTop: 3,
+              fontWeight: 400,
             }}
           >
-            <p
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#0D0E12",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Turki Almalki
-            </p>
-            <p
-              style={{
-                fontSize: 11,
-                color: "#6B7280",
-                marginTop: 3,
-                fontWeight: 400,
-              }}
-            >
-              📍 Riyadh, Saudi Arabia
-            </p>
-          </div>
+            Years Experience
+          </p>
+        </motion.div>
+
+        {/* Location badge — lower-right, sits below the circle bottom (y > 206px) */}
+        <motion.div
+          initial={{ opacity: 0, x: 12, y: 6 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          transition={{ duration: 0.9, ease: EASE, delay: 1.2 }}
+          style={{
+            position: "absolute",
+            bottom: 8,
+            right: 0,
+            background: "rgba(255,255,255,0.96)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            borderRadius: 14,
+            padding: "9px 14px",
+            border: "1px solid rgba(0,0,0,0.06)",
+            boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
+            zIndex: 2,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <p
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#0D0E12",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Turki Almalki
+          </p>
+          <p
+            style={{
+              fontSize: 11,
+              color: "#6B7280",
+              marginTop: 3,
+              fontWeight: 400,
+            }}
+          >
+            📍 Riyadh, Saudi Arabia
+          </p>
         </motion.div>
       </div>
     );
