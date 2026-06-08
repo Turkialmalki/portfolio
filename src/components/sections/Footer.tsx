@@ -4,9 +4,7 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import {
   FiLinkedin,
-  FiTwitter,
-  FiInstagram,
-  FiFacebook,
+  FiGithub
 } from "react-icons/fi";
 
 type Bezier = [number, number, number, number];
@@ -15,23 +13,13 @@ const EASE: Bezier = [0.16, 1, 0.3, 1];
 const SOCIAL = [
   {
     label: "LinkedIn",
-    href: "https://linkedin.com/in/turkialmalki",
+    href: "https://www.linkedin.com/in/turki-almalki",
     Icon: FiLinkedin,
   },
   {
-    label: "X",
-    href: "https://x.com/turkialmalki",
-    Icon: FiTwitter,
-  },
-  {
-    label: "Instagram",
-    href: "https://instagram.com/turkialmalki",
-    Icon: FiInstagram,
-  },
-  {
-    label: "Facebook",
-    href: "https://facebook.com/turkialmalki",
-    Icon: FiFacebook,
+    label: "Github",
+    href: "https://github.com/Turkialmalki",
+    Icon: FiGithub,
   },
 ];
 

@@ -94,10 +94,10 @@ export default function AboutPage() {
                   marginBottom: 36,
                 }}
               >
-                I&apos;m Turki Almalki — a Software Engineering Leader at
-                Monsha&apos;at with 9+ years crafting enterprise-grade systems
+                I&apos;m Turki Almalki — Engineering Leader at
+                Monsha&apos;at with 9+ years crafting
                 and driving digital transformation across fintech, government,
-                and product innovation in Saudi Arabia and the MENA region.
+                and product innovation.
               </motion.p>
 
               <motion.div
