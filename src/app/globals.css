@@ -238,6 +238,17 @@ main > section:last-of-type {
   }
 }
 
+/* ── Featured card — mobile stack ── */
+@media (max-width: 767px) {
+  .featured-card {
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+  }
+  .featured-card > div:first-child {
+    min-height: 260px;
+  }
+}
+
 /* ── Project detail — responsive grids ── */
 @media (max-width: 767px) {
   .detail-info-grid {

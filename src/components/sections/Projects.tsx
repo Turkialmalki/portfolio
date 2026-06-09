@@ -120,7 +120,7 @@ export default function Projects() {
                 transition: "color 0.45s ease",
               }}
             >
-              Case studies.
+             Crafted Experiences
             </motion.h2>
           </div>
 

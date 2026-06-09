@@ -123,20 +123,20 @@ function HeroSection({ project }: { project: ProjectData }) {
   return (
     <section
       style={{
-        paddingTop: "clamp(120px, 14vw, 180px)",
-        paddingBottom: "clamp(56px, 7vw, 88px)",
+        paddingTop: "clamp(100px, 12vw, 156px)",
+        paddingBottom: "clamp(48px, 6vw, 80px)",
         paddingLeft: "clamp(24px, 5vw, 80px)",
         paddingRight: "clamp(24px, 5vw, 80px)",
         maxWidth: 1200,
         margin: "0 auto",
       }}
     >
-      {/* Breadcrumb */}
+      {/* Back nav */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE }}
-        style={{ marginBottom: 40 }}
+        style={{ marginBottom: 44 }}
       >
         <Link
           href="/projects"
@@ -144,34 +144,35 @@ function HeroSection({ project }: { project: ProjectData }) {
             display: "inline-flex",
             alignItems: "center",
             gap: 8,
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 600,
             color: "var(--text-secondary)",
             textDecoration: "none",
+            letterSpacing: "0.02em",
             transition: "color 0.2s ease",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = project.accent)}
           onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
         >
-          <span style={{ fontSize: 16 }}>←</span>
+          <span style={{ fontSize: 14 }}>←</span>
           All Work
         </Link>
       </motion.div>
 
-      {/* Tags row */}
+      {/* Category + industry chips */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: EASE, delay: 0.06 }}
-        style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 28 }}
+        transition={{ duration: 0.55, ease: EASE, delay: 0.06 }}
+        style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}
       >
         <span
           style={{
             fontSize: 11,
             fontWeight: 700,
             color: project.accent,
-            background: `${project.accent}18`,
-            border: `1px solid ${project.accent}35`,
+            background: `${project.accent}15`,
+            border: `1px solid ${project.accent}30`,
             borderRadius: 100,
             padding: "5px 14px",
             letterSpacing: "0.01em",
@@ -188,7 +189,6 @@ function HeroSection({ project }: { project: ProjectData }) {
             border: "1px solid var(--border-color)",
             borderRadius: 100,
             padding: "5px 14px",
-            letterSpacing: "0.01em",
             transition: "all 0.45s ease",
           }}
         >
@@ -213,15 +213,15 @@ function HeroSection({ project }: { project: ProjectData }) {
       {/* Title */}
       <div style={{ overflow: "hidden", marginBottom: 20 }}>
         <motion.h1
-          initial={{ y: "100%", opacity: 0 }}
+          initial={{ y: "105%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 1.0, ease: EASE, delay: 0.1 }}
           style={{
-            fontSize: "clamp(44px, 7vw, 96px)",
+            fontSize: "clamp(44px, 7.5vw, 104px)",
             fontWeight: 800,
             color: "var(--text-primary)",
-            letterSpacing: "-0.04em",
-            lineHeight: 1.02,
+            letterSpacing: "-0.045em",
+            lineHeight: 1.01,
             transition: "color 0.45s ease",
           }}
         >
@@ -235,10 +235,10 @@ function HeroSection({ project }: { project: ProjectData }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: EASE, delay: 0.2 }}
         style={{
-          fontSize: "clamp(16px, 1.4vw, 20px)",
+          fontSize: "clamp(15px, 1.3vw, 19px)",
           color: "var(--text-secondary)",
-          lineHeight: 1.65,
-          maxWidth: 560,
+          lineHeight: 1.68,
+          maxWidth: 540,
           marginBottom: 44,
           transition: "color 0.45s ease",
         }}
@@ -246,12 +246,12 @@ function HeroSection({ project }: { project: ProjectData }) {
         {project.subtitle}
       </motion.p>
 
-      {/* Meta pills row */}
+      {/* Meta row */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: EASE, delay: 0.28 }}
-        style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+        style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
       >
         {[
           { label: "Role", value: project.role },
@@ -306,23 +306,23 @@ function ShowcaseSection({ project }: { project: ProjectData }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 1.0, ease: EASE, delay: 0.38 }}
       style={{
-        padding: "0 clamp(16px, 3vw, 40px)",
+        padding: "0 clamp(12px, 1.5vw, 20px)",
         marginBottom: "clamp(64px, 8vw, 112px)",
       }}
     >
       <div
         style={{
-          maxWidth: 1200,
+          maxWidth: 1440,
           margin: "0 auto",
-          borderRadius: "clamp(20px, 2.5vw, 36px)",
+          borderRadius: "clamp(16px, 2vw, 28px)",
           overflow: "hidden",
           background: project.cardBg,
-          aspectRatio: "16 / 7",
+          aspectRatio: "16 / 8",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           position: "relative",
-          boxShadow: "0 32px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.1)",
+          boxShadow: "0 40px 100px rgba(0,0,0,0.22), 0 8px 32px rgba(0,0,0,0.12)",
         }}
       >
         {/* Glow blobs */}
@@ -356,7 +356,7 @@ function ShowcaseSection({ project }: { project: ProjectData }) {
         />
 
         {/* Visual content */}
-        <div style={{ width: "72%", maxWidth: 680, position: "relative", zIndex: 1 }}>
+        <div style={{ width: "76%", maxWidth: 780, position: "relative", zIndex: 1 }}>
           {project.image ? (
             <div
               style={{
