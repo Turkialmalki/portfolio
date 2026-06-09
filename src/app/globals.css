@@ -223,6 +223,34 @@ main > section:last-of-type {
   box-shadow: 0 32px 64px rgba(0, 0, 0, 0.14);
 }
 
+/* ── Projects listing card — mobile stack ── */
+@media (max-width: 767px) {
+  .project-listing-card {
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+  }
+  .project-listing-card > div:first-child,
+  .project-listing-card > div:last-child {
+    order: unset !important;
+  }
+  .project-listing-card > div:first-child {
+    min-height: 240px;
+  }
+}
+
+/* ── Project detail — responsive grids ── */
+@media (max-width: 767px) {
+  .detail-info-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .decision-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .reflection-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ── TopBar avatar ── */
 .topbar-avatar-wrapper {
   width: 52px;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { motion, useInView, useMotionValue } from "framer-motion";
 
 type Bezier = [number, number, number, number];
@@ -12,6 +13,7 @@ const CARD_STEP = CARD_WIDTH + CARD_GAP;
 
 const PROJECTS = [
   {
+    slug: "basebox",
     number: "01",
     title: "BaseBox",
     tag: "AI SaaS System Template",
@@ -22,6 +24,7 @@ const PROJECTS = [
     highlightColor: "rgba(0,145,255,0.35)",
   },
   {
+    slug: "munaaseb",
     number: "02",
     title: "Munaaseb",
     tag: "Fintech Innovation & Open Banking",
@@ -32,6 +35,7 @@ const PROJECTS = [
     highlightColor: "rgba(0,200,160,0.35)",
   },
   {
+    slug: "hala",
     number: "03",
     title: "Hala Product Innovation",
     tag: "Tech Vision & Integration",
@@ -42,6 +46,7 @@ const PROJECTS = [
     highlightColor: "rgba(255,107,53,0.35)",
   },
   {
+    slug: "sap-cloud-cx",
     number: "04",
     title: "SAP Cloud CX POC",
     tag: "Full Digital Experience",
@@ -52,6 +57,7 @@ const PROJECTS = [
     highlightColor: "rgba(0,112,210,0.35)",
   },
   {
+    slug: "lean-technologies",
     number: "05",
     title: "Lean Technologies Integration",
     tag: "Open Banking Excellence",
@@ -217,6 +223,7 @@ function ProjectCard({
   const [hovered, setHovered] = useState(false);
 
   return (
+    <Link href={`/projects/${project.slug}`} style={{ textDecoration: "none", display: "block", flexShrink: 0 }}>
     <motion.div
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
@@ -372,6 +379,7 @@ function ProjectCard({
         </p>
       </div>
     </motion.div>
+    </Link>
   );
 }
 
