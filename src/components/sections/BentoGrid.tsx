@@ -87,12 +87,12 @@ export default function BentoGrid() {
         {
           icon: "🤔",
           title: "Who am I?",
-          text: "I am a UX designer crafting seamless digital experiences.",
+          text: "An engineering leader and product innovator building scalable web and mobile experiences that create meaningful business impact.",
         },
         {
           icon: "🧠",
           title: "My Philosophy",
-          text: "Great design is clarity, usability, and effortless impact.",
+          text: "Great engineering begins with clarity, strong collaboration, and technology designed around real user and business needs.",
         },
         {
           icon: "✨",
