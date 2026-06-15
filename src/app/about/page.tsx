@@ -52,7 +52,7 @@ export default function AboutPage() {
                 style={{
                   fontSize: 11,
                   fontWeight: 600,
-                  color: "#6B7280",
+                  color: "var(--text-secondary)",
                   letterSpacing: "0.09em",
                   textTransform: "uppercase",
                   marginBottom: 18,
@@ -88,7 +88,7 @@ export default function AboutPage() {
                 transition={{ duration: 0.9, ease: EASE, delay: 0.2 }}
                 style={{
                   fontSize: "clamp(15px, 1.15vw, 17px)",
-                  color: "#6B7280",
+                  color: "var(--text-secondary)",
                   lineHeight: 1.74,
                   maxWidth: 520,
                   marginBottom: 36,
@@ -116,14 +116,14 @@ export default function AboutPage() {
                       style={{
                         fontSize: "clamp(28px, 3vw, 40px)",
                         fontWeight: 800,
-                        color: "#0091FF",
+                        color: "var(--accent)",
                         letterSpacing: "-0.04em",
                         lineHeight: 1,
                       }}
                     >
                       {n}
                     </p>
-                    <p style={{ fontSize: 12, color: "#6B7280", marginTop: 4, fontWeight: 500 }}>
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4, fontWeight: 500 }}>
                       {label}
                     </p>
                   </div>

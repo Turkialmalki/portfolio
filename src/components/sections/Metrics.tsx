@@ -90,9 +90,10 @@ export default function FeaturedWork() {
     <section
       id="featured-work"
       style={{
-        background: "#ffffff",
+        background: "var(--bg-primary)",
         overflow: "hidden",
         padding: "clamp(80px, 10vw, 120px) 0",
+        transition: "background-color 0.35s ease",
       }}
     >
       <div
@@ -211,23 +212,25 @@ function ProjectCard({
           width: CARD_WIDTH,
           height: 330,
           borderRadius: 34,
-          background: "#f3f3f3",
+          background: "var(--bg-card)",
           overflow: "hidden",
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           padding: 24,
           gap: 32,
+          transition: "background-color 0.35s ease",
         }}
       >
         <div
           style={{
-            background: "#e8e8e8",
+            background: "var(--bg-card-muted)",
             borderRadius: 26,
             overflow: "hidden",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             padding: 34,
+            transition: "background-color 0.35s ease",
           }}
         >
           <img
@@ -259,7 +262,8 @@ function ProjectCard({
                 letterSpacing: "-0.05em",
                 lineHeight: 1.05,
                 margin: 0,
-                color: "#000",
+                color: "var(--text-primary)",
+                transition: "color 0.35s ease",
               }}
             >
               {project.title}
@@ -269,9 +273,10 @@ function ProjectCard({
               style={{
                 fontSize: 18,
                 lineHeight: 1.45,
-                color: "#666",
+                color: "var(--text-secondary)",
                 margin: "14px 0 0",
                 maxWidth: 340,
+                transition: "color 0.35s ease",
               }}
             >
               {project.subtitle}
@@ -292,8 +297,8 @@ const pillStyle: React.CSSProperties = {
   display: "inline-flex",
   padding: "8px 18px",
   borderRadius: 999,
-  background: "#f1f1f1",
-  color: "#666",
+  background: "var(--bg-pill)",
+  color: "var(--text-secondary)",
   fontSize: 15,
   marginBottom: 26,
 };
@@ -303,25 +308,28 @@ const titleStyle: React.CSSProperties = {
   fontWeight: 800,
   letterSpacing: "-0.055em",
   lineHeight: 1,
-  color: "#000",
+  color: "var(--text-primary)",
   margin: 0,
+  transition: "color 0.35s ease",
 };
 
 const subtitleStyle: React.CSSProperties = {
   fontSize: "clamp(20px, 2vw, 28px)",
   fontWeight: 600,
-  color: "#666",
+  color: "var(--text-secondary)",
   margin: "20px auto 0",
   lineHeight: 1.2,
+  transition: "color 0.35s ease",
 };
 
 const chipStyle: React.CSSProperties = {
   fontSize: 15,
   fontWeight: 500,
-  color: "#555",
-  background: "#dedede",
+  color: "var(--chip-text)",
+  background: "var(--chip-bg)",
   borderRadius: 999,
   padding: "8px 16px",
+  transition: "background-color 0.35s ease, color 0.35s ease",
 };
 
 const floatingArrowStyle: React.CSSProperties = {
@@ -333,8 +341,8 @@ const floatingArrowStyle: React.CSSProperties = {
   height: 46,
   borderRadius: "50%",
   border: "none",
-  background: "#1495ff",
-  color: "#fff",
+  background: "var(--accent)",
+  color: "var(--accent-contrast)",
   fontSize: 30,
   lineHeight: "46px",
   cursor: "pointer",
@@ -342,8 +350,8 @@ const floatingArrowStyle: React.CSSProperties = {
 };
 
 const viewAllStyle: React.CSSProperties = {
-  background: "#1495ff",
-  color: "#fff",
+  background: "var(--accent)",
+  color: "var(--accent-contrast)",
   borderRadius: 999,
   padding: "14px 30px",
   fontSize: 16,

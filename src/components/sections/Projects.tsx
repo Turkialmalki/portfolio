@@ -15,9 +15,10 @@ export default function Projects() {
       id="projects"
       ref={ref}
       style={{
-        backgroundColor: "#ffffff",
+        backgroundColor: "var(--bg-primary)",
         overflow: "hidden",
         padding: "clamp(80px, 10vw, 130px) 24px",
+        transition: "background-color 0.35s ease",
       }}
     >
       <div style={{ maxWidth: 1180, margin: "0 auto", textAlign: "center" }}>
@@ -29,8 +30,8 @@ export default function Projects() {
             display: "inline-flex",
             padding: "8px 18px",
             borderRadius: 999,
-            background: "#f1f1f1",
-            color: "#666",
+            background: "var(--bg-pill)",
+            color: "var(--text-secondary)",
             fontSize: 15,
             marginBottom: 26,
           }}
@@ -47,8 +48,9 @@ export default function Projects() {
             fontWeight: 800,
             letterSpacing: "-0.055em",
             lineHeight: 1,
-            color: "#000",
+            color: "var(--text-primary)",
             margin: 0,
+            transition: "color 0.35s ease",
           }}
         >
           Why Work With Me?
@@ -61,9 +63,10 @@ export default function Projects() {
           style={{
             fontSize: "clamp(20px, 2vw, 28px)",
             fontWeight: 600,
-            color: "#666",
+            color: "var(--text-secondary)",
             margin: "20px auto 66px",
             lineHeight: 1.2,
+            transition: "color 0.35s ease",
           }}
         >
           Backed by experience, driven by purpose.
@@ -148,10 +151,11 @@ function ValueCard({
         display: "flex",
         flexDirection: "column",
         gap: 18,
-        background: "#f3f3f3",
+        background: "var(--bg-card)",
         borderRadius: 32,
         height: large ? 340 : 280,
-        padding: large ? 32 : 28, // uniform padding = image is inset, card breathes
+        padding: large ? 32 : 28,
+        transition: "background-color 0.35s ease",
       }}
     >
       <h3
@@ -160,8 +164,9 @@ function ValueCard({
           fontWeight: 800,
           letterSpacing: "-0.05em",
           lineHeight: 1.05,
-          color: "#000",
+          color: "var(--text-primary)",
           textAlign: "left",
+          transition: "color 0.35s ease",
           margin: 0,
           flexShrink: 0,
           maxWidth: large ? 560 : 320,
@@ -178,7 +183,8 @@ function ValueCard({
           width: "100%",
           borderRadius: 18,
           overflow: "hidden",
-          background: isPhoto ? "#e8e8e8" : "transparent",
+          background: isPhoto ? "var(--bg-card-muted)" : "transparent",
+          transition: "background-color 0.35s ease",
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "center",
@@ -217,11 +223,12 @@ function ToolsCard() {
       style={{
         display: "flex",
         flexDirection: "column",
-        background: "#f3f3f3",
+        background: "var(--bg-card)",
         borderRadius: 32,
         overflow: "hidden",
         height: 280,
         padding: 28,
+        transition: "background-color 0.35s ease",
       }}
     >
       {/* tool cluster fills the upper area */}
@@ -243,11 +250,12 @@ function ToolsCard() {
               width: 64,
               height: 64,
               borderRadius: "50%",
-              background: "#ffffff",
+              background: "var(--bg-elevated)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 12px 24px rgba(0,0,0,0.08)",
+              boxShadow: "var(--shadow-soft)",
+              transition: "background-color 0.35s ease",
             }}
           >
             <img
@@ -266,8 +274,9 @@ function ToolsCard() {
           fontWeight: 800,
           letterSpacing: "-0.05em",
           lineHeight: 1.05,
-          color: "#000",
+          color: "var(--text-primary)",
           textAlign: "left",
+          transition: "color 0.35s ease",
           margin: 0,
           maxWidth: 300,
         }}

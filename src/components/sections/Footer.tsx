@@ -178,7 +178,6 @@ export default function Footer() {
                     whileHover={{
                       y: -3,
                       scale: 1.06,
-                      backgroundColor: "#dedede",
                     }}
                     whileTap={{
                       scale: 0.96,
@@ -221,9 +220,10 @@ export default function Footer() {
       <style>{`
         .footer-root {
           width: 100%;
-          background: #ffffff;
+          background: var(--bg-primary);
           padding: 24px 24px 96px;
           overflow: hidden;
+          transition: background-color 0.35s ease;
         }
 
         .footer-container {
@@ -237,9 +237,10 @@ export default function Footer() {
           display: grid;
           grid-template-columns: 46% 54%;
           min-height: 410px;
-          background: #f3f3f3;
+          background: var(--bg-card);
           border-radius: 34px;
           overflow: hidden;
+          transition: background-color 0.35s ease;
         }
 
         .contact-copy {
@@ -255,21 +256,23 @@ export default function Footer() {
 
         .contact-copy h2 {
           margin: 0;
-          color: #000000;
+          color: var(--text-primary);
           font-size: clamp(42px, 5vw, 64px);
           font-weight: 800;
           line-height: 1;
           letter-spacing: -0.055em;
+          transition: color 0.35s ease;
         }
 
         .contact-copy p {
           max-width: 400px;
           margin: 20px 0 28px;
-          color: #343434;
+          color: var(--footer-body-text);
           font-size: clamp(16px, 1.35vw, 19px);
           font-weight: 400;
           line-height: 1.55;
           letter-spacing: -0.02em;
+          transition: color 0.35s ease;
         }
 
         .contact-button {
@@ -278,14 +281,19 @@ export default function Footer() {
           justify-content: center;
           gap: 10px;
           padding: 13px 25px;
-          color: #ffffff;
-          background: #1495ff;
+          color: var(--accent-contrast);
+          background: var(--accent);
           border-radius: 999px;
           text-decoration: none;
           font-size: 15px;
           font-weight: 600;
           line-height: 1;
           box-shadow: 0 12px 28px rgba(20, 149, 255, 0.2);
+          transition: background-color 0.25s ease;
+        }
+
+        .contact-button:hover {
+          background: var(--accent-hover);
         }
 
         .contact-visual {
@@ -302,8 +310,9 @@ export default function Footer() {
         .footer-card {
           margin-top: 22px;
           padding: 46px 46px 26px;
-          background: #f3f3f3;
+          background: var(--bg-card);
           border-radius: 34px;
+          transition: background-color 0.35s ease;
         }
 
         .footer-main-row {
@@ -342,13 +351,17 @@ export default function Footer() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          color: #111111;
-          background: #e2e2e2;
+          color: var(--social-btn-color);
+          background: var(--social-btn-bg);
           border-radius: 50%;
           text-decoration: none;
           transition:
             color 0.25s ease,
             background-color 0.25s ease;
+        }
+
+        .social-button:hover {
+          background: var(--social-btn-hover);
         }
 
         .footer-navigation {
@@ -367,15 +380,16 @@ export default function Footer() {
 
         .footer-column h4 {
           margin: 0 0 4px;
-          color: #000000;
+          color: var(--text-primary);
           font-size: 17px;
           font-weight: 800;
           line-height: 1;
+          transition: color 0.35s ease;
         }
 
         .footer-column a {
           position: relative;
-          color: #666666;
+          color: var(--text-secondary);
           font-size: 16px;
           font-weight: 400;
           line-height: 1.2;
@@ -386,7 +400,7 @@ export default function Footer() {
         }
 
         .footer-column a:hover {
-          color: #000000;
+          color: var(--text-primary);
           transform: translateX(3px);
         }
 
@@ -399,11 +413,12 @@ export default function Footer() {
 
         .footer-copyright {
           margin: 52px 0 0;
-          color: #111111;
+          color: var(--text-secondary);
           font-size: 14px;
           font-weight: 500;
           text-align: center;
           letter-spacing: -0.015em;
+          transition: color 0.35s ease;
         }
 
         @media (max-width: 900px) {

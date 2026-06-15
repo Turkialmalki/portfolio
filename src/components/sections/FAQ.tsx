@@ -137,8 +137,9 @@ export default function FAQ() {
 /* ── Styles ── */
 
 const sectionStyle: React.CSSProperties = {
-  background: "#ffffff",
+  background: "var(--bg-primary)",
   padding: "clamp(80px, 10vw, 140px) 24px",
+  transition: "background-color 0.35s ease",
 };
 
 const containerStyle: React.CSSProperties = {
@@ -160,8 +161,8 @@ const pillStyle: React.CSSProperties = {
   alignSelf: "flex-start",
   padding: "8px 18px",
   borderRadius: 999,
-  background: "#f1f1f1",
-  color: "#666",
+  background: "var(--bg-pill)",
+  color: "var(--text-secondary)",
   fontSize: 15,
   fontWeight: 500,
   marginBottom: 24,
@@ -172,26 +173,29 @@ const headingStyle: React.CSSProperties = {
   fontWeight: 800,
   letterSpacing: "-0.055em",
   lineHeight: 1.05,
-  color: "#000",
+  color: "var(--text-primary)",
   margin: "0 0 22px",
+  transition: "color 0.35s ease",
 };
 
 const supportingTextStyle: React.CSSProperties = {
   fontSize: "clamp(15px, 1.3vw, 18px)",
   lineHeight: 1.65,
-  color: "#666",
+  color: "var(--text-secondary)",
   margin: 0,
   maxWidth: 340,
+  transition: "color 0.35s ease",
 };
 
 const imageWrapStyle: React.CSSProperties = {
   position: "relative",
   marginTop: 40,
   borderRadius: 32,
-  background: "#f3f3f3",
+  background: "var(--bg-card)",
   overflow: "hidden",
   height: "clamp(260px, 26vw, 360px)",
   width: "100%",
+  transition: "background-color 0.35s ease",
 };
 
 const rightColStyle: React.CSSProperties = {
@@ -203,9 +207,10 @@ const rightColStyle: React.CSSProperties = {
 };
 
 const cardStyle: React.CSSProperties = {
-  background: "#f3f3f3",
+  background: "var(--bg-card)",
   borderRadius: 20,
   overflow: "hidden",
+  transition: "background-color 0.35s ease",
 };
 
 const cardHeaderStyle: React.CSSProperties = {
@@ -225,9 +230,10 @@ const cardHeaderStyle: React.CSSProperties = {
 const questionStyle: React.CSSProperties = {
   fontSize: "clamp(16px, 1.45vw, 22px)",
   fontWeight: 700,
-  color: "#000",
+  color: "var(--text-primary)",
   letterSpacing: "-0.02em",
   lineHeight: 1.3,
+  transition: "color 0.35s ease",
 };
 
 const iconStyle = (isOpen: boolean): React.CSSProperties => ({
@@ -235,8 +241,8 @@ const iconStyle = (isOpen: boolean): React.CSSProperties => ({
   width: 34,
   height: 34,
   borderRadius: "50%",
-  background: "#1495ff",
-  color: "#fff",
+  background: "var(--accent)",
+  color: "var(--accent-contrast)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -244,13 +250,14 @@ const iconStyle = (isOpen: boolean): React.CSSProperties => ({
   fontWeight: 400,
   lineHeight: 1,
   userSelect: "none",
-  transition: "font-size 0.2s ease",
+  transition: "font-size 0.2s ease, background-color 0.35s ease",
 });
 
 const answerStyle: React.CSSProperties = {
   fontSize: "clamp(14px, 1.1vw, 17px)",
   lineHeight: 1.7,
-  color: "#555",
+  color: "var(--text-secondary)",
   margin: 0,
   padding: "0 24px 24px",
+  transition: "color 0.35s ease",
 };

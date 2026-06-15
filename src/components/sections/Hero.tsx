@@ -155,7 +155,7 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
             transition={{ duration: 0.9, ease: EASE, delay: 0.26 }}
             style={{
               fontSize: "clamp(20px, 1.6vw, 22px)",
-              color: "#6B7280",
+              color: "var(--text-secondary)",
               lineHeight: 1.32,
               maxWidth: 920,
               marginBottom: 42,
@@ -163,13 +163,15 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
               letterSpacing: "-0.03em",
               fontFamily:
                 "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+              transition: "color 0.35s ease",
             }}
           >
             Driving innovation through{" "}
             <span
               style={{
-                color: "#111111",
+                color: "var(--text-primary)",
                 fontWeight: 700,
+                transition: "color 0.35s ease",
               }}
             >
               {" "}
@@ -308,9 +310,10 @@ function LargeProjectCard({
         justifyContent: "center",
         borderRadius: 32,
         overflow: "hidden",
-        background: "#eeeeee",
+        background: "var(--bg-card)",
         boxShadow: "none",
         border: "none",
+        transition: "background-color 0.35s ease",
       }}
     >
       {isPhoto ? (
@@ -1028,7 +1031,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
               overflow: "hidden",
               boxShadow: "0 8px 40px rgba(0,145,255,0.30)",
               border: "3px solid rgba(0,145,255,0.28)",
-              background: "#f3f4f6",
+              background: "var(--bg-card)",
             }}
           >
             <Image
@@ -1061,7 +1064,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
             position: "absolute",
             top: 4,
             left: 0,
-            background: "rgba(255,255,255,0.96)",
+            background: "var(--bg-elevated)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
             borderRadius: 14,
@@ -1086,7 +1089,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           <p
             style={{
               fontSize: 11,
-              color: "#6B7280",
+              color: "var(--text-secondary)",
               marginTop: 3,
               fontWeight: 400,
             }}
@@ -1104,7 +1107,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
             position: "absolute",
             bottom: 8,
             right: 0,
-            background: "rgba(255,255,255,0.96)",
+            background: "var(--bg-elevated)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
             borderRadius: 14,
@@ -1119,7 +1122,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
             style={{
               fontSize: 12,
               fontWeight: 700,
-              color: "#0D0E12",
+              color: "var(--text-primary)",
               letterSpacing: "-0.02em",
             }}
           >
@@ -1128,7 +1131,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           <p
             style={{
               fontSize: 11,
-              color: "#6B7280",
+              color: "var(--text-secondary)",
               marginTop: 3,
               fontWeight: 400,
             }}
@@ -1176,7 +1179,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           boxShadow:
             "0 32px 80px rgba(0,145,255,0.44), 0 10px 36px rgba(0,145,255,0.20)",
           border: "3px solid rgba(0,145,255,0.28)",
-          background: "#f3f4f6",
+          background: "var(--bg-card)",
         }}
       >
         <Image
@@ -1208,7 +1211,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           position: "absolute",
           bottom: 16,
           right: -20,
-          background: "rgba(255,255,255,0.96)",
+          background: "var(--bg-elevated)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
           borderRadius: 16,
@@ -1222,7 +1225,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           style={{
             fontSize: 13,
             fontWeight: 700,
-            color: "#0D0E12",
+            color: "var(--text-primary)",
             letterSpacing: "-0.02em",
           }}
         >
@@ -1231,7 +1234,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
         <p
           style={{
             fontSize: 11,
-            color: "#6B7280",
+            color: "var(--text-secondary)",
             marginTop: 3,
             fontWeight: 400,
           }}
@@ -1249,7 +1252,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
           position: "absolute",
           top: 20,
           left: -24,
-          background: "rgba(255,255,255,0.96)",
+          background: "var(--bg-elevated)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
           borderRadius: 16,
@@ -1272,7 +1275,7 @@ function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
         <p
           style={{
             fontSize: 11,
-            color: "#6B7280",
+            color: "var(--text-secondary)",
             marginTop: 4,
             fontWeight: 400,
           }}

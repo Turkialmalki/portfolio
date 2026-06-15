@@ -72,7 +72,7 @@ export default function BlogPreview() {
     <section
       id="blog-preview"
       ref={ref}
-      style={{ background: "#ffffff", padding: "clamp(80px, 10vw, 140px) 24px" }}
+      style={{ background: "var(--bg-primary)", padding: "clamp(80px, 10vw, 140px) 24px", transition: "background-color 0.35s ease" }}
     >
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         {/* ── Header ── */}
@@ -239,8 +239,8 @@ const pillStyle: React.CSSProperties = {
   display: "inline-flex",
   padding: "8px 18px",
   borderRadius: 999,
-  background: "#f1f1f1",
-  color: "#666",
+  background: "var(--bg-pill)",
+  color: "var(--text-secondary)",
   fontSize: 15,
   fontWeight: 500,
   marginBottom: 24,
@@ -251,16 +251,18 @@ const headingStyle: React.CSSProperties = {
   fontWeight: 800,
   letterSpacing: "-0.05em",
   lineHeight: 1,
-  color: "#000",
+  color: "var(--text-primary)",
   margin: "0 0 18px",
+  transition: "color 0.35s ease",
 };
 
 const subheadingStyle: React.CSSProperties = {
   fontSize: "clamp(17px, 1.8vw, 22px)",
   fontWeight: 600,
-  color: "#666",
+  color: "var(--text-secondary)",
   lineHeight: 1.4,
   margin: 0,
+  transition: "color 0.35s ease",
 };
 
 const gridStyle: React.CSSProperties = {
@@ -270,13 +272,13 @@ const gridStyle: React.CSSProperties = {
 };
 
 const cardStyle: React.CSSProperties = {
-  background: "#f3f3f3",
+  background: "var(--bg-card)",
   borderRadius: 28,
   overflow: "hidden",
   display: "flex",
   flexDirection: "column",
   cursor: "pointer",
-  transition: "box-shadow 0.35s ease",
+  transition: "box-shadow 0.35s ease, background-color 0.35s ease",
 };
 
 const cardLinkStyle: React.CSSProperties = {
@@ -294,10 +296,11 @@ const imageWrapStyle: React.CSSProperties = {
   width: "100%",
   aspectRatio: "16 / 9",
   borderRadius: 22,
-  background: "#e9e9e9",
+  background: "var(--bg-card-muted)",
   overflow: "hidden",
   marginBottom: 18,
   flexShrink: 0,
+  transition: "background-color 0.35s ease",
 };
 
 const metaRowStyle: React.CSSProperties = {
@@ -312,17 +315,19 @@ const categoryPillStyle: React.CSSProperties = {
   display: "inline-flex",
   padding: "6px 14px",
   borderRadius: 999,
-  background: "#e4e4e4",
-  color: "#444",
+  background: "var(--chip-bg)",
+  color: "var(--chip-text)",
   fontSize: 13,
   fontWeight: 600,
   letterSpacing: "-0.01em",
+  transition: "background-color 0.35s ease, color 0.35s ease",
 };
 
 const dateStyle: React.CSSProperties = {
   fontSize: 13,
-  color: "#888",
+  color: "var(--text-muted)",
   fontWeight: 400,
+  transition: "color 0.35s ease",
 };
 
 const cardTitleStyle: React.CSSProperties = {
@@ -330,26 +335,28 @@ const cardTitleStyle: React.CSSProperties = {
   fontWeight: 800,
   letterSpacing: "-0.035em",
   lineHeight: 1.1,
-  color: "#000",
+  color: "var(--text-primary)",
   margin: "0 0 12px",
+  transition: "color 0.35s ease",
 };
 
 const cardExcerptStyle: React.CSSProperties = {
   fontSize: "clamp(14px, 1.1vw, 17px)",
   lineHeight: 1.6,
-  color: "#666",
+  color: "var(--text-secondary)",
   margin: 0,
   display: "-webkit-box",
   WebkitLineClamp: 3,
   WebkitBoxOrient: "vertical",
   overflow: "hidden",
+  transition: "color 0.35s ease",
 };
 
 const ctaStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  background: "#1495ff",
-  color: "#fff",
+  background: "var(--accent)",
+  color: "var(--accent-contrast)",
   borderRadius: 999,
   padding: "14px 28px",
   fontSize: 16,

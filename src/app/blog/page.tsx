@@ -109,7 +109,7 @@ export default function BlogPage() {
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: "#6B7280",
+                color: "var(--text-secondary)",
                 letterSpacing: "0.09em",
                 textTransform: "uppercase",
                 marginBottom: 18,
@@ -143,7 +143,7 @@ export default function BlogPage() {
               transition={{ duration: 0.9, ease: EASE, delay: 0.2 }}
               style={{
                 fontSize: "clamp(15px, 1.2vw, 17px)",
-                color: "#6B7280",
+                color: "var(--text-secondary)",
                 lineHeight: 1.72,
                 maxWidth: 480,
               }}
@@ -268,12 +268,12 @@ function BlogCard({
           }}
         >
           <span
-            style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 400 }}
+            style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400 }}
           >
             {post.date}
           </span>
           <span style={{ fontSize: 11, color: "#D1D5DB" }}>·</span>
-          <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 400 }}>
+          <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400 }}>
             {post.readTime} read
           </span>
         </div>
@@ -295,7 +295,7 @@ function BlogCard({
         <p
           style={{
             fontSize: 14,
-            color: "#6B7280",
+            color: "var(--text-secondary)",
             lineHeight: 1.68,
           }}
         >

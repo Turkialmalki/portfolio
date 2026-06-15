@@ -24,8 +24,8 @@ export default function ProjectsPage() {
       <Navbar />
       <main
         style={{
-          backgroundColor: "#ffffff",
-          transition: "background-color 0.45s ease",
+          backgroundColor: "var(--bg-primary)",
+          transition: "background-color 0.35s ease",
           minHeight: "100vh",
         }}
       >
@@ -222,9 +222,10 @@ function FeaturedCard({ project }: { project: (typeof PROJECTS)[number] }) {
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             minHeight: 360,
-            background: "#f3f3f3",
+            background: "var(--bg-card)",
             border: "none",
             boxShadow: "none",
+            transition: "background-color 0.35s ease",
           }}
           className="featured-card"
         >
@@ -233,8 +234,9 @@ function FeaturedCard({ project }: { project: (typeof PROJECTS)[number] }) {
             style={{
               position: "relative",
               overflow: "hidden",
-              background: "#e4e4e4",
+              background: "var(--bg-card-muted)",
               display: "flex",
+              transition: "background-color 0.35s ease",
               alignItems: "center",
               justifyContent: "center",
               padding: 32,

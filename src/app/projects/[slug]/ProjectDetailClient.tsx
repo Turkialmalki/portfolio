@@ -1395,7 +1395,7 @@ function NextProjectSection({ project }: { project: ProjectData }) {
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 24,
-                color: "#fff",
+                color: "var(--accent-contrast)",
                 flexShrink: 0,
               }}
             >

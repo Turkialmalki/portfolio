@@ -15,51 +15,135 @@
 
 /* ── Design tokens ── */
 :root {
-  --bg-primary: #FFFFFF;
-  --bg-surface: #FFFFFF;
-  --bg-elevated: #FFFFFF;
-  --text-primary: #0D0E12;
-  --text-secondary: #6B7280;
-  --border-color: rgba(0, 0, 0, 0.06);
+  color-scheme: light;
+
+  /* Backgrounds */
+  --bg-primary:   #ffffff;
+  --bg-surface:   #ffffff;
+  --bg-elevated:  #ffffff;
+  --bg-card:      #f3f3f3;
+  --bg-card-muted:#e8e8e8;
+  --bg-pill:      #f1f1f1;
+
+  /* Text */
+  --text-primary:   #0d0e12;
+  --text-secondary: #626262;
+  --text-muted:     #888888;
+
+  /* Borders */
+  --border-color:  rgba(0, 0, 0, 0.06);
   --border-subtle: rgba(0, 0, 0, 0.09);
-  --nav-bg: rgba(255, 255, 255, 0.64);
-  --nav-border: rgba(255, 255, 255, 0.28);
-  --nav-icon-inactive: rgba(0, 0, 0, 0.38);
-  --nav-icon-active: #0D0E12;
-  --nav-pill-bg: #FFFFFF;
-  --topbar-name-color: #0D0E12;
-  --topbar-toggle-bg: rgba(0, 0, 0, 0.05);
-  --topbar-toggle-color: #0D0E12;
-  /* Bento grid card backgrounds */
-  --bento-surface: #FFFFFF;
-  --bento-tech-bg: linear-gradient(148deg, #EEF7FF 0%, #E4F0FF 100%);
-  --bento-tech-border: rgba(0, 145, 255, 0.12);
+
+  /* Accent (kept consistent across themes) */
+  --accent:          #1495ff;
+  --accent-hover:    #087fdf;
+  --accent-contrast: #ffffff;
+
+  /* Chips / pills */
+  --chip-bg:   #dedede;
+  --chip-text: #555555;
+
+  /* Social buttons */
+  --social-btn-bg:    #e2e2e2;
+  --social-btn-color: #111111;
+  --social-btn-hover: #cccccc;
+
+  /* Inputs */
+  --input-bg:          #f3f3f3;
+  --input-placeholder: #808080;
+
+  /* Footer */
+  --footer-body-text: #343434;
+
+  /* Navigation */
+  --nav-bg:           rgba(255, 255, 255, 0.64);
+  --nav-border:       rgba(255, 255, 255, 0.28);
+  --nav-icon-inactive:rgba(0, 0, 0, 0.38);
+  --nav-icon-active:  #0d0e12;
+  --nav-pill-bg:      #ffffff;
+
+  /* TopBar */
+  --topbar-name-color:  #0d0e12;
+  --topbar-toggle-bg:   rgba(0, 0, 0, 0.05);
+  --topbar-toggle-color:#0d0e12;
+
+  /* Shadows */
+  --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 24px 64px rgba(0, 0, 0, 0.12);
+
+  /* Bento */
+  --bento-surface:    #ffffff;
+  --bento-tech-bg:    linear-gradient(148deg, #EEF7FF 0%, #E4F0FF 100%);
+  --bento-tech-border:rgba(0, 145, 255, 0.12);
   --bento-tech-label: rgba(0, 145, 255, 0.7);
+
   /* Marquee edge fade */
-  --marquee-edge-fade: linear-gradient(90deg, var(--bg-surface) 0%, transparent 10%, transparent 90%, var(--bg-surface) 100%);
+  --marquee-edge-fade: linear-gradient(90deg, #ffffff 0%, transparent 10%, transparent 90%, #ffffff 100%);
 }
 
 [data-theme="dark"] {
-  --bg-primary: #0D0E12;
-  --bg-surface: #141519;
-  --bg-elevated: #1C1D24;
-  --text-primary: #F0F0EF;
-  --text-secondary: #9CA3AF;
-  --border-color: rgba(255, 255, 255, 0.07);
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --nav-bg: rgba(14, 15, 22, 0.80);
-  --nav-border: rgba(255, 255, 255, 0.12);
-  --nav-icon-inactive: rgba(255, 255, 255, 0.36);
-  --nav-icon-active: #F0F0EF;
-  --nav-pill-bg: rgba(255, 255, 255, 0.13);
-  --topbar-name-color: #F0F0EF;
-  --topbar-toggle-bg: rgba(255, 255, 255, 0.08);
-  --topbar-toggle-color: #F0F0EF;
-  /* Bento dark variants */
-  --bento-surface: #1C1D24;
-  --bento-tech-bg: linear-gradient(148deg, #0D1A2D 0%, #0A1528 100%);
-  --bento-tech-border: rgba(0, 145, 255, 0.20);
+  color-scheme: dark;
+
+  /* Backgrounds */
+  --bg-primary:   #0d0e12;
+  --bg-surface:   #141519;
+  --bg-elevated:  #1c1d24;
+  --bg-card:      #1a1c22;
+  --bg-card-muted:#22252d;
+  --bg-pill:      #1e2028;
+
+  /* Text */
+  --text-primary:   #f0f0ef;
+  --text-secondary: #9ca3af;
+  --text-muted:     #6b7280;
+
+  /* Borders */
+  --border-color:  rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.10);
+
+  /* Accent */
+  --accent:          #249cff;
+  --accent-hover:    #49adff;
+  --accent-contrast: #ffffff;
+
+  /* Chips / pills */
+  --chip-bg:   #2a2d36;
+  --chip-text: #b0b6c3;
+
+  /* Social buttons */
+  --social-btn-bg:    #282b35;
+  --social-btn-color: #e8eaf0;
+  --social-btn-hover: #333745;
+
+  /* Inputs */
+  --input-bg:          #1a1c22;
+  --input-placeholder: #858c97;
+
+  /* Footer */
+  --footer-body-text: #b0b6c3;
+
+  /* Navigation */
+  --nav-bg:           rgba(14, 15, 22, 0.80);
+  --nav-border:       rgba(255, 255, 255, 0.12);
+  --nav-icon-inactive:rgba(255, 255, 255, 0.36);
+  --nav-icon-active:  #f0f0ef;
+  --nav-pill-bg:      rgba(255, 255, 255, 0.13);
+
+  /* TopBar */
+  --topbar-name-color:  #f0f0ef;
+  --topbar-toggle-bg:   rgba(255, 255, 255, 0.08);
+  --topbar-toggle-color:#f0f0ef;
+
+  /* Shadows */
+  --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.36);
+  --shadow-card: 0 24px 64px rgba(0, 0, 0, 0.50);
+
+  /* Bento */
+  --bento-surface:    #1c1d24;
+  --bento-tech-bg:    linear-gradient(148deg, #0D1A2D 0%, #0A1528 100%);
+  --bento-tech-border:rgba(0, 145, 255, 0.20);
   --bento-tech-label: rgba(80, 160, 255, 0.75);
+
   /* Marquee edge fade (dark) */
   --marquee-edge-fade: linear-gradient(90deg, #141519 0%, transparent 10%, transparent 90%, #141519 100%);
 }
@@ -93,6 +177,7 @@ html.lenis body {
   overflow: hidden;
 }
 
+/* Base reset */
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -101,7 +186,31 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
-  transition: background-color 0.45s ease, color 0.45s ease;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* Smooth theme transitions */
+section,
+header,
+footer,
+nav,
+article,
+aside,
+main {
+  transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  section,
+  header,
+  footer,
+  nav,
+  article,
+  aside,
+  main {
+    transition: none !important;
+  }
 }
 
 /* Scroll offsets — bottom dock height clearance */
@@ -145,8 +254,6 @@ main > section:last-of-type {
   to { transform: translate3d(0, 0, 0); }
 }
 
-
-
 .marquee-container {
   width: 100%;
   overflow: hidden;
@@ -160,7 +267,6 @@ main > section:last-of-type {
   width: max-content;
 }
 
-
 .marquee-track {
   animation: marquee 58s linear infinite;
 }
@@ -169,7 +275,7 @@ main > section:last-of-type {
   animation: marquee-right 64s linear infinite;
 }
 
-/* Project cards — compact premium style matching Austin Pratik reference */
+/* Project cards — compact premium style */
 .project-card {
   width: clamp(300px, 28vw, 430px);
   height: clamp(180px, 15vw, 240px);
@@ -220,7 +326,7 @@ main > section:last-of-type {
 }
 .card-lift:hover {
   transform: translateY(-6px);
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.14);
+  box-shadow: var(--shadow-card);
 }
 
 /* ── Projects listing card — mobile stack ── */
@@ -272,7 +378,8 @@ main > section:last-of-type {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  background: var(--bg-card);
+  transition: background-color 0.35s ease;
 }
 
 .topbar-avatar-img {

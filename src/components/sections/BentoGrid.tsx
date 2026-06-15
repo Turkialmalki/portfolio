@@ -22,8 +22,9 @@ export default function BentoGrid() {
     <section
   id="about"
   style={{
-    backgroundColor: "#ffffff",
+    backgroundColor: "var(--bg-primary)",
     padding: "clamp(80px, 10vw, 130px) 24px",
+    transition: "background-color 0.35s ease",
   }}
 >
   <div
@@ -38,8 +39,8 @@ export default function BentoGrid() {
         display: "inline-flex",
         padding: "8px 18px",
         borderRadius: 999,
-        background: "#f1f1f1",
-        color: "#666",
+        background: "var(--bg-pill)",
+        color: "var(--text-secondary)",
         fontSize: 16,
         marginBottom: 28,
       }}
@@ -54,7 +55,8 @@ export default function BentoGrid() {
         letterSpacing: "-0.05em",
         lineHeight: 1,
         margin: 0,
-        color: "#000",
+        color: "var(--text-primary)",
+        transition: "color 0.35s ease",
       }}
     >
       Behind the Screens
@@ -65,9 +67,10 @@ export default function BentoGrid() {
         fontSize: "clamp(20px, 2vw, 28px)",
         fontWeight: 600,
         lineHeight: 1.15,
-        color: "#666",
+        color: "var(--text-secondary)",
         maxWidth: 620,
         margin: "22px auto 70px",
+        transition: "color 0.35s ease",
       }}
     >
       A glimpse into my mindset, style, and design edge.
@@ -100,7 +103,7 @@ export default function BentoGrid() {
         <div
           key={card.title}
           style={{
-            background: "#f3f3f3",
+            background: "var(--bg-card)",
             borderRadius: 32,
             padding: "56px 36px",
             minHeight: 260,
@@ -108,6 +111,7 @@ export default function BentoGrid() {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
+            transition: "background-color 0.35s ease",
           }}
         >
           <div style={{ fontSize: 54, marginBottom: 28 }}>{card.icon}</div>
@@ -118,7 +122,8 @@ export default function BentoGrid() {
               fontWeight: 800,
               letterSpacing: "-0.04em",
               margin: "0 0 18px",
-              color: "#000",
+              color: "var(--text-primary)",
+              transition: "color 0.35s ease",
             }}
           >
             {card.title}
@@ -128,9 +133,10 @@ export default function BentoGrid() {
             style={{
               fontSize: 18,
               lineHeight: 1.5,
-              color: "#666",
+              color: "var(--text-secondary)",
               maxWidth: 280,
               margin: 0,
+              transition: "color 0.35s ease",
             }}
           >
             {card.text}
