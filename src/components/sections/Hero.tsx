@@ -1,288 +1,1178 @@
 "use client";
 
-import { useRef } from "react";
 import Image from "next/image";
-import { motion, useScroll, useTransform } from "framer-motion";
+import Link from "next/link";
+import {
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const EASE: [number, number, number, number] = [
+  0.16,
+  1,
+  0.3,
+  1,
+];
 
-const PROJECTS = [
+type HeroProject = {
+  title: string;
+  brand: string;
+  image: string;
+  logo: string;
+  objectPosition?: string;
+  imageScale?: number;
+};
+
+const PROJECTS: HeroProject[] = [
   {
-    title: "BaseBox AI SaaS",
-    tag: "AI · SaaS Platform",
-    accent: "#fff",
-    cardBg: "#EEF4FF",
-    image: "/alrajhi2022.png" as string | null,
-    objectPosition: "center top",
+    title: "Al Rajhi Mobile Banking",
+    brand: "Al Rajhi Bank",
+    image: "/alrajhi2026.png",
+    logo: "/alrajhilogo.png",
+    objectPosition: "center center",
+    imageScale: 1.32,
   },
   {
-    title: "Munaaseb Fintech",
-    tag: "Fintech · Open Banking",
-    accent: "#00A87A",
-    cardBg: "#EDFAF6",
-    image: "/emkan2025.png" as string | null,
-    objectPosition: "center top",
+    title: "Engineering MasterPiece",
+    brand: "Fintech",
+    image: "/casdd.png",
+    logo: "/money.png",
+    objectPosition: "center center",
+    imageScale: 1,
+  },
+    {
+    title: "Emkan",
+    brand: "Emkan",
+    image: "/emkan2026.png",
+    logo: "/emkanlogo.png",
+    objectPosition: "center center",
+    imageScale: 1.1,
   },
   {
-    title: "Lean Technologies",
-    tag: "Enterprise · Digital",
-    accent: "#FFFFFF",
-    cardBg: "#0F0A1A",
-    image: "ithnin20221.png" as string | null,
-    objectPosition: "center 28%",
+    title: "Ithnain Mobile Experience",
+    brand: "Ithnain",
+    image: "/ithnin2026.png",
+    logo: "ithninlogo.jpeg",
+    objectPosition: "center center",
+    imageScale: 1.25,
   },
   {
-    title: "SAP Cloud CX",
-    tag: "Enterprise · CX Suite",
-    accent: "#0057B8",
-    cardBg: "#EEF2FF",
-    image: "munasib.png" as string | null,
-    objectPosition: "center 22%",
+    title: "Munaseb Digital Platform",
+    brand: "Munaseb",
+    image: "munasib2026.png",
+    logo: "/munasiblogo.jpeg",
+    objectPosition: "center center",
+    imageScale: 1.3,
   },
   {
-    title: "Hala Product",
-    tag: "Product · Innovation",
-    accent: "#E8541E",
-    cardBg: "#FFF4EE",
-    image: "/wijhut.png" as string | null,
-    objectPosition: "center top",
+    title: "Wijhut Travel Experience",
+    brand: "Wijhut",
+    image: "/wijhut2026.png",
+    logo: "/wjhut.png",
+    objectPosition: "center center",
+    imageScale: 1.1,
   },
 ];
 
-const ROW_1 = [...PROJECTS, ...PROJECTS];
-const ROW_2 = [...[...PROJECTS].reverse(), ...[...PROJECTS].reverse()];
+const FIRST_ROW: HeroProject[] = [
+  ...PROJECTS,
+  ...PROJECTS,
+];
 
-export default function Hero({ ready = true }: { ready?: boolean }) {
+const REVERSED_PROJECTS = [...PROJECTS].reverse();
+
+const SECOND_ROW: HeroProject[] = [
+  ...REVERSED_PROJECTS,
+  ...REVERSED_PROJECTS,
+];
+
+type HeroProps = {
+  ready?: boolean;
+};
+
+export default function Hero({
+  ready = true,
+}: HeroProps) {
   const sectionRef = useRef<HTMLElement>(null);
+
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
   });
-  const avatarY = useTransform(scrollYProgress, [0, 1], ["0%", "14%"]);
+
+  const portraitY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    ["0%", "8%"],
+  );
 
   return (
     <section
       id="home"
       ref={sectionRef}
-      style={{
-        backgroundColor: "var(--bg-surface)",
-        overflow: "hidden",
-        transition: "background-color 0.45s ease",
-        display: "flex",
-        flexDirection: "column",
-      }}
+      className="hero-root"
     >
-      {/* ── Hero grid: copy left, avatar right ── */}
-      <div
-        className="hero-grid"
-        style={{
-          maxWidth: 1280,
-          width: "100%",
-          margin: "0 auto",
-          padding:
-            "clamp(100px, 10vw, 124px) clamp(24px, 4vw, 48px) clamp(48px, 5vw, 72px)",
-          display: "grid",
-          gap: "clamp(40px, 5vw, 80px)",
-          alignItems: "center",
-        }}
-      >
-        {/* LEFT: Copy */}
-        <div>
-          {/* Mobile-only avatar */}
-          <motion.div
-            className="flex justify-center md:hidden"
-            style={{ marginBottom: 36, paddingLeft: 16, paddingRight: 16 }}
-            initial={{ opacity: 0, scale: 0.88 }}
-            animate={
-              ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }
-            }
-            transition={{ duration: 0.9, ease: EASE, delay: 0.05 }}
-          >
-            <AvatarVisual mobile />
-          </motion.div>
-
-          {/* Headline */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ overflow: "hidden" }}>
+      <div className="hero-container">
+        <div className="hero-copy">
+          <div className="hero-heading">
+            <div className="hero-heading-line">
               <motion.h1
-                initial={{ y: "110%", opacity: 0 }}
-                animate={
-                  ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }
-                }
-                transition={{ duration: 1.05, ease: EASE, delay: 0.08 }}
-                style={{
-                  fontSize: "clamp(40px, 5.6vw, 84px)",
-                  fontWeight: 800,
-                  color: "var(--text-primary)",
-                  lineHeight: 1.04,
-                  letterSpacing: "-0.04em",
-                  display: "block",
-                  transition: "color 0.45s ease",
+                initial={{
+                  y: "110%",
+                  opacity: 0,
                 }}
+                animate={
+                  ready
+                    ? {
+                        y: 0,
+                        opacity: 1,
+                      }
+                    : {
+                        y: "110%",
+                        opacity: 0,
+                      }
+                }
+                transition={{
+                  duration: 0.95,
+                  ease: EASE,
+                  delay: 0.06,
+                }}
+                className="hero-title"
               >
                 Hello! 👋 I&apos;m
               </motion.h1>
             </div>
-            <div style={{ overflow: "hidden" }}>
+
+            <div className="hero-heading-line">
               <motion.h1
-                initial={{ y: "110%", opacity: 0 }}
-                animate={
-                  ready ? { y: 0, opacity: 1 } : { y: "110%", opacity: 0 }
-                }
-                transition={{ duration: 1.05, ease: EASE, delay: 0.14 }}
-                style={{
-                  fontSize: "clamp(40px, 5.6vw, 84px)",
-                  fontWeight: 800,
-                  lineHeight: 1.04,
-                  letterSpacing: "-0.04em",
-                  display: "block",
-                  background:
-                    "linear-gradient(135deg, #0091FF 0%, #00C8A0 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
+                initial={{
+                  y: "110%",
+                  opacity: 0,
                 }}
+                animate={
+                  ready
+                    ? {
+                        y: 0,
+                        opacity: 1,
+                      }
+                    : {
+                        y: "110%",
+                        opacity: 0,
+                      }
+                }
+                transition={{
+                  duration: 0.95,
+                  ease: EASE,
+                  delay: 0.12,
+                }}
+                className="hero-title hero-name"
               >
                 Turki Almalki
               </motion.h1>
             </div>
           </div>
 
-          {/* Description */}
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-            transition={{ duration: 0.9, ease: EASE, delay: 0.26 }}
-            style={{
-              fontSize: "clamp(20px, 1.6vw, 22px)",
-              color: "var(--text-secondary)",
-              lineHeight: 1.32,
-              maxWidth: 920,
-              marginBottom: 42,
-              fontWeight: 400,
-              letterSpacing: "-0.03em",
-              fontFamily:
-                "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-              transition: "color 0.35s ease",
+            initial={{
+              opacity: 0,
+              y: 18,
             }}
+            animate={
+              ready
+                ? {
+                    opacity: 1,
+                    y: 0,
+                  }
+                : {
+                    opacity: 0,
+                    y: 18,
+                  }
+            }
+            transition={{
+              duration: 0.8,
+              ease: EASE,
+              delay: 0.22,
+            }}
+            className="hero-description"
           >
-            Driving innovation through{" "}
-            <span
-              style={{
-                color: "var(--text-primary)",
-                fontWeight: 700,
-                transition: "color 0.35s ease",
-              }}
-            >
-              {" "}
-              Engineering Excellence.
-            </span>{" "}
-            
-            Crafting seamless design and scalable code to build impactful
-            digital products.
+            I&apos;m an engineering leader and product innovator
+            building{" "}
+            <strong>
+              scalable, intuitive, and impactful digital products.
+            </strong>
           </motion.p>
 
-          {/* CTA Buttons */}
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-            transition={{ duration: 0.8, ease: EASE, delay: 0.38 }}
-            style={{ display: "flex", gap: 14, flexWrap: "wrap" }}
+            initial={{
+              opacity: 0,
+              y: 14,
+            }}
+            animate={
+              ready
+                ? {
+                    opacity: 1,
+                    y: 0,
+                  }
+                : {
+                    opacity: 0,
+                    y: 14,
+                  }
+            }
+            transition={{
+              duration: 0.75,
+              ease: EASE,
+              delay: 0.32,
+            }}
+            className="hero-actions"
           >
-            <PillButton color="#0091FF" href="/projects">
+            <PillButton href="/projects">
               View Portfolio
             </PillButton>
           </motion.div>
         </div>
 
-        {/* RIGHT: Avatar */}
         <motion.div
-          className="hidden md:flex"
-          initial={{ opacity: 0, scale: 0.88 }}
-          animate={
-            ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.88 }
-          }
-          transition={{ duration: 1.4, ease: EASE, delay: 0.2 }}
-          style={{
-            y: avatarY,
-            justifyContent: "center",
-            alignItems: "center",
-            position: "relative",
+          initial={{
+            opacity: 0,
+            scale: 0.9,
+            y: 18,
           }}
+          animate={
+            ready
+              ? {
+                  opacity: 1,
+                  scale: 1,
+                  y: 0,
+                }
+              : {
+                  opacity: 0,
+                  scale: 0.9,
+                  y: 18,
+                }
+          }
+          transition={{
+            duration: 1,
+            ease: EASE,
+            delay: 0.16,
+          }}
+          style={{
+            y: portraitY,
+          }}
+          className="hero-portrait-column"
         >
-          <AvatarVisual />
+          <HeroPortrait />
         </motion.div>
       </div>
 
-      {/* ── Subtle section separator ── */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={ready ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 1.2, ease: EASE, delay: 0.5 }}
-        style={{
-          maxWidth: 1280,
-          margin: "0 auto",
-          width: "100%",
-          padding: "0 clamp(24px, 4vw, 48px)",
-          marginBottom: 20,
+        initial={{
+          opacity: 0,
+          y: 26,
         }}
+        animate={
+          ready
+            ? {
+                opacity: 1,
+                y: 0,
+              }
+            : {
+                opacity: 0,
+                y: 26,
+              }
+        }
+        transition={{
+          duration: 0.9,
+          ease: EASE,
+          delay: 0.42,
+        }}
+        className="hero-gallery"
       >
-        <div
-          style={{
-            height: 1,
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(0,145,255,0.14) 30%, rgba(0,200,160,0.14) 70%, transparent 100%)",
-          }}
+        <MarqueeRow
+          projects={FIRST_ROW}
+          direction="left"
+          duration={45}
+          delay={-12}
+        />
+
+        <MarqueeRow
+          projects={SECOND_ROW}
+          direction="right"
+          duration={52}
+          delay={-20}
         />
       </motion.div>
 
-      {/* ── Two-row infinite image gallery ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 36 }}
-        animate={ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 36 }}
-        transition={{ duration: 0.95, ease: EASE, delay: 0.55 }}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 14,
-          paddingBottom: 80,
-          overflow: "hidden",
-        }}
-      >
-        {/* Row 1: scrolls left */}
-        <div className="marquee-container marquee-edges">
-          <div className="marquee-track">
-            {ROW_1.map((p, i) => (
-              <LargeProjectCard
-                key={i}
-                project={p}
-                index={i % PROJECTS.length}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Row 2: scrolls right */}
-        <div className="marquee-container marquee-edges">
-          <div className="marquee-track-right">
-            {ROW_2.map((p, i) => (
-              <LargeProjectCard
-                key={i}
-                project={p}
-                index={i % PROJECTS.length}
-              />
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
       <style>{`
-        .hero-grid {
-          grid-template-columns: 1fr;
+        .hero-root {
+          --hero-card-background: #E8E8E8;
+          --hero-card-border: rgba(0, 0, 0, 0);
+
+          --hero-badge-background:
+            rgba(255, 255, 255, 0.94);
+
+          --hero-badge-border:
+            rgba(0, 0, 0, 0.07);
+
+          --hero-badge-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.1);
+
+          width: 100%;
+          overflow: hidden;
+
+          background: var(--bg-primary, #ffffff);
+          color: var(--text-primary, #090909);
+
+          transition:
+            background-color 300ms ease,
+            color 300ms ease;
         }
-        @media (min-width: 768px) {
-          .hero-grid {
-            grid-template-columns: 1.2fr 0.8fr;
+
+        :global(.dark) .hero-root,
+        :global([data-theme="dark"]) .hero-root {
+          --hero-card-background: #1d1f23;
+          --hero-card-border:
+            rgba(255, 255, 255, 0.075);
+
+          --hero-badge-background:
+            rgba(34, 36, 41, 0.94);
+
+          --hero-badge-border:
+            rgba(255, 255, 255, 0.09);
+
+          --hero-badge-shadow:
+            0 12px 30px rgba(0, 0, 0, 0.28);
+        }
+
+        /*
+         * Main hero area
+         */
+
+        .hero-container {
+          width: min(1180px, calc(100% - 48px));
+          margin: 0 auto;
+
+          padding-top: clamp(108px, 9vw, 132px);
+          padding-bottom: clamp(42px, 5vw, 60px);
+
+          display: grid;
+          grid-template-columns:
+            minmax(0, 1.35fr)
+            minmax(280px, 0.65fr);
+
+          align-items: center;
+          gap: clamp(56px, 8vw, 112px);
+        }
+
+        .hero-copy {
+          min-width: 0;
+          max-width: 720px;
+        }
+
+        .hero-heading {
+          margin-bottom: clamp(18px, 2vw, 24px);
+        }
+
+        .hero-heading-line {
+          overflow: hidden;
+        }
+
+        .hero-title {
+          margin: 0;
+
+          color: var(--text-primary, #090909);
+
+          font-size: clamp(52px, 6.2vw, 82px);
+          font-weight: 800;
+          line-height: 0.99;
+          letter-spacing: -0.06em;
+
+          transition: color 300ms ease;
+        }
+
+        .hero-name {
+          width: fit-content;
+          margin-top: 4px;
+
+          background:
+            linear-gradient(
+              105deg,
+              #1495ff 0%,
+              #0cbdda 45%,
+              #09cda4 100%
+            );
+
+          background-clip: text;
+          -webkit-background-clip: text;
+
+          color: transparent;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .hero-description {
+          max-width: 660px;
+          margin: 0 0 30px;
+
+          color: var(--text-secondary, #666666);
+
+          font-size: clamp(19px, 1.65vw, 24px);
+          font-weight: 500;
+          line-height: 1.42;
+          letter-spacing: -0.028em;
+
+          transition: color 300ms ease;
+        }
+
+        .hero-description strong {
+          color: var(--text-primary, #090909);
+          font-weight: 750;
+
+          transition: color 300ms ease;
+        }
+
+        .hero-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        /*
+         * Portrait and floating badges
+         */
+
+        .hero-portrait-column {
+          min-width: 0;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .hero-portrait-stage {
+          position: relative;
+
+          width: clamp(300px, 27vw, 380px);
+          aspect-ratio: 1 / 1;
+        }
+
+        .hero-portrait {
+          position: absolute;
+          inset: 22px;
+
+          overflow: hidden;
+
+          border-radius: 50%;
+
+          background:
+            linear-gradient(
+              145deg,
+              #0ba9ff 0%,
+              #05d4aa 100%
+            );
+
+          border:
+            3px solid rgba(20, 149, 255, 0.22);
+
+          box-shadow:
+            0 24px 68px rgba(20, 149, 255, 0.22);
+        }
+
+        .hero-portrait::before {
+          content: "";
+
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+
+          pointer-events: none;
+
+          background:
+            radial-gradient(
+              circle at 52% 35%,
+              rgba(255, 255, 255, 0.15),
+              transparent 58%
+            );
+        }
+
+        .hero-portrait-image {
+          object-fit: cover;
+          object-position: center 22%;
+
+          transform: scale(1.02);
+        }
+
+        .hero-floating-badge {
+          position: absolute;
+          z-index: 5;
+
+          display: flex;
+          align-items: center;
+          gap: 10px;
+
+          padding: 11px 14px;
+
+          color: var(--text-primary, #090909);
+          background: var(--hero-badge-background);
+
+          border:
+            1px solid
+            var(--hero-badge-border);
+
+          border-radius: 16px;
+
+          box-shadow: var(--hero-badge-shadow);
+
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+
+          transition:
+            color 300ms ease,
+            background-color 300ms ease,
+            border-color 300ms ease;
+        }
+
+        .hero-experience-badge {
+          top: 28px;
+          left: -6px;
+        }
+
+        .hero-location-badge {
+          right: -4px;
+          bottom: 24px;
+        }
+
+        .hero-badge-value {
+          margin: 0;
+
+          color: var(--accent, #1495ff);
+
+          font-size: 22px;
+          font-weight: 800;
+          line-height: 1;
+          letter-spacing: -0.04em;
+        }
+
+        .hero-badge-title {
+          margin: 0;
+
+          color: var(--text-primary, #090909);
+
+          font-size: 13px;
+          font-weight: 700;
+          line-height: 1.1;
+          letter-spacing: -0.02em;
+
+          white-space: nowrap;
+        }
+
+        .hero-badge-description {
+          margin: 4px 0 0;
+
+          color: var(--text-secondary, #666666);
+
+          font-size: 10px;
+          line-height: 1.1;
+
+          white-space: nowrap;
+        }
+
+        .hero-location-dot {
+          width: 8px;
+          height: 8px;
+
+          flex: 0 0 auto;
+
+          border-radius: 50%;
+          background: #ef4444;
+
+          box-shadow:
+            0 0 0 4px rgba(239, 68, 68, 0.12);
+        }
+
+        /*
+         * Moving project gallery
+         */
+
+        .hero-gallery {
+          --hero-gallery-gap:
+            clamp(12px, 1.1vw, 18px);
+
+          --hero-gallery-card-width:
+            clamp(280px, 21vw, 370px);
+
+          width: 100%;
+
+          display: flex;
+          flex-direction: column;
+          gap: var(--hero-gallery-gap);
+
+          padding-top: 4px;
+          padding-bottom: clamp(72px, 8vw, 104px);
+
+          overflow: hidden;
+        }
+
+        .hero-marquee-viewport {
+          width: 100%;
+          overflow: hidden;
+
+          -webkit-mask-image:
+            linear-gradient(
+              90deg,
+              transparent 0%,
+              #000 3%,
+              #000 97%,
+              transparent 100%
+            );
+
+          mask-image:
+            linear-gradient(
+              90deg,
+              transparent 0%,
+              #000 3%,
+              #000 97%,
+              transparent 100%
+            );
+        }
+
+        .hero-marquee-track {
+          width: max-content;
+
+          display: flex;
+          align-items: center;
+          gap: var(--hero-gallery-gap);
+
+          will-change: transform;
+          backface-visibility: hidden;
+          transform: translate3d(0, 0, 0);
+        }
+
+        .hero-marquee-track-left {
+          animation:
+            hero-marquee-left
+            var(--hero-marquee-duration)
+            linear
+            infinite;
+
+          animation-delay:
+            var(--hero-marquee-delay);
+        }
+
+        .hero-marquee-track-right {
+          animation:
+            hero-marquee-right
+            var(--hero-marquee-duration)
+            linear
+            infinite;
+
+          animation-delay:
+            var(--hero-marquee-delay);
+        }
+
+        .hero-marquee-viewport:hover
+        .hero-marquee-track {
+          animation-play-state: paused;
+        }
+
+        /*
+         * Outer wrapper stays visible.
+         * Inner surface clips only the project artwork.
+         */
+
+        .hero-gallery-card {
+          position: relative;
+
+          flex:
+            0 0
+            var(--hero-gallery-card-width);
+
+          width:
+            var(--hero-gallery-card-width);
+
+          aspect-ratio: 1.5 / 1;
+
+          overflow: visible;
+          background: transparent;
+          border: none;
+        }
+
+        .hero-gallery-surface {
+          position: absolute;
+          inset: 0;
+
+          overflow: hidden;
+
+          background:
+            var(--hero-card-background);
+
+          border:
+            1px solid
+            var(--hero-card-border);
+
+          border-radius:
+            clamp(22px, 1.7vw, 30px);
+
+          transition:
+            transform 350ms
+              cubic-bezier(0.16, 1, 0.3, 1),
+            background-color 300ms ease,
+            border-color 300ms ease,
+            box-shadow 350ms ease;
+        }
+
+        .hero-gallery-card:hover
+        .hero-gallery-surface {
+          transform: translateY(-3px);
+
+          box-shadow:
+            0 16px 38px rgba(0, 0, 0, 0.09);
+        }
+
+        .hero-gallery-media {
+          position: absolute;
+          inset: 0;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          overflow: hidden;
+
+          background: transparent;
+          border-radius: inherit;
+        }
+
+        .hero-gallery-art {
+          position: relative;
+
+          width: 100%;
+          height: 100%;
+
+          transform:
+            scale(var(--project-scale, 1));
+
+          transform-origin: center center;
+
+          transition:
+            transform 420ms
+              cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .hero-gallery-card:hover
+        .hero-gallery-art {
+          transform:
+            scale(
+              calc(
+                var(--project-scale, 1) + 0.02
+              )
+            );
+        }
+
+        .hero-gallery-image {
+          object-fit: contain;
+          object-position: center center;
+
+          filter:
+            drop-shadow(
+              0 15px 18px
+              rgba(0, 0, 0, 0.14)
+            );
+        }
+
+        /*
+         * Floating project logo badge
+         */
+
+        .project-brand-badge {
+          position: absolute;
+          top: 14px;
+          left: 14px;
+          z-index: 10;
+
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+
+          min-height: 38px;
+          max-width: calc(100% - 28px);
+
+          padding: 6px 12px 6px 7px;
+
+          color: var(--text-primary, #111111);
+          background: var(--hero-badge-background);
+
+          border:
+            1px solid
+            var(--hero-badge-border);
+
+          border-radius: 999px;
+
+          box-shadow: var(--hero-badge-shadow);
+
+          backdrop-filter: blur(15px);
+          -webkit-backdrop-filter: blur(15px);
+
+          pointer-events: none;
+
+          transition:
+            transform 300ms ease,
+            color 300ms ease,
+            background-color 300ms ease,
+            border-color 300ms ease;
+        }
+
+        .hero-gallery-card:hover
+        .project-brand-badge {
+          transform: translateY(-1px);
+        }
+
+        /*
+         * Explicit image sizing prevents logos
+         * from being cropped by Next Image fill.
+         */
+
+        .project-brand-logo {
+          width: 28px;
+          height: 28px;
+
+          flex: 0 0 28px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          overflow: hidden;
+
+          background: #ffffff;
+
+          border:
+            1px solid rgba(0, 0, 0, 0.055);
+
+          border-radius: 50%;
+        }
+
+        .project-brand-logo-image {
+          width: 19px;
+          height: 19px;
+
+          display: block;
+
+          object-fit: contain;
+        }
+
+        .project-brand-name {
+          max-width: 132px;
+
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1;
+          letter-spacing: -0.015em;
+        }
+
+        @keyframes hero-marquee-left {
+          from {
+            transform: translate3d(0, 0, 0);
+          }
+
+          to {
+            transform:
+              translate3d(
+                calc(
+                  -50% -
+                  (var(--hero-gallery-gap) / 2)
+                ),
+                0,
+                0
+              );
+          }
+        }
+
+        @keyframes hero-marquee-right {
+          from {
+            transform:
+              translate3d(
+                calc(
+                  -50% -
+                  (var(--hero-gallery-gap) / 2)
+                ),
+                0,
+                0
+              );
+          }
+
+          to {
+            transform: translate3d(0, 0, 0);
+          }
+        }
+
+        /*
+         * Tablet
+         */
+
+        @media (max-width: 960px) {
+          .hero-container {
+            grid-template-columns:
+              minmax(0, 1.15fr)
+              minmax(230px, 0.85fr);
+
+            gap: 42px;
+          }
+
+          .hero-title {
+            font-size:
+              clamp(48px, 6.8vw, 66px);
+          }
+
+          .hero-description {
+            font-size:
+              clamp(18px, 2vw, 21px);
+          }
+
+          .hero-portrait-stage {
+            width:
+              clamp(270px, 31vw, 330px);
+          }
+
+          .hero-gallery {
+            --hero-gallery-card-width:
+              clamp(265px, 30vw, 330px);
+          }
+
+          .project-brand-name {
+            max-width: 105px;
+          }
+        }
+
+        /*
+         * Mobile
+         */
+
+        @media (max-width: 760px) {
+          .hero-container {
+            width:
+              min(620px, calc(100% - 32px));
+
+            grid-template-columns: 1fr;
+
+            padding-top: 86px;
+            padding-bottom: 44px;
+
+            gap: 34px;
+
+            text-align: center;
+          }
+
+          .hero-portrait-column {
+            grid-row: 1;
+          }
+
+          .hero-copy {
+            grid-row: 2;
+
+            max-width: 600px;
+            margin: 0 auto;
+          }
+
+          .hero-heading {
+            margin-bottom: 17px;
+          }
+
+          .hero-title {
+            font-size:
+              clamp(42px, 11vw, 58px);
+
+            line-height: 1.01;
+          }
+
+          .hero-name {
+            margin-inline: auto;
+            margin-top: 3px;
+          }
+
+          .hero-description {
+            max-width: 560px;
+
+            margin-inline: auto;
+            margin-bottom: 26px;
+
+            font-size: 18px;
+            line-height: 1.45;
+          }
+
+          .hero-actions {
+            justify-content: center;
+          }
+
+          .hero-portrait-stage {
+            width:
+              clamp(270px, 76vw, 340px);
+          }
+
+          .hero-experience-badge {
+            top: 18px;
+            left: 0;
+          }
+
+          .hero-location-badge {
+            right: 0;
+            bottom: 15px;
+          }
+
+          .hero-gallery {
+            --hero-gallery-card-width:
+              clamp(245px, 64vw, 310px);
+
+            --hero-gallery-gap: 12px;
+
+            padding-bottom: 78px;
+          }
+
+          .project-brand-badge {
+            top: 11px;
+            left: 11px;
+
+            min-height: 34px;
+
+            padding:
+              5px 9px 5px 6px;
+          }
+
+          .project-brand-logo {
+            width: 24px;
+            height: 24px;
+            flex-basis: 24px;
+          }
+
+          .project-brand-logo-image {
+            width: 16px;
+            height: 16px;
+          }
+
+          .project-brand-name {
+            max-width: 94px;
+            font-size: 10px;
+          }
+        }
+
+        /*
+         * Small mobile
+         */
+
+        @media (max-width: 480px) {
+          .hero-container {
+            padding-top: 76px;
+            padding-bottom: 38px;
+
+            gap: 28px;
+          }
+
+          .hero-title {
+            font-size:
+              clamp(38px, 11.5vw, 49px);
+          }
+
+          .hero-description {
+            font-size: 16.5px;
+            line-height: 1.48;
+          }
+
+          .hero-portrait-stage {
+            width:
+              min(290px, calc(100vw - 32px));
+          }
+
+          .hero-portrait {
+            inset: 28px;
+          }
+
+          .hero-floating-badge {
+            padding: 8px 10px;
+            border-radius: 13px;
+          }
+
+          .hero-badge-value {
+            font-size: 18px;
+          }
+
+          .hero-badge-title {
+            font-size: 11px;
+          }
+
+          .hero-badge-description {
+            font-size: 9px;
+          }
+
+          .hero-experience-badge {
+            top: 17px;
+            left: 2px;
+          }
+
+          .hero-location-badge {
+            right: 2px;
+            bottom: 16px;
+          }
+
+          .hero-gallery {
+            --hero-gallery-card-width:
+              clamp(220px, 72vw, 270px);
+
+            --hero-gallery-gap: 10px;
+
+            padding-bottom: 66px;
+          }
+
+          .hero-gallery-card {
+            border-radius: 21px;
+          }
+
+          .project-brand-badge {
+            top: 10px;
+            left: 10px;
+
+            width: 34px;
+            height: 34px;
+
+            min-height: 0;
+
+            padding: 4px;
+
+            justify-content: center;
+          }
+
+          .project-brand-logo {
+            width: 25px;
+            height: 25px;
+            flex-basis: 25px;
+          }
+
+          .project-brand-logo-image {
+            width: 17px;
+            height: 17px;
+          }
+
+          .project-brand-name {
+            display: none;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-marquee-track {
+            animation-play-state: paused;
+          }
+
+          .hero-gallery-surface,
+          .hero-gallery-art,
+          .project-brand-badge {
+            transition: none !important;
           }
         }
       `}</style>
@@ -290,999 +1180,266 @@ export default function Hero({ ready = true }: { ready?: boolean }) {
   );
 }
 
-/* ── Premium contained image card — light gray bg, image with breathing room ── */
-function LargeProjectCard({
-  project,
-  index,
-}: {
-  project: (typeof PROJECTS)[number];
-  index: number;
-}) {
-  const isPhoto = Boolean(project.image);
-
+function HeroPortrait() {
   return (
-    <div
-      className="project-card"
-      style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: 32,
-        overflow: "hidden",
-        background: "var(--bg-card)",
-        boxShadow: "none",
-        border: "none",
-        transition: "background-color 0.35s ease",
-      }}
-    >
-      {isPhoto ? (
-        /* ── Contained photo — padded, rounded, not cropped ── */
-        <div
-          style={{
-            position: "relative",
-            width: "100%",
-            height: "100%",
-            borderRadius: 28,
-            overflow: "hidden",
-          }}
-        >
-          <Image
-            src={project.image!}
-            alt={project.title}
-            fill
-            sizes="560px"
-            style={{
-              objectFit: "cover",
-              objectPosition: project.objectPosition || "center",
-            }}
-            priority={false}
-          />
-        </div>
-      ) : (
-        /* ── Inset SVG mockup window ── */
-        <div
-          style={{
-            width: "88%",
-            height: "88%",
-            borderRadius: 25,
-            overflow: "hidden",
-            border: "1px solid rgba(0,0,0,0.07)",
-          }}
-        >
-          <ProjectMockup index={index} accent={project.accent} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Per-project light-background SVG mockups ── */
-function ProjectMockup({
-  index,
-  accent: a,
-}: {
-  index: number;
-  accent: string;
-}) {
-  /* index 0: BaseBox AI — clean SaaS dashboard */
-  if (index === 0) {
-    return (
-      <svg
-        viewBox="0 0 560 218"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMid slice"
-        fill="none"
-      >
-        <rect width="560" height="218" fill="#FAFBFF" />
-
-        {/* Sidebar */}
-        <rect width="50" height="218" fill="#EEF0F8" />
-        <rect x="13" y="13" width="24" height="24" rx="7" fill={a} />
-        {[52, 84, 116, 148, 180].map((y, i) => (
-          <g key={y}>
-            <rect
-              x="13"
-              y={y}
-              width="24"
-              height="20"
-              rx="5"
-              fill={i === 0 ? `${a}20` : "transparent"}
-            />
-            <rect
-              x="17"
-              y={y + 7}
-              width="16"
-              height="6"
-              rx="3"
-              fill={i === 0 ? a : "#BCC4D8"}
-              opacity={i === 0 ? 0.9 : 0.6}
-            />
-          </g>
-        ))}
-        <rect x="0" y="52" width="3" height="20" rx="1.5" fill={a} />
-        <line
-          x1="50"
-          y1="0"
-          x2="50"
-          y2="218"
-          stroke="#E4E8F0"
-          strokeWidth="1"
-        />
-
-        {/* Top bar */}
-        <rect x="50" width="510" height="42" fill="white" />
-        <line
-          x1="50"
-          y1="42"
-          x2="560"
-          y2="42"
-          stroke="#E4E8F0"
-          strokeWidth="1"
-        />
-        <rect
-          x="62"
-          y="14"
-          width="96"
-          height="14"
-          rx="5"
-          fill="#111827"
-          opacity="0.78"
-        />
-        <rect x="452" y="13" width="62" height="16" rx="8" fill={a} />
-        <circle cx="534" cy="21" r="9" fill="#EEF0F8" />
-        <circle cx="534" cy="21" r="5" fill="#BCC4D8" opacity="0.7" />
-
-        {/* Stat cards */}
-        {[0, 1, 2].map((i) => {
-          const x = 62 + i * 162;
-          return (
-            <g key={i}>
-              <rect
-                x={x}
-                y="54"
-                width="150"
-                height="60"
-                rx="10"
-                fill={i === 0 ? `${a}0E` : "white"}
-                stroke={i === 0 ? `${a}28` : "#E8ECF4"}
-                strokeWidth="1"
-              />
-              <rect
-                x={x + 12}
-                y="65"
-                width="42"
-                height="6"
-                rx="3"
-                fill="#9CA3AF"
-              />
-              <rect
-                x={x + 12}
-                y="77"
-                width={i === 0 ? 64 : 50}
-                height="14"
-                rx="4"
-                fill={i === 0 ? a : "#111827"}
-                opacity={i === 0 ? 0.88 : 0.72}
-              />
-              <rect
-                x={x + 12}
-                y="98"
-                width="28"
-                height="7"
-                rx="3.5"
-                fill="#ECFDF5"
-              />
-              <rect
-                x={x + 17}
-                y="101"
-                width="16"
-                height="1"
-                rx="0.5"
-                fill="#10B981"
-              />
-            </g>
-          );
-        })}
-
-        {/* Area chart */}
-        <rect
-          x="62"
-          y="126"
-          width="486"
-          height="80"
-          rx="10"
-          fill="white"
-          stroke="#E8ECF4"
-          strokeWidth="1"
-        />
-        {[140, 154, 168, 182, 196].map((y) => (
-          <line
-            key={y}
-            x1="76"
-            y1={y}
-            x2="536"
-            y2={y}
-            stroke="#F3F4F6"
-            strokeWidth="1"
-          />
-        ))}
-        <path
-          d="M76,198 C114,186 152,192 200,176 C248,160 280,168 320,152 C360,136 400,144 440,126 C476,111 508,118 536,104"
-          stroke={a}
-          strokeWidth="2.2"
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M76,198 C114,186 152,192 200,176 C248,160 280,168 320,152 C360,136 400,144 440,126 C476,111 508,118 536,104 L536,198 Z"
-          fill={`${a}10`}
-        />
-        <circle cx="320" cy="152" r="3.5" fill={a} />
-        <circle cx="536" cy="104" r="3.5" fill={a} />
-        <rect x="304" y="136" width="38" height="13" rx="5" fill={a} />
-        <rect
-          x="309"
-          y="141"
-          width="24"
-          height="3"
-          rx="1.5"
-          fill="white"
-          opacity="0.9"
-        />
-      </svg>
-    );
-  }
-
-  /* index 1: Munaaseb Fintech — banking app */
-  if (index === 1) {
-    const bars = [
-      0.44, 0.6, 0.5, 0.76, 0.64, 0.88, 0.72, 0.94, 0.82, 0.98, 0.86, 1.0,
-    ];
-    const barW = 30,
-      gap = 14,
-      startX = 20;
-    return (
-      <svg
-        viewBox="0 0 560 218"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMid slice"
-        fill="none"
-      >
-        <rect width="560" height="218" fill="white" />
-
-        {/* Balance card */}
-        <rect
-          x="16"
-          y="12"
-          width="260"
-          height="72"
-          rx="14"
-          fill={`${a}10`}
-          stroke={`${a}20`}
-          strokeWidth="1"
-        />
-        <rect x="28" y="24" width="56" height="6" rx="3" fill="#9CA3AF" />
-        <rect
-          x="28"
-          y="36"
-          width="130"
-          height="18"
-          rx="5"
-          fill="#111827"
-          opacity="0.85"
-        />
-        <rect x="28" y="62" width="38" height="10" rx="5" fill="#ECFDF5" />
-        <rect x="33" y="65" width="24" height="4" rx="2" fill="#10B981" />
-
-        {/* Period tabs */}
-        <rect x="16" y="96" width="40" height="14" rx="7" fill={a} />
-        <rect x="62" y="96" width="48" height="14" rx="7" fill="#F3F4F6" />
-        <rect x="116" y="96" width="38" height="14" rx="7" fill="#F3F4F6" />
-        <rect x="21" y="100" width="28" height="5" rx="2.5" fill="white" />
-        <rect x="68" y="100" width="36" height="5" rx="2.5" fill="#9CA3AF" />
-        <rect x="121" y="100" width="26" height="5" rx="2.5" fill="#9CA3AF" />
-
-        {/* Bar chart */}
-        {bars.map((h, i) => (
-          <rect
-            key={i}
-            x={startX + i * (barW + gap)}
-            y={178 - h * 60}
-            width={barW}
-            height={h * 60}
-            rx="6"
-            fill={i === 11 ? a : `${a}35`}
-          />
-        ))}
-
-        {/* Transactions */}
-        {[
-          ["Salary", "+SAR 18,500"],
-          ["Rent", "-SAR 3,200"],
-          ["Transfer", "+SAR 5,000"],
-        ].map(([_name, amt], i) => (
-          <g key={i}>
-            <rect
-              x="300"
-              y={20 + i * 60}
-              width="246"
-              height="52"
-              rx="10"
-              fill={i % 2 === 0 ? "#FAFBFF" : "white"}
-              stroke="#F0F2F8"
-              strokeWidth="1"
-            />
-            <rect
-              x="316"
-              y={32 + i * 60}
-              width="28"
-              height="28"
-              rx="8"
-              fill={`${a}15`}
-            />
-            <rect
-              x="352"
-              y={34 + i * 60}
-              width={60 - i * 8}
-              height="7"
-              rx="3.5"
-              fill="#111827"
-              opacity="0.7"
-            />
-            <rect
-              x="352"
-              y={46 + i * 60}
-              width="40"
-              height="5"
-              rx="2.5"
-              fill="#9CA3AF"
-            />
-            <rect
-              x="468"
-              y={36 + i * 60}
-              width="62"
-              height="7"
-              rx="3.5"
-              fill={amt.startsWith("+") ? "#10B981" : "#EF4444"}
-              opacity="0.8"
-            />
-          </g>
-        ))}
-      </svg>
-    );
-  }
-
-  /* index 3: SAP Cloud CX — enterprise CRM */
-  if (index === 3) {
-    return (
-      <svg
-        viewBox="0 0 560 218"
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMid slice"
-        fill="none"
-      >
-        <rect width="560" height="218" fill="white" />
-
-        {/* Top navigation */}
-        <rect width="560" height="44" fill={`${a}0C`} />
-        <rect x="0" y="44" width="560" height="1" fill={`${a}20`} />
-        <rect
-          x="14"
-          y="15"
-          width="30"
-          height="14"
-          rx="5"
-          fill={a}
-          opacity="0.9"
-        />
-        {[56, 96, 136, 176].map((x) => (
-          <rect
-            key={x}
-            x={x}
-            y="17"
-            width="28"
-            height="10"
-            rx="4"
-            fill={`${a}30`}
-          />
-        ))}
-        <rect x="460" y="14" width="60" height="16" rx="8" fill={a} />
-        <circle cx="540" cy="22" r="10" fill={`${a}20`} />
-        <circle cx="540" cy="22" r="6" fill={`${a}40`} />
-
-        {/* Table header */}
-        <rect x="0" y="44" width="560" height="26" fill="#F8F9FC" />
-        {[16, 140, 248, 346, 436].map((x, i) => (
-          <rect
-            key={x}
-            x={x}
-            y="53"
-            width={[100, 86, 72, 62, 52][i]}
-            height="8"
-            rx="4"
-            fill="#9CA3AF"
-          />
-        ))}
-
-        {/* Table rows */}
-        {[0, 1, 2, 3, 4].map((row) => {
-          const y = 70 + row * 28;
-          const statuses = ["Active", "New", "Pending", "Active", "Closed"];
-          const statusColors = [a, "#10B981", "#F59E0B", a, "#6B7280"];
-          const statusBgs = [
-            `${a}15`,
-            "#ECFDF5",
-            "#FFFBEB",
-            `${a}15`,
-            "#F3F4F6",
-          ];
-          return (
-            <g key={row}>
-              <rect
-                x="0"
-                y={y}
-                width="560"
-                height="28"
-                fill={row % 2 === 0 ? "white" : "#FAFBFF"}
-              />
-              <circle cx="28" cy={y + 14} r="10" fill={`${a}18`} />
-              <rect
-                x="42"
-                y={y + 10}
-                width={80 - row * 6}
-                height="8"
-                rx="4"
-                fill="#374151"
-                opacity="0.75"
-              />
-              <rect
-                x="148"
-                y={y + 10}
-                width="68"
-                height="8"
-                rx="4"
-                fill="#9CA3AF"
-              />
-              <rect
-                x="256"
-                y={y + 10}
-                width="60"
-                height="8"
-                rx="4"
-                fill="#9CA3AF"
-              />
-              <rect
-                x="348"
-                y={y + 7}
-                width="52"
-                height="14"
-                rx="7"
-                fill={statusBgs[row]}
-              />
-              <rect
-                x="356"
-                y={y + 11}
-                width={statuses[row].length * 4.2}
-                height="6"
-                rx="3"
-                fill={statusColors[row]}
-                opacity="0.8"
-              />
-              <rect
-                x="444"
-                y={y + 10}
-                width="48"
-                height="8"
-                rx="4"
-                fill="#D1D5DB"
-              />
-            </g>
-          );
-        })}
-      </svg>
-    );
-  }
-
-  /* index 4: Hala Product — marketing landing page */
-  return (
-    <svg
-      viewBox="0 0 560 218"
-      width="100%"
-      height="100%"
-      preserveAspectRatio="xMidYMid slice"
-      fill="none"
-    >
-      <rect width="560" height="218" fill="white" />
-
-      {/* Nav */}
-      <rect width="560" height="40" fill="white" />
-      <line x1="0" y1="40" x2="560" y2="40" stroke="#F0F2F6" strokeWidth="1" />
-      <rect
-        x="16"
-        y="13"
-        width="32"
-        height="14"
-        rx="5"
-        fill={a}
-        opacity="0.9"
-      />
-      {[64, 102, 140, 178].map((x) => (
-        <rect
-          key={x}
-          x={x}
-          y="15"
-          width="26"
-          height="10"
-          rx="4"
-          fill="#E5E7EB"
-        />
-      ))}
-      <rect x="474" y="12" width="70" height="16" rx="8" fill={a} />
-
-      {/* Hero section */}
-      <rect
-        x="30"
-        y="58"
-        width="224"
-        height="18"
-        rx="6"
-        fill="#111827"
-        opacity="0.86"
-      />
-      <rect
-        x="30"
-        y="82"
-        width="200"
-        height="18"
-        rx="6"
-        fill="#111827"
-        opacity="0.72"
-      />
-      <rect x="30" y="106" width="290" height="8" rx="4" fill="#D1D5DB" />
-      <rect x="30" y="118" width="260" height="8" rx="4" fill="#E5E7EB" />
-
-      {/* CTA buttons */}
-      <rect x="30" y="134" width="100" height="22" rx="11" fill={a} />
-      <rect
-        x="138"
-        y="134"
-        width="84"
-        height="22"
-        rx="11"
-        fill="transparent"
-        stroke="#D1D5DB"
-        strokeWidth="1.5"
-      />
-      <rect
-        x="40"
-        y="140"
-        width="72"
-        height="10"
-        rx="3"
-        fill="white"
-        opacity="0.9"
-      />
-      <rect x="148" y="140" width="60" height="10" rx="3" fill="#6B7280" />
-
-      {/* Feature cards */}
-      {[0, 1, 2].map((i) => (
-        <g key={i}>
-          <rect
-            x={30 + i * 110}
-            y="168"
-            width="100"
-            height="40"
-            rx="10"
-            fill="#FAFBFF"
-            stroke="#E8ECF4"
-            strokeWidth="1"
-          />
-          <rect
-            x={40 + i * 110}
-            y="178"
-            width="14"
-            height="14"
-            rx="4"
-            fill={`${a}20`}
-          />
-          <rect
-            x={59 + i * 110}
-            y="180"
-            width={50 - i * 6}
-            height="6"
-            rx="3"
-            fill="#374151"
-            opacity="0.7"
-          />
-          <rect
-            x={59 + i * 110}
-            y="190"
-            width={38 - i * 4}
-            height="5"
-            rx="2.5"
-            fill="#9CA3AF"
-          />
-        </g>
-      ))}
-
-      {/* Decorative illustration right */}
-      <circle
-        cx="450"
-        cy="130"
-        r="58"
-        fill={`${a}08`}
-        stroke={`${a}15`}
-        strokeWidth="1"
-      />
-      <circle
-        cx="450"
-        cy="130"
-        r="38"
-        fill={`${a}12`}
-        stroke={`${a}20`}
-        strokeWidth="1"
-      />
-      <circle cx="450" cy="130" r="20" fill={`${a}25`} />
-      <circle cx="450" cy="130" r="8" fill={`${a}60`} />
-      {(
-        [
-          [0, -38],
-          [38, 0],
-          [0, 38],
-          [-38, 0],
-        ] as [number, number][]
-      ).map(([dx, dy], i) => (
-        <circle
-          key={i}
-          cx={450 + dx}
-          cy={130 + dy}
-          r="7"
-          fill={`${a}30`}
-          stroke={`${a}40`}
-          strokeWidth="1"
-        />
-      ))}
-    </svg>
-  );
-}
-
-/* ── Pill CTA button ── */
-function PillButton({
-  children,
-  href,
-  color,
-  outline,
-  onClick,
-}: {
-  children: React.ReactNode;
-  href?: string;
-  color: string;
-  outline?: boolean;
-  onClick?: () => void;
-}) {
-  const style: React.CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    background: outline ? "transparent" : color,
-    color: outline ? "var(--text-primary)" : "#FFFFFF",
-    padding: "13px 28px",
-    borderRadius: 100,
-    fontSize: 14,
-    fontWeight: 600,
-    border: outline ? "1.5px solid var(--border-subtle)" : "none",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    letterSpacing: "-0.012em",
-    whiteSpace: "nowrap",
-    textDecoration: "none",
-    boxShadow: outline ? "none" : `0 8px 28px ${color}48`,
-    transition: "opacity 0.2s ease",
-  };
-
-  return (
-    <motion.a
-      href={href}
-      onClick={onClick}
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{ type: "spring", stiffness: 320, damping: 22 }}
-      style={{ ...style, cursor: "pointer" }}
-    >
-      {children}
-    </motion.a>
-  );
-}
-
-/* ── Profile image with multi-layer glow + floating badges ── */
-function AvatarVisual({ mobile = false }: { mobile?: boolean }) {
-  /* ── Mobile: badges float around the circle, no overlap ── */
-  if (mobile) {
-    return (
-      <div
-        style={{
-          position: "relative",
-          width: 320,
-          height: 280,
-          margin: "0 auto",
-        }}
-      >
-        {/* Circle — centered horizontally, offset from top to leave room for experience badge */}
-        <div
-          style={{
-            position: "absolute",
-            width: 176,
-            height: 176,
-            top: 30,
-            left: "50%",
-            transform: "translateX(-50%)",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              borderRadius: "50%",
-              overflow: "hidden",
-              boxShadow: "0 8px 40px rgba(0,145,255,0.30)",
-              border: "3px solid rgba(0,145,255,0.28)",
-              background: "var(--bg-card)",
-            }}
-          >
-            <Image
-              src="/avatar.jpg"
-              alt="Turki Almalki"
-              fill
-              priority
-              sizes="176px"
-              style={{ objectFit: "cover", objectPosition: "center 28%" }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: "50%",
-                background:
-                  "radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,0.10) 100%)",
-                pointerEvents: "none",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Experience badge — upper-left, corner clears the circular image */}
-        <motion.div
-          initial={{ opacity: 0, x: -12, y: -6 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE, delay: 1.0 }}
-          style={{
-            position: "absolute",
-            top: 4,
-            left: 0,
-            background: "var(--bg-elevated)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            borderRadius: 14,
-            padding: "9px 14px",
-            border: "1px solid rgba(0,0,0,0.06)",
-            boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
-            zIndex: 2,
-            whiteSpace: "nowrap",
-          }}
-        >
-          <p
-            style={{
-              fontSize: 19,
-              fontWeight: 800,
-              color: "#0091FF",
-              letterSpacing: "-0.04em",
-              lineHeight: 1,
-            }}
-          >
-            9+
-          </p>
-          <p
-            style={{
-              fontSize: 11,
-              color: "var(--text-secondary)",
-              marginTop: 3,
-              fontWeight: 400,
-            }}
-          >
-            Years Experience
-          </p>
-        </motion.div>
-
-        {/* Location badge — lower-right, sits below the circle bottom (y > 206px) */}
-        <motion.div
-          initial={{ opacity: 0, x: 12, y: 6 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE, delay: 1.2 }}
-          style={{
-            position: "absolute",
-            bottom: 8,
-            right: 0,
-            background: "var(--bg-elevated)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            borderRadius: 14,
-            padding: "9px 14px",
-            border: "1px solid rgba(0,0,0,0.06)",
-            boxShadow: "0 6px 24px rgba(0,0,0,0.08)",
-            zIndex: 2,
-            whiteSpace: "nowrap",
-          }}
-        >
-          <p
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Turki Almalki
-          </p>
-          <p
-            style={{
-              fontSize: 11,
-              color: "var(--text-secondary)",
-              marginTop: 3,
-              fontWeight: 400,
-            }}
-          >
-            📍 Riyadh, Saudi Arabia
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  /* ── Desktop: 300×300 with absolutely-positioned floating badges ── */
-  return (
-    <div style={{ position: "relative", width: 300, height: 300 }}>
-      {([1.55, 1.32, 1.12] as const).map((scale, i) => (
-        <motion.div
-          key={i}
-          animate={{
-            scale: [scale, scale * 1.06, scale],
-            opacity: [0.14, 0.28, 0.14],
-          }}
-          transition={{
-            duration: 3.5 + i * 0.8,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: i * 0.7,
-          }}
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "50%",
-            background: `radial-gradient(circle, rgba(0,145,255,${0.28 - i * 0.07}) 0%, rgba(0,200,220,${0.13 - i * 0.03}) 45%, transparent 70%)`,
-            transform: `scale(${scale})`,
-            transformOrigin: "center",
-          }}
-        />
-      ))}
-
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          borderRadius: "50%",
-          overflow: "hidden",
-          boxShadow:
-            "0 32px 80px rgba(0,145,255,0.44), 0 10px 36px rgba(0,145,255,0.20)",
-          border: "3px solid rgba(0,145,255,0.28)",
-          background: "var(--bg-card)",
-        }}
-      >
+    <div className="hero-portrait-stage">
+      <div className="hero-portrait">
         <Image
           src="/avatar.jpg"
           alt="Turki Almalki"
           fill
           priority
-          sizes="300px"
-          style={{ objectFit: "cover", objectPosition: "center 28%" }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,0.12) 100%)",
-            pointerEvents: "none",
-          }}
+          sizes="
+            (max-width: 480px) 234px,
+            (max-width: 760px) 284px,
+            336px
+          "
+          className="hero-portrait-image"
         />
       </div>
 
-      {/* Floating badge — location */}
       <motion.div
-        initial={{ opacity: 0, x: 20, y: 8 }}
-        animate={{ opacity: 1, x: 0, y: 0 }}
-        transition={{ duration: 1.0, ease: EASE, delay: 1.05 }}
-        style={{
-          position: "absolute",
-          bottom: 16,
-          right: -20,
-          background: "var(--bg-elevated)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 16,
-          padding: "10px 14px",
-          border: "1px solid rgba(0,0,0,0.06)",
-          boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
-          minWidth: 138,
+        className="
+          hero-floating-badge
+          hero-experience-badge
+        "
+        initial={{
+          opacity: 0,
+          x: -14,
+          y: -5,
+        }}
+        animate={{
+          opacity: 1,
+          x: 0,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.8,
+          ease: EASE,
+          delay: 0.75,
         }}
       >
-        <p
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: "var(--text-primary)",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Turki Almalki
-        </p>
-        <p
-          style={{
-            fontSize: 11,
-            color: "var(--text-secondary)",
-            marginTop: 3,
-            fontWeight: 400,
-          }}
-        >
-          📍 Riyadh, Saudi Arabia
-        </p>
+        <div>
+          <p className="hero-badge-value">
+            9+
+          </p>
+
+          <p className="hero-badge-description">
+            Years Experience
+          </p>
+        </div>
       </motion.div>
 
-      {/* Floating badge — experience */}
       <motion.div
-        initial={{ opacity: 0, x: -20, y: -8 }}
-        animate={{ opacity: 1, x: 0, y: 0 }}
-        transition={{ duration: 1.0, ease: EASE, delay: 1.25 }}
-        style={{
-          position: "absolute",
-          top: 20,
-          left: -24,
-          background: "var(--bg-elevated)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 16,
-          padding: "10px 14px",
-          border: "1px solid rgba(0,0,0,0.06)",
-          boxShadow: "0 10px 36px rgba(0,0,0,0.09)",
+        className="
+          hero-floating-badge
+          hero-location-badge
+        "
+        initial={{
+          opacity: 0,
+          x: 14,
+          y: 5,
+        }}
+        animate={{
+          opacity: 1,
+          x: 0,
+          y: 0,
+        }}
+        transition={{
+          duration: 0.8,
+          ease: EASE,
+          delay: 0.9,
         }}
       >
-        <p
-          style={{
-            fontSize: 22,
-            fontWeight: 800,
-            color: "#0091FF",
-            letterSpacing: "-0.04em",
-            lineHeight: 1,
-          }}
-        >
-          9+
-        </p>
-        <p
-          style={{
-            fontSize: 11,
-            color: "var(--text-secondary)",
-            marginTop: 4,
-            fontWeight: 400,
-          }}
-        >
-          Years Experience
-        </p>
+        <span className="hero-location-dot" />
+
+        <div>
+          <p className="hero-badge-title">
+            Turki Almalki
+          </p>
+
+          <p className="hero-badge-description">
+            Riyadh, Saudi Arabia
+          </p>
+        </div>
       </motion.div>
     </div>
+  );
+}
+
+type MarqueeRowProps = {
+  projects: HeroProject[];
+  direction: "left" | "right";
+  duration: number;
+  delay: number;
+};
+
+function MarqueeRow({
+  projects,
+  direction,
+  duration,
+  delay,
+}: MarqueeRowProps) {
+  return (
+    <div className="hero-marquee-viewport">
+      <div
+        className={[
+          "hero-marquee-track",
+          direction === "left"
+            ? "hero-marquee-track-left"
+            : "hero-marquee-track-right",
+        ].join(" ")}
+        style={
+          {
+            "--hero-marquee-duration": `${duration}s`,
+            "--hero-marquee-delay": `${delay}s`,
+          } as CSSProperties
+        }
+      >
+        {projects.map((project, index) => (
+          <HeroGalleryCard
+            key={`${direction}-${project.title}-${index}`}
+            project={project}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type HeroGalleryCardProps = {
+  project: HeroProject;
+};
+
+function HeroGalleryCard({
+  project,
+}: HeroGalleryCardProps) {
+  const imageScale =
+    project.imageScale ?? 1;
+
+  return (
+    <article
+      className="hero-gallery-card"
+      aria-label={project.title}
+      title={project.title}
+      style={
+        {
+          "--project-scale": imageScale,
+        } as CSSProperties
+      }
+    >
+      <div className="hero-gallery-surface">
+        <div className="hero-gallery-media">
+          <div className="hero-gallery-art">
+            <Image
+              src={project.image}
+              alt={project.title}
+              fill
+              sizes="
+                (max-width: 480px) 270px,
+                (max-width: 760px) 310px,
+                (max-width: 960px) 330px,
+                370px
+              "
+              className="hero-gallery-image"
+              style={{
+                objectPosition:
+                  project.objectPosition ??
+                  "center center",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <ProjectBrandBadge
+        logo={project.logo}
+        brand={project.brand}
+      />
+    </article>
+  );
+}
+
+type ProjectBrandBadgeProps = {
+  logo: string;
+  brand: string;
+};
+
+function ProjectBrandBadge({
+  logo,
+  brand,
+}: ProjectBrandBadgeProps) {
+  return (
+    <div className="project-brand-badge">
+      <div className="project-brand-logo">
+        <Image
+          src={logo}
+          alt={`${brand} logo`}
+          width={19}
+          height={19}
+          className="project-brand-logo-image"
+        />
+      </div>
+
+      <span className="project-brand-name">
+        {brand}
+      </span>
+    </div>
+  );
+}
+
+type PillButtonProps = {
+  children: ReactNode;
+  href: string;
+};
+
+function PillButton({
+  children,
+  href,
+}: PillButtonProps) {
+  return (
+    <motion.div
+      whileHover={{
+        y: -3,
+        scale: 1.02,
+      }}
+      whileTap={{
+        scale: 0.97,
+      }}
+      transition={{
+        duration: 0.22,
+        ease: EASE,
+      }}
+    >
+      <Link
+        href={href}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+
+          minHeight: 48,
+          padding: "13px 28px",
+
+          color: "#ffffff",
+          background: "var(--accent, #1495ff)",
+
+          borderRadius: 999,
+
+          boxShadow:
+            "0 10px 28px rgba(20, 149, 255, 0.24)",
+
+          fontSize: 15,
+          fontWeight: 650,
+          lineHeight: 1,
+          letterSpacing: "-0.015em",
+
+          textDecoration: "none",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {children}
+      </Link>
+    </motion.div>
   );
 }
