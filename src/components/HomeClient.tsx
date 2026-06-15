@@ -10,6 +10,8 @@ import BentoGrid from "./sections/BentoGrid";
 import Projects from "./sections/Projects";
 import ProjectMarquee from "./sections/ProjectMarquee";
 import Metrics from "./sections/Metrics";
+import FAQ from "./sections/FAQ";
+import BlogPreview from "./sections/BlogPreview";
 import Footer from "./sections/Footer";
 
 export default function HomeClient() {
@@ -33,6 +35,8 @@ export default function HomeClient() {
           <BentoGrid />
           <Projects />
           <Metrics />
+          <FAQ />
+          <BlogPreview />
         </main>
         <Footer />
       </motion.div>

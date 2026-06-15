@@ -1,0 +1,359 @@
+"use client";
+
+import { useState, useRef } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type BlogPostPreview = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  image: string;
+  publishedAt?: string;
+  /** Gradient shown while the image loads or if it's missing */
+  gradient: string;
+};
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+const PREVIEW_POSTS: BlogPostPreview[] = [
+  {
+    slug: "/blog/scaling-frontend-architecture",
+    title: "Scaling Frontend Architecture with Next.js and TypeScript",
+    excerpt:
+      "Practical principles for building maintainable web platforms that can grow across products, teams, and changing business needs.",
+    category: "Architecture",
+    image: "/blog/frontend-architecture.jpg",
+    gradient: "linear-gradient(140deg, #dbe8ff 0%, #b8d0ff 100%)",
+  },
+  {
+    slug: "/blog/leading-cross-functional-teams",
+    title: "Leading Cross-Functional Engineering Teams",
+    excerpt:
+      "Lessons on aligning engineering, product, design, backend, and QA teams around quality, ownership, and successful delivery.",
+    category: "Leadership",
+    image: "/blog/engineering-leadership.jpg",
+    gradient: "linear-gradient(140deg, #d8f5e8 0%, #a8e8c8 100%)",
+  },
+  {
+    slug: "/blog/modernizing-digital-platforms",
+    title: "Modernizing Digital Platforms Without Slowing Delivery",
+    excerpt:
+      "How clean architecture, observability, CI/CD, and thoughtful iteration can modernize products while maintaining delivery momentum.",
+    category: "Transformation",
+    image: "/blog/platform-modernization.jpg",
+    gradient: "linear-gradient(140deg, #ffe8d8 0%, #ffd0b0 100%)",
+  },
+];
+
+// ─── Section ──────────────────────────────────────────────────────────────────
+
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+export default function BlogPreview() {
+  const ref = useRef<HTMLElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const reduced = useReducedMotion();
+
+  const fadeUp = (delay = 0) =>
+    reduced
+      ? {}
+      : {
+          initial: { opacity: 0, y: 28 },
+          animate: inView ? { opacity: 1, y: 0 } : {},
+          transition: { duration: 0.75, ease: EASE, delay },
+        };
+
+  return (
+    <section
+      id="blog-preview"
+      ref={ref}
+      style={{ background: "#ffffff", padding: "clamp(80px, 10vw, 140px) 24px" }}
+    >
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        {/* ── Header ── */}
+        <div style={{ textAlign: "center", marginBottom: "clamp(44px, 6vw, 72px)" }}>
+          <motion.div {...fadeUp(0)} style={{ display: "inline-block" }}>
+            <span style={pillStyle}>Blog</span>
+          </motion.div>
+
+          <motion.h2 {...fadeUp(0.07)} style={headingStyle}>
+            Insights &amp; Ideas
+          </motion.h2>
+
+          <motion.p {...fadeUp(0.14)} style={subheadingStyle}>
+            Thoughts on engineering leadership, scalable architecture,
+            <br className="bp-break" />
+            product delivery, and AI-powered innovation.
+          </motion.p>
+        </div>
+
+        {/* ── Cards grid ── */}
+        <div style={gridStyle} className="bp-grid">
+          {PREVIEW_POSTS.map((post, index) => (
+            <BlogPreviewCard
+              key={post.slug}
+              post={post}
+              index={index}
+              inView={inView}
+              reduced={!!reduced}
+            />
+          ))}
+        </div>
+
+        {/* ── CTA ── */}
+        <motion.div
+          {...fadeUp(0.36)}
+          style={{ display: "flex", justifyContent: "center", marginTop: "clamp(44px, 6vw, 64px)" }}
+        >
+          <Link href="/blog" style={ctaStyle} className="bp-cta">
+            View All Blog Posts
+          </Link>
+        </motion.div>
+      </div>
+
+      <style>{`
+        .bp-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
+        }
+        @media (max-width: 900px) {
+          .bp-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .bp-break { display: none; }
+        }
+        @media (max-width: 580px) {
+          .bp-grid { grid-template-columns: 1fr !important; gap: 18px !important; }
+          .bp-break { display: none; }
+        }
+        .bp-cta:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 18px 40px rgba(20,149,255,0.32) !important;
+        }
+        .bp-cta { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+      `}</style>
+    </section>
+  );
+}
+
+// ─── Card ─────────────────────────────────────────────────────────────────────
+
+function BlogPreviewCard({
+  post,
+  index,
+  inView,
+  reduced,
+}: {
+  post: BlogPostPreview;
+  index: number;
+  inView: boolean;
+  reduced: boolean;
+}) {
+  return (
+    <motion.article
+      initial={reduced ? { opacity: 1 } : { opacity: 0, y: 44 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.18 + index * 0.1 }}
+      whileHover={reduced ? {} : { y: -5, boxShadow: "0 20px 44px rgba(0,0,0,0.1)" }}
+      style={cardStyle}
+    >
+      <Link href={post.slug} style={cardLinkStyle}>
+        {/* Image */}
+        <div style={imageWrapStyle} className="bp-img-wrap">
+          <CardImage src={post.image} alt={post.title} gradient={post.gradient} />
+        </div>
+
+        {/* Meta row: category + date */}
+        <div style={metaRowStyle}>
+          <span style={categoryPillStyle}>{post.category}</span>
+          {post.publishedAt && (
+            <span style={dateStyle}>{post.publishedAt}</span>
+          )}
+        </div>
+
+        {/* Title */}
+        <h3 style={cardTitleStyle}>{post.title}</h3>
+
+        {/* Excerpt */}
+        <p style={cardExcerptStyle}>{post.excerpt}</p>
+      </Link>
+
+      <style>{`
+        .bp-img-wrap img {
+          transition: transform 0.4s ease !important;
+        }
+        article:hover .bp-img-wrap img {
+          transform: scale(1.025) !important;
+        }
+      `}</style>
+    </motion.article>
+  );
+}
+
+// ─── Card image with gradient fallback ────────────────────────────────────────
+
+function CardImage({
+  src,
+  alt,
+  gradient,
+}: {
+  src: string;
+  alt: string;
+  gradient: string;
+}) {
+  const [errored, setErrored] = useState(false);
+
+  if (errored) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: gradient,
+          borderRadius: 22,
+        }}
+      />
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="(max-width: 580px) 90vw, (max-width: 900px) 44vw, 360px"
+      style={{ objectFit: "cover", borderRadius: 22 }}
+      onError={() => setErrored(true)}
+    />
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const pillStyle: React.CSSProperties = {
+  display: "inline-flex",
+  padding: "8px 18px",
+  borderRadius: 999,
+  background: "#f1f1f1",
+  color: "#666",
+  fontSize: 15,
+  fontWeight: 500,
+  marginBottom: 24,
+};
+
+const headingStyle: React.CSSProperties = {
+  fontSize: "clamp(44px, 5vw, 68px)",
+  fontWeight: 800,
+  letterSpacing: "-0.05em",
+  lineHeight: 1,
+  color: "#000",
+  margin: "0 0 18px",
+};
+
+const subheadingStyle: React.CSSProperties = {
+  fontSize: "clamp(17px, 1.8vw, 22px)",
+  fontWeight: 600,
+  color: "#666",
+  lineHeight: 1.4,
+  margin: 0,
+};
+
+const gridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: 24,
+};
+
+const cardStyle: React.CSSProperties = {
+  background: "#f3f3f3",
+  borderRadius: 28,
+  overflow: "hidden",
+  display: "flex",
+  flexDirection: "column",
+  cursor: "pointer",
+  transition: "box-shadow 0.35s ease",
+};
+
+const cardLinkStyle: React.CSSProperties = {
+  textDecoration: "none",
+  color: "inherit",
+  display: "flex",
+  flexDirection: "column",
+  flex: 1,
+  padding: "18px 18px 24px",
+  gap: 0,
+};
+
+const imageWrapStyle: React.CSSProperties = {
+  position: "relative",
+  width: "100%",
+  aspectRatio: "16 / 9",
+  borderRadius: 22,
+  background: "#e9e9e9",
+  overflow: "hidden",
+  marginBottom: 18,
+  flexShrink: 0,
+};
+
+const metaRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  marginBottom: 14,
+};
+
+const categoryPillStyle: React.CSSProperties = {
+  display: "inline-flex",
+  padding: "6px 14px",
+  borderRadius: 999,
+  background: "#e4e4e4",
+  color: "#444",
+  fontSize: 13,
+  fontWeight: 600,
+  letterSpacing: "-0.01em",
+};
+
+const dateStyle: React.CSSProperties = {
+  fontSize: 13,
+  color: "#888",
+  fontWeight: 400,
+};
+
+const cardTitleStyle: React.CSSProperties = {
+  fontSize: "clamp(18px, 1.8vw, 26px)",
+  fontWeight: 800,
+  letterSpacing: "-0.035em",
+  lineHeight: 1.1,
+  color: "#000",
+  margin: "0 0 12px",
+};
+
+const cardExcerptStyle: React.CSSProperties = {
+  fontSize: "clamp(14px, 1.1vw, 17px)",
+  lineHeight: 1.6,
+  color: "#666",
+  margin: 0,
+  display: "-webkit-box",
+  WebkitLineClamp: 3,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
+
+const ctaStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  background: "#1495ff",
+  color: "#fff",
+  borderRadius: 999,
+  padding: "14px 28px",
+  fontSize: 16,
+  fontWeight: 600,
+  textDecoration: "none",
+  boxShadow: "0 12px 30px rgba(20,149,255,0.22)",
+};

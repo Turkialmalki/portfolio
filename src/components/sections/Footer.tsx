@@ -1,275 +1,503 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import {
+  FiGithub,
   FiLinkedin,
-  FiGithub
+  FiMail,
 } from "react-icons/fi";
 
 type Bezier = [number, number, number, number];
+
 const EASE: Bezier = [0.16, 1, 0.3, 1];
 
-const SOCIAL = [
+const SOCIAL_LINKS = [
   {
     label: "LinkedIn",
     href: "https://www.linkedin.com/in/turki-almalki",
     Icon: FiLinkedin,
   },
   {
-    label: "Github",
+    label: "GitHub",
     href: "https://github.com/Turkialmalki",
     Icon: FiGithub,
   },
+  {
+    label: "Email",
+    href: "mailto:turkialmalki202200@gmail.com",
+    Icon: FiMail,
+  },
 ];
+
+const PAGE_LINKS = [
+  { label: "Home", href: "/" },
+  { label: "Portfolio", href: "/projects" },
+  { label: "About", href: "/about" },
+  { label: "Blog", href: "/blog" },
+];
+
+// const INFO_LINKS = [
+//   {
+//     label: "Contact",
+//     href: "mailto:turkialmalki202200@gmail.com",
+//   },
+//   { label: "Privacy Policy", href: "/privacy" },
+//   { label: "Terms", href: "/terms" },
+//   { label: "404", href: "/404" },
+// ];
 
 export default function Footer() {
   const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  const inView = useInView(ref, {
+    once: true,
+    margin: "-80px",
+  });
 
   return (
     <footer
       id="contact-footer"
       ref={ref}
-      style={{ backgroundColor: "#0D0E12" }}
+      className="footer-root"
     >
-      {/* Main CTA card */}
-      <div
-        style={{
-          maxWidth: 1280,
-          margin: "0 auto",
-          padding: "clamp(80px, 12vw, 160px) clamp(24px, 4vw, 32px) 0",
-        }}
-      >
-        {/* Black card */}
-        <motion.div
-          initial={{ opacity: 0, y: 48 }}
+      <div className="footer-container">
+        {/* Contact banner */}
+        <motion.section
+          initial={{ opacity: 0, y: 40 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 1.0, ease: EASE }}
-          style={{
-            background: "#111214",
-            borderRadius: 36,
-            border: "1px solid rgba(255,255,255,0.06)",
-            padding: "clamp(56px, 8vw, 100px) clamp(32px, 6vw, 80px)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
-            position: "relative",
-            overflow: "hidden",
+          transition={{
+            duration: 0.9,
+            ease: EASE,
           }}
+          className="contact-card"
         >
-          {/* Background glow */}
-          <div
-            style={{
-              position: "absolute",
-              top: -100,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 600,
-              height: 400,
-              borderRadius: "50%",
-              background:
-                "radial-gradient(ellipse, rgba(0,145,255,0.06) 0%, transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
+          <div className="contact-copy">
+            <motion.h2
+              initial={{ opacity: 0, y: 24 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{
+                duration: 0.8,
+                ease: EASE,
+                delay: 0.08,
+              }}
+            >
+              Let&apos;s Connect
+            </motion.h2>
 
-          {/* Eyebrow */}
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: "rgba(255,255,255,0.28)",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              marginBottom: 28,
-            }}
-          >
-            Get In Touch
-          </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 18 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{
+                duration: 0.75,
+                ease: EASE,
+                delay: 0.14,
+              }}
+            >
+              I&apos;m always open to new opportunities, ideas, or just a good
+              conversation.
+            </motion.p>
 
-          {/* Hero heading */}
-          <motion.h2
-            initial={{ opacity: 0, y: 32 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.9, ease: EASE, delay: 0.16 }}
-            style={{
-              fontSize: "clamp(44px, 7vw, 96px)",
-              fontWeight: 800,
-              color: "#FFFFFF",
-              letterSpacing: "-0.042em",
-              lineHeight: 1.04,
-              marginBottom: 40,
-            }}
-          >
-            Lets Connect
-          </motion.h2>
+            <motion.a
+              href="mailto:turkialmalki202200@gmail.com"
+              initial={{ opacity: 0, y: 14 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{
+                duration: 0.7,
+                ease: EASE,
+                delay: 0.2,
+              }}
+              whileHover={{
+                y: -3,
+                scale: 1.02,
+              }}
+              whileTap={{
+                scale: 0.98,
+              }}
+              className="contact-button"
+            >
+              Get in Touch
+              <span aria-hidden="true">→</span>
+            </motion.a>
+          </div>
 
-          {/* CTA email button */}
-          <motion.a
-            href="mailto:turkialmalki202200@gmail.com"
-            initial={{ opacity: 0, y: 16 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8, ease: EASE, delay: 0.26 }}
-            whileHover={{
-              scale: 1.04,
-              filter: "brightness(1.08)",
-              transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] },
-            }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              background: "#0091FF",
-              color: "#FFFFFF",
-              padding: "16px 36px",
-              borderRadius: 100,
-              fontSize: 15,
-              fontWeight: 700,
-              textDecoration: "none",
-              fontFamily: "inherit",
-              letterSpacing: "-0.015em",
-              boxShadow: "0 12px 36px rgba(0,145,255,0.4)",
-            }}
-          >
-            Send a Message
-            <span style={{ fontSize: 16, fontWeight: 400 }}>→</span>
-          </motion.a>
-
-          {/* Email text */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 1 } : {}}
-            transition={{ duration: 0.7, ease: EASE, delay: 0.38 }}
-            style={{
-              marginTop: 18,
-              fontSize: 13,
-              color: "rgba(255,255,255,0.22)",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            turkialmalki202200@gmail.com
-          </motion.p>
-
-          {/* Social icons */}
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.7, ease: EASE, delay: 0.46 }}
-            style={{
-              display: "flex",
-              gap: 14,
-              marginTop: 40,
+            initial={{ opacity: 0, x: 36 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{
+              duration: 1,
+              ease: EASE,
+              delay: 0.12,
             }}
+            className="contact-visual"
           >
-            {SOCIAL.map(({ label, href, Icon }) => (
-              <motion.a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={label}
-                whileHover={{
-                  scale: 1.12,
-                  background: "rgba(255,255,255,0.12)",
-                  transition: { duration: 0.2 },
-                }}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "rgba(255,255,255,0.55)",
-                  textDecoration: "none",
-                  transition: "color 0.2s ease",
-                }}
-                onMouseEnter={(e) =>
-                  ((e.currentTarget as HTMLElement).style.color = "#FFFFFF")
-                }
-                onMouseLeave={(e) =>
-                  ((e.currentTarget as HTMLElement).style.color =
-                    "rgba(255,255,255,0.55)")
-                }
-              >
-                <Icon size={17} />
-              </motion.a>
-            ))}
+            <Image
+              src="/turki.jpg"
+              alt="Turki Almalki inviting visitors to get in touch"
+              fill
+              sizes="(max-width: 800px) 100vw, 600px"
+              className="contact-image"
+            />
           </motion.div>
-        </motion.div>
+        </motion.section>
+
+        {/* Main footer information */}
+        <motion.section
+          initial={{ opacity: 0, y: 34 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{
+            duration: 0.9,
+            ease: EASE,
+            delay: 0.12,
+          }}
+          className="footer-card"
+        >
+          <div className="footer-main-row">
+            <div className="footer-brand">
+              <h3>Turki Almalki</h3>
+
+              <div className="social-links">
+                {SOCIAL_LINKS.map(({ label, href, Icon }) => (
+                  <motion.a
+                    key={label}
+                    href={href}
+                    target={
+                      href.startsWith("http")
+                        ? "_blank"
+                        : undefined
+                    }
+                    rel={
+                      href.startsWith("http")
+                        ? "noopener noreferrer"
+                        : undefined
+                    }
+                    aria-label={label}
+                    title={label}
+                    whileHover={{
+                      y: -3,
+                      scale: 1.06,
+                      backgroundColor: "#dedede",
+                    }}
+                    whileTap={{
+                      scale: 0.96,
+                    }}
+                    className="social-button"
+                  >
+                    <Icon size={19} />
+                  </motion.a>
+                ))}
+              </div>
+            </div>
+
+            <div className="footer-navigation">
+              <nav
+                className="footer-column"
+                aria-label="Footer pages"
+              >
+                <h4>Pages</h4>
+
+                {PAGE_LINKS.map((item) => (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+
+         
+            </div>
+          </div>
+
+          <p className="footer-copyright">
+            Created by Turki Almalki © 2026
+          </p>
+        </motion.section>
       </div>
 
-      {/* Sub-footer */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={inView ? { opacity: 1 } : {}}
-        transition={{ duration: 0.7, ease: EASE, delay: 0.55 }}
-        style={{
-          maxWidth: 1280,
-          margin: "0 auto",
-          padding: "32px clamp(24px, 4vw, 32px) clamp(80px, 10vw, 112px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 16,
-        }}
-      >
-        <p
-          style={{
-            fontSize: 13,
-            color: "rgba(255,255,255,0.2)",
-            fontWeight: 400,
-            letterSpacing: "-0.01em",
-          }}
-        >
-          Created by Turki Almalki &copy; 2026
-        </p>
+      <style>{`
+        .footer-root {
+          width: 100%;
+          background: #ffffff;
+          padding: 24px 24px 96px;
+          overflow: hidden;
+        }
 
-        <nav
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 24,
-            flexWrap: "wrap",
-          }}
-        >
-          {SOCIAL.map(({ label, href }) => (
-            <a
-              key={label}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: "rgba(255,255,255,0.25)",
-                textDecoration: "none",
-                letterSpacing: "-0.01em",
-                transition: "color 0.2s ease",
-              }}
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLElement).style.color =
-                  "rgba(255,255,255,0.7)")
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLElement).style.color =
-                  "rgba(255,255,255,0.25)")
-              }
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-      </motion.div>
+        .footer-container {
+          width: 100%;
+          max-width: 1180px;
+          margin: 0 auto;
+        }
+
+        .contact-card {
+          position: relative;
+          display: grid;
+          grid-template-columns: 46% 54%;
+          min-height: 410px;
+          background: #f3f3f3;
+          border-radius: 34px;
+          overflow: hidden;
+        }
+
+        .contact-copy {
+          position: relative;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: center;
+          text-align: left;
+          padding: 58px 28px 58px 46px;
+        }
+
+        .contact-copy h2 {
+          margin: 0;
+          color: #000000;
+          font-size: clamp(42px, 5vw, 64px);
+          font-weight: 800;
+          line-height: 1;
+          letter-spacing: -0.055em;
+        }
+
+        .contact-copy p {
+          max-width: 400px;
+          margin: 20px 0 28px;
+          color: #343434;
+          font-size: clamp(16px, 1.35vw, 19px);
+          font-weight: 400;
+          line-height: 1.55;
+          letter-spacing: -0.02em;
+        }
+
+        .contact-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 13px 25px;
+          color: #ffffff;
+          background: #1495ff;
+          border-radius: 999px;
+          text-decoration: none;
+          font-size: 15px;
+          font-weight: 600;
+          line-height: 1;
+          box-shadow: 0 12px 28px rgba(20, 149, 255, 0.2);
+        }
+
+        .contact-visual {
+          position: relative;
+          align-self: stretch;
+          min-height: 410px;
+        }
+
+        .contact-image {
+          object-fit: contain;
+          object-position: center bottom;
+        }
+
+        .footer-card {
+          margin-top: 22px;
+          padding: 46px 46px 26px;
+          background: #f3f3f3;
+          border-radius: 34px;
+        }
+
+        .footer-main-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 80px;
+          align-items: start;
+        }
+
+        .footer-brand h3 {
+          margin: 0;
+          font-size: clamp(42px, 4.5vw, 60px);
+          font-weight: 800;
+          line-height: 1;
+          letter-spacing: -0.055em;
+          background: linear-gradient(
+            100deg,
+            #1495ff 0%,
+            #08cfa7 80%
+          );
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+        }
+
+        .social-links {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-top: 24px;
+        }
+
+        .social-button {
+          width: 42px;
+          height: 42px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #111111;
+          background: #e2e2e2;
+          border-radius: 50%;
+          text-decoration: none;
+          transition:
+            color 0.25s ease,
+            background-color 0.25s ease;
+        }
+
+        .footer-navigation {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(110px, auto));
+          gap: clamp(44px, 6vw, 76px);
+        }
+
+        .footer-column {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 19px;
+          text-align: left;
+        }
+
+        .footer-column h4 {
+          margin: 0 0 4px;
+          color: #000000;
+          font-size: 17px;
+          font-weight: 800;
+          line-height: 1;
+        }
+
+        .footer-column a {
+          position: relative;
+          color: #666666;
+          font-size: 16px;
+          font-weight: 400;
+          line-height: 1.2;
+          text-decoration: none;
+          transition:
+            color 0.25s ease,
+            transform 0.25s ease;
+        }
+
+        .footer-column a:hover {
+          color: #000000;
+          transform: translateX(3px);
+        }
+
+        .footer-column a:focus-visible,
+        .social-button:focus-visible,
+        .contact-button:focus-visible {
+          outline: 3px solid rgba(20, 149, 255, 0.35);
+          outline-offset: 4px;
+        }
+
+        .footer-copyright {
+          margin: 52px 0 0;
+          color: #111111;
+          font-size: 14px;
+          font-weight: 500;
+          text-align: center;
+          letter-spacing: -0.015em;
+        }
+
+        @media (max-width: 900px) {
+          .contact-card {
+            grid-template-columns: 1fr;
+            min-height: auto;
+          }
+
+          .contact-copy {
+            align-items: center;
+            text-align: center;
+            padding: 54px 28px 20px;
+          }
+
+          .contact-copy p {
+            margin-left: auto;
+            margin-right: auto;
+          }
+
+          .contact-visual {
+            min-height: 330px;
+          }
+
+          .footer-main-row {
+            grid-template-columns: 1fr;
+            gap: 52px;
+          }
+
+          .footer-brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+
+          .footer-navigation {
+            justify-content: center;
+          }
+
+          .footer-column {
+            min-width: 120px;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .footer-root {
+            padding: 16px 16px 88px;
+          }
+
+          .contact-card,
+          .footer-card {
+            border-radius: 26px;
+          }
+
+          .contact-copy {
+            padding: 44px 22px 12px;
+          }
+
+          .contact-copy h2 {
+            font-size: 42px;
+          }
+
+          .contact-visual {
+            min-height: 260px;
+          }
+
+          .footer-card {
+            padding: 38px 24px 26px;
+          }
+
+          .footer-brand h3 {
+            font-size: 42px;
+          }
+
+          .footer-navigation {
+            width: 100%;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+          }
+
+          .footer-column {
+            min-width: 0;
+          }
+
+          .footer-column a {
+            font-size: 15px;
+          }
+
+          .footer-copyright {
+            margin-top: 42px;
+            font-size: 13px;
+          }
+        }
+      `}</style>
     </footer>
   );
 }

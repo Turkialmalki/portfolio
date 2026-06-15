@@ -1,185 +1,353 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import Link from "next/link";
+import { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 
-type Bezier = [number, number, number, number];
-const EASE: Bezier = [0.16, 1, 0.3, 1];
+const CARD_WIDTH = 760;
+const CARD_GAP = 64;
+const STEP = CARD_WIDTH + CARD_GAP;
+const AUTOPLAY_MS = 10000;
 
-const METRICS = [
+const PROJECTS = [
   {
-    value: "9+",
-    label: "Years of Experience",
-    sub: "Driving digital excellence since 2016 across MENA",
+    title: "Vision Pulse Marketing",
+    subtitle: "Bold site showcasing services, work, and unique style.",
+    image: "/projects/vision.png",
+    industry: "Marketing",
+    category: "Website",
+    href: "/projects/vision-pulse",
   },
   {
-    value: "+25",
-    label: "Successful Projects",
-    sub: "Enterprise systems, fintech, and product innovation",
+    title: "Steak Shack",
+    subtitle: "Mobile app to browse, customize, and order steaks.",
+    image: "/projects/steak.png",
+    industry: "Restaurant",
+    category: "Mobile App",
+    href: "/projects/steak-shack",
   },
   {
-    value: "95%",
-    label: "Digital Quality Increase",
-    sub: "Measurable improvement in platform performance & UX",
+    title: "Nestify Furnitures",
+    subtitle: "Furniture marketplace for affordable new & secondhand.",
+    image: "/projects/nestify.png",
+    industry: "Furniture",
+    category: "E-commerce",
+    href: "/projects/nestify",
   },
 ];
 
-export default function Metrics() {
-  const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+const LOOP_PROJECTS = [...PROJECTS, ...PROJECTS, ...PROJECTS];
+
+export default function FeaturedWork() {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const currentIndex = useRef(PROJECTS.length);
+
+  const scrollToIndex = (index: number, behavior: ScrollBehavior = "smooth") => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const centerPadding = (window.innerWidth - CARD_WIDTH) / 2;
+    const left = index * STEP - centerPadding;
+
+    scroller.scrollTo({ left, behavior });
+    currentIndex.current = index;
+  };
+
+  const next = () => {
+    let nextIndex = currentIndex.current + 1;
+
+    scrollToIndex(nextIndex);
+
+    if (nextIndex >= PROJECTS.length * 2) {
+      setTimeout(() => {
+        scrollToIndex(PROJECTS.length, "auto");
+      }, 650);
+    }
+  };
+
+  const prev = () => {
+    let prevIndex = currentIndex.current - 1;
+
+    scrollToIndex(prevIndex);
+
+    if (prevIndex <= PROJECTS.length - 1) {
+      setTimeout(() => {
+        scrollToIndex(PROJECTS.length * 2 - 1, "auto");
+      }, 650);
+    }
+  };
+
+  useEffect(() => {
+    setTimeout(() => {
+      scrollToIndex(PROJECTS.length, "auto");
+    }, 100);
+
+    const interval = setInterval(next, AUTOPLAY_MS);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <section ref={ref} style={{ backgroundColor: "#0D0E12" }}>
+    <section
+      id="featured-work"
+      style={{
+        background: "#ffffff",
+        overflow: "hidden",
+        padding: "clamp(80px, 10vw, 120px) 0",
+      }}
+    >
       <div
         style={{
-          maxWidth: 1280,
+          maxWidth: 1180,
           margin: "0 auto",
-          padding: "clamp(80px, 11vw, 140px) clamp(24px, 4vw, 32px)",
+          textAlign: "center",
+          padding: "0 24px",
         }}
       >
-        {/* Header row */}
+        <div style={pillStyle}>Projects</div>
+        <h2 style={titleStyle}>Featured Work</h2>
+        <p style={subtitleStyle}>My past projects showcasing my expertise.</p>
+      </div>
+
+      <div
+        style={{
+          position: "relative",
+          marginTop: 52,
+        }}
+      >
+        <button
+          onClick={prev}
+          style={{
+            ...floatingArrowStyle,
+            left: "calc(50% - 430px)",
+          }}
+        >
+          ‹
+        </button>
+
+        <button
+          onClick={next}
+          style={{
+            ...floatingArrowStyle,
+            right: "calc(50% - 430px)",
+          }}
+        >
+          ›
+        </button>
+
         <div
+          ref={scrollerRef}
+          className="featured-scroller"
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            marginBottom: 80,
-            flexWrap: "wrap",
-            gap: 24,
+            gap: CARD_GAP,
+            overflowX: "auto",
+            scrollSnapType: "x mandatory",
+            padding: "0 calc((100vw - 760px) / 2)",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
           }}
         >
-          <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.9, ease: EASE }}
-          >
-            <p
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "rgba(255,255,255,0.28)",
-                letterSpacing: "0.09em",
-                textTransform: "uppercase",
-                marginBottom: 14,
-              }}
-            >
-              By the Numbers
-            </p>
-            <h2
-              style={{
-                fontSize: "clamp(30px, 4vw, 50px)",
-                fontWeight: 800,
-                color: "#FFFFFF",
-                letterSpacing: "-0.036em",
-                lineHeight: 1.08,
-              }}
-            >
-              Impact that speaks
-              <br />
-              for itself.
-            </h2>
-          </motion.div>
-
-          <motion.p
-            initial={{ opacity: 0, y: 24 }}
-            animate={inView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.9, ease: EASE, delay: 0.1 }}
-            style={{
-              fontSize: 15,
-              color: "rgba(255,255,255,0.35)",
-              lineHeight: 1.72,
-              maxWidth: 320,
-            }}
-          >
-            9+ years building enterprise-grade products with clients across
-            Saudi Arabia, the Middle East, and beyond.
-          </motion.p>
-        </div>
-
-        {/* Metric columns */}
-        <div
-          className="metrics-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            borderTop: "1px solid rgba(255,255,255,0.07)",
-          }}
-        >
-          {METRICS.map((metric, i) => (
-            <motion.div
-              key={metric.label}
-              initial={{ opacity: 0, y: 40 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.9, ease: EASE, delay: 0.12 + i * 0.1 }}
-              style={{
-                padding: "56px 0",
-                paddingRight: i < 2 ? 48 : 0,
-                paddingLeft: i > 0 ? 48 : 0,
-                borderRight:
-                  i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none",
-              }}
-            >
-              <motion.p
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={inView ? { opacity: 1, scale: 1 } : {}}
-                transition={{
-                  duration: 1.0,
-                  ease: EASE,
-                  delay: 0.25 + i * 0.1,
-                }}
-                style={{
-                  fontSize: "clamp(64px, 8vw, 112px)",
-                  fontWeight: 800,
-                  color: "#FFFFFF",
-                  letterSpacing: "-0.048em",
-                  lineHeight: 0.95,
-                  marginBottom: 22,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {metric.value}
-              </motion.p>
-              <p
-                style={{
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "rgba(255,255,255,0.65)",
-                  letterSpacing: "-0.015em",
-                  marginBottom: 8,
-                }}
-              >
-                {metric.label}
-              </p>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "rgba(255,255,255,0.27)",
-                  lineHeight: 1.6,
-                }}
-              >
-                {metric.sub}
-              </p>
-            </motion.div>
+          {LOOP_PROJECTS.map((project, index) => (
+            <ProjectCard
+              key={`${project.title}-${index}`}
+              project={project}
+            />
           ))}
         </div>
       </div>
 
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 52 }}>
+        <Link href="/projects" style={viewAllStyle}>
+          View All Projects
+        </Link>
+      </div>
+
       <style>{`
-        @media (max-width: 640px) {
-          .metrics-grid {
-            grid-template-columns: 1fr !important;
+        .featured-scroller::-webkit-scrollbar {
+          display: none;
+        }
+
+        @media (max-width: 900px) {
+          .featured-scroller {
+            padding: 0 24px !important;
+            gap: 20px !important;
           }
-          .metrics-grid > div {
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-            border-right: none !important;
-            border-bottom: 1px solid rgba(255,255,255,0.07);
-          }
-          .metrics-grid > div:last-child {
-            border-bottom: none;
+
+          .featured-arrow {
+            display: none !important;
           }
         }
       `}</style>
     </section>
   );
 }
+
+function ProjectCard({
+  project,
+}: {
+  project: {
+    title: string;
+    subtitle: string;
+    image: string;
+    industry: string;
+    category: string;
+    href: string;
+  };
+}) {
+  return (
+    <Link
+      href={project.href}
+      style={{
+        textDecoration: "none",
+        color: "inherit",
+        flex: "0 0 auto",
+        scrollSnapAlign: "center",
+      }}
+    >
+      <motion.div
+        whileHover={{ y: -6 }}
+        transition={{ duration: 0.35 }}
+        style={{
+          width: CARD_WIDTH,
+          height: 330,
+          borderRadius: 34,
+          background: "#f3f3f3",
+          overflow: "hidden",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          padding: 24,
+          gap: 32,
+        }}
+      >
+        <div
+          style={{
+            background: "#e8e8e8",
+            borderRadius: 26,
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 34,
+          }}
+        >
+          <img
+            src={project.image}
+            alt={project.title}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              display: "block",
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            textAlign: "left",
+            padding: "18px 4px 4px 0",
+          }}
+        >
+          <div>
+            <h3
+              style={{
+                fontSize: 34,
+                fontWeight: 800,
+                letterSpacing: "-0.05em",
+                lineHeight: 1.05,
+                margin: 0,
+                color: "#000",
+              }}
+            >
+              {project.title}
+            </h3>
+
+            <p
+              style={{
+                fontSize: 18,
+                lineHeight: 1.45,
+                color: "#666",
+                margin: "14px 0 0",
+                maxWidth: 340,
+              }}
+            >
+              {project.subtitle}
+            </p>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <span style={chipStyle}>{project.industry}</span>
+            <span style={chipStyle}>{project.category}</span>
+          </div>
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
+const pillStyle: React.CSSProperties = {
+  display: "inline-flex",
+  padding: "8px 18px",
+  borderRadius: 999,
+  background: "#f1f1f1",
+  color: "#666",
+  fontSize: 15,
+  marginBottom: 26,
+};
+
+const titleStyle: React.CSSProperties = {
+  fontSize: "clamp(42px, 5vw, 72px)",
+  fontWeight: 800,
+  letterSpacing: "-0.055em",
+  lineHeight: 1,
+  color: "#000",
+  margin: 0,
+};
+
+const subtitleStyle: React.CSSProperties = {
+  fontSize: "clamp(20px, 2vw, 28px)",
+  fontWeight: 600,
+  color: "#666",
+  margin: "20px auto 0",
+  lineHeight: 1.2,
+};
+
+const chipStyle: React.CSSProperties = {
+  fontSize: 15,
+  fontWeight: 500,
+  color: "#555",
+  background: "#dedede",
+  borderRadius: 999,
+  padding: "8px 16px",
+};
+
+const floatingArrowStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "50%",
+  transform: "translateY(-50%)",
+  zIndex: 20,
+  width: 46,
+  height: 46,
+  borderRadius: "50%",
+  border: "none",
+  background: "#1495ff",
+  color: "#fff",
+  fontSize: 30,
+  lineHeight: "46px",
+  cursor: "pointer",
+  boxShadow: "0 14px 32px rgba(20,149,255,0.28)",
+};
+
+const viewAllStyle: React.CSSProperties = {
+  background: "#1495ff",
+  color: "#fff",
+  borderRadius: 999,
+  padding: "14px 30px",
+  fontSize: 16,
+  fontWeight: 600,
+  textDecoration: "none",
+  boxShadow: "0 12px 30px rgba(20,149,255,0.22)",
+};

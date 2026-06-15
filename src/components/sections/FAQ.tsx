@@ -1,130 +1,132 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
-type Bezier = [number, number, number, number];
-const EASE_OUT: Bezier = [0.0, 0.0, 0.2, 1.0];
-
-const faqs = [
+const FAQS = [
   {
-    question: "What does your design process look like?",
+    question: "What kind of work do you specialize in?",
     answer:
-      "I start with deep discovery — understanding user needs, business goals, and technical constraints. From there I move into information architecture, wireframing, and iterative prototyping. Every decision is documented and tied to a clear rationale. I design in Figma and hand off with precise specs and motion prototypes.",
+      "I specialize in leading frontend and mobile engineering teams, building scalable digital products, and turning complex business requirements into clear, high-performing user experiences.",
   },
   {
-    question: "Do you work on both design and development?",
+    question: "What is your strongest technical background?",
     answer:
-      "Yes — I'm a full-stack designer/developer. I can take a product from initial concept and UX strategy all the way through to production-ready code in React / Next.js. This eliminates the typical handoff friction and ensures what gets built matches the design intent precisely.",
+      "My strongest background is in React, Next.js, React Native, TypeScript, clean architecture, frontend/mobile architecture, and building scalable systems that are maintainable and performance-focused.",
   },
   {
-    question: "What types of projects do you take on?",
+    question: "What industries have you worked in?",
     answer:
-      "I focus on web applications, SaaS products, brand identities, and interactive marketing sites. I'm particularly drawn to products that demand both rigorous UX thinking and high-quality visual execution — fintech, creative tools, and premium consumer brands.",
+      "I have worked across government innovation, fintech, banking, enterprise platforms, and digital transformation projects in Saudi Arabia and the MENA region.",
   },
   {
-    question: "Are you available for freelance or contract work?",
+    question: "How do you work with product and design teams?",
     answer:
-      "I'm currently open to select freelance and contract engagements. I typically work with 2-3 clients at a time to maintain quality. If you have an interesting project, reach out and let's explore fit.",
+      "I partner closely with product, design, backend, QA, and business teams to align technical decisions with user needs, business goals, and delivery timelines.",
   },
   {
-    question: "What is your typical project timeline?",
+    question: "What makes your experience different?",
     answer:
-      "A focused brand + landing page takes 3-4 weeks. A full product design sprint (research through high-fidelity) takes 6-10 weeks. Full-stack implementation adds 4-8 weeks depending on scope. I'll give you a precise timeline after understanding your requirements.",
-  },
-  {
-    question: "How do you handle revisions and feedback?",
-    answer:
-      "I use structured feedback rounds built into every project phase. I share work-in-progress early and often — weekly check-ins, Loom walkthroughs, and async Figma comments. Surprises are eliminated through consistent communication.",
+      "I combine engineering leadership, product thinking, UI/UX sensitivity, and hands-on technical depth. I have led teams, shipped large-scale web and mobile products, improved platform quality, and won national programming and innovation competitions.",
   },
 ];
 
 export default function FAQ() {
-  const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndex, setOpenIndex] = useState<number>(0);
+
+  const toggle = (index: number) => {
+    setOpenIndex((prev) => (prev === index ? -1 : index));
+  };
 
   return (
-    <section
-      ref={ref}
-      style={{ backgroundColor: "#F9F9FB" }}
-    >
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "clamp(60px, 10vw, 120px) 24px",
-          display: "grid",
-          gridTemplateColumns: "1fr 2fr",
-          gap: "clamp(40px, 6vw, 80px)",
-          alignItems: "start",
-        }}
-        className="faq-layout"
-      >
-        {/* Left: Section heading */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, ease: EASE_OUT }}
-          style={{ position: "sticky", top: 96 }}
-        >
-          <p
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: "#666D80",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              marginBottom: 12,
-            }}
-          >
-            FAQ
-          </p>
-          <h2
-            style={{
-              fontSize: "clamp(24px, 3vw, 36px)",
-              fontWeight: 800,
-              color: "#0D0E12",
-              letterSpacing: "-0.03em",
-              lineHeight: 1.15,
-              marginBottom: 16,
-            }}
-          >
-            Frequently Asked Questions
-          </h2>
-          <p
-            style={{
-              fontSize: 14,
-              color: "#666D80",
-              lineHeight: 1.65,
-            }}
-          >
-            Everything you need to know before we start working together.
-          </p>
-        </motion.div>
+    <section style={sectionStyle}>
+      <div style={containerStyle} className="faq-grid">
+        {/* ── Left column ── */}
+        <div style={leftColStyle} className="faq-left-col">
+          <div style={pillStyle}>FAQ</div>
 
-        {/* Right: Accordion list */}
-        <div>
-          {faqs.map((faq, i) => (
-            <AccordionItem
-              key={i}
-              faq={faq}
-              index={i}
-              isOpen={openIndex === i}
-              onToggle={() => setOpenIndex(openIndex === i ? null : i)}
-              inView={inView}
+          <h2 style={headingStyle} className="faq-heading">
+            Got Questions?
+            <br />
+            I Got Answers!
+          </h2>
+
+          <p style={supportingTextStyle}>
+            Here are common questions about my experience, leadership, and
+            product engineering work.
+          </p>
+
+          <div style={imageWrapStyle} className="faq-image-wrap">
+            <Image
+              src="/avatar.jpg"
+              alt="Turki Almalki"
+              fill
+              style={{ objectFit: "cover", objectPosition: "top center" }}
+              sizes="(max-width: 860px) 90vw, 420px"
+              priority={false}
             />
-          ))}
+          </div>
+        </div>
+
+        {/* ── Right column ── */}
+        <div style={rightColStyle} className="faq-right-col">
+          {FAQS.map((faq, index) => {
+            const isOpen = openIndex === index;
+            return (
+              <div key={index} style={cardStyle}>
+                <button
+                  onClick={() => toggle(index)}
+                  style={cardHeaderStyle}
+                  aria-expanded={isOpen}
+                >
+                  <span style={questionStyle}>{faq.question}</span>
+                  <span style={iconStyle(isOpen)} aria-hidden>
+                    {isOpen ? "×" : "+"}
+                  </span>
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      key="answer"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{
+                        height: { duration: 0.36, ease: [0.16, 1, 0.3, 1] },
+                        opacity: { duration: 0.25 },
+                      }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <p style={answerStyle}>{faq.answer}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       <style>{`
-        @media (max-width: 768px) {
-          .faq-layout {
-            grid-template-columns: 1fr !important;
+        @media (max-width: 860px) {
+          .faq-grid {
+            flex-direction: column !important;
           }
-          .faq-layout > div:first-child {
-            position: static !important;
+          .faq-left-col {
+            flex: none !important;
+            width: 100% !important;
+          }
+          .faq-right-col {
+            flex: none !important;
+            width: 100% !important;
+          }
+          .faq-image-wrap {
+            height: 300px !important;
+          }
+          .faq-heading {
+            font-size: clamp(42px, 10vw, 56px) !important;
           }
         }
       `}</style>
@@ -132,105 +134,123 @@ export default function FAQ() {
   );
 }
 
-function AccordionItem({
-  faq,
-  index,
-  isOpen,
-  onToggle,
-  inView,
-}: {
-  faq: { question: string; answer: string };
-  index: number;
-  isOpen: boolean;
-  onToggle: () => void;
-  inView: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, ease: [0.0, 0.0, 0.2, 1.0], delay: 0.1 + index * 0.06 }}
-      style={{
-        borderBottom: "1px solid #E4E7EC",
-      }}
-    >
-      <button
-        onClick={onToggle}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "22px 0",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontFamily: "inherit",
-          textAlign: "left",
-          gap: 16,
-        }}
-      >
-        <span
-          style={{
-            fontSize: "clamp(15px, 1.5vw, 17px)",
-            fontWeight: 600,
-            color: "#0D0E12",
-            letterSpacing: "-0.015em",
-            lineHeight: 1.3,
-          }}
-        >
-          {faq.question}
-        </span>
+/* ── Styles ── */
 
-        {/* +/- icon */}
-        <span
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            border: "1px solid #E4E7EC",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            fontSize: 18,
-            fontWeight: 300,
-            lineHeight: 1,
-            color: isOpen ? "#FFFFFF" : "#0D0E12",
-            background: isOpen ? "#0D0E12" : "transparent",
-            borderColor: isOpen ? "#0D0E12" : "#E4E7EC",
-            transform: isOpen ? "rotate(45deg)" : "rotate(0deg)",
-            transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease",
-          }}
-          aria-hidden
-        >
-          +
-        </span>
-      </button>
+const sectionStyle: React.CSSProperties = {
+  background: "#ffffff",
+  padding: "clamp(80px, 10vw, 140px) 24px",
+};
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-            style={{ overflow: "hidden" }}
-          >
-            <p
-              style={{
-                fontSize: 15,
-                color: "#666D80",
-                lineHeight: 1.7,
-                paddingBottom: 22,
-                maxWidth: 640,
-              }}
-            >
-              {faq.answer}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
+const containerStyle: React.CSSProperties = {
+  maxWidth: 1180,
+  margin: "0 auto",
+  display: "flex",
+  gap: "clamp(40px, 5vw, 80px)",
+  alignItems: "flex-start",
+};
+
+const leftColStyle: React.CSSProperties = {
+  flex: "0 0 clamp(280px, 36%, 400px)",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const pillStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignSelf: "flex-start",
+  padding: "8px 18px",
+  borderRadius: 999,
+  background: "#f1f1f1",
+  color: "#666",
+  fontSize: 15,
+  fontWeight: 500,
+  marginBottom: 24,
+};
+
+const headingStyle: React.CSSProperties = {
+  fontSize: "clamp(42px, 4.6vw, 72px)",
+  fontWeight: 800,
+  letterSpacing: "-0.055em",
+  lineHeight: 1.05,
+  color: "#000",
+  margin: "0 0 22px",
+};
+
+const supportingTextStyle: React.CSSProperties = {
+  fontSize: "clamp(15px, 1.3vw, 18px)",
+  lineHeight: 1.65,
+  color: "#666",
+  margin: 0,
+  maxWidth: 340,
+};
+
+const imageWrapStyle: React.CSSProperties = {
+  position: "relative",
+  marginTop: 40,
+  borderRadius: 32,
+  background: "#f3f3f3",
+  overflow: "hidden",
+  height: "clamp(260px, 26vw, 360px)",
+  width: "100%",
+};
+
+const rightColStyle: React.CSSProperties = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+  paddingTop: 4,
+};
+
+const cardStyle: React.CSSProperties = {
+  background: "#f3f3f3",
+  borderRadius: 20,
+  overflow: "hidden",
+};
+
+const cardHeaderStyle: React.CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 16,
+  padding: "22px 24px",
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  textAlign: "left",
+};
+
+const questionStyle: React.CSSProperties = {
+  fontSize: "clamp(16px, 1.45vw, 22px)",
+  fontWeight: 700,
+  color: "#000",
+  letterSpacing: "-0.02em",
+  lineHeight: 1.3,
+};
+
+const iconStyle = (isOpen: boolean): React.CSSProperties => ({
+  flexShrink: 0,
+  width: 34,
+  height: 34,
+  borderRadius: "50%",
+  background: "#1495ff",
+  color: "#fff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: isOpen ? 24 : 20,
+  fontWeight: 400,
+  lineHeight: 1,
+  userSelect: "none",
+  transition: "font-size 0.2s ease",
+});
+
+const answerStyle: React.CSSProperties = {
+  fontSize: "clamp(14px, 1.1vw, 17px)",
+  lineHeight: 1.7,
+  color: "#555",
+  margin: 0,
+  padding: "0 24px 24px",
+};
