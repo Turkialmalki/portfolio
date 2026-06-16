@@ -4,14 +4,17 @@ import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
-  type CSSProperties,
+  type TransitionEvent,
+  type TouchEvent,
 } from "react";
 import { motion } from "framer-motion";
 
-const AUTOPLAY_MS = 10000;
-const INITIAL_PROJECT_INDEX = 0;
+const AUTOPLAY_MS = 10_000;
+const CLONE_COUNT = 2;
 
 type Project = {
   title: string;
@@ -26,9 +29,9 @@ type Project = {
 
 const PROJECTS: Project[] = [
   {
-    title: "Monshaat",
+    title: "Monsha’at Innovation Center",
     subtitle:
-      "Led the digital revamp of the Innovation Center and built scalable internal tools, dashboards, and data systems supporting startups and innovation programs.",
+      "Led the Innovation Center digital revamp and built internal platforms, dashboards, and data systems supporting Saudi startups.",
     image: "/monshaat.jpg",
     industry: "Government Innovation",
     category: "Engineering Leadership",
@@ -37,9 +40,9 @@ const PROJECTS: Project[] = [
     imagePosition: "center center",
   },
   {
-    title: "Emkan",
+    title: "Emkan Finance App",
     subtitle:
-      "Led the engineering and modernization of scalable fintech experiences across mobile and web, improving architecture, delivery, and product quality.",
+      "Led the modernization of scalable fintech experiences across mobile and web, improving architecture and product delivery.",
     image: "/emkan2025.png",
     industry: "Fintech",
     category: "Mobile Engineering",
@@ -48,9 +51,9 @@ const PROJECTS: Project[] = [
     imagePosition: "center center",
   },
   {
-    title: "AlRajhi Bank",
+    title: "Al Rajhi Mobile Banking",
     subtitle:
-      "Designed, developed, and maintained customer-facing mobile banking experiences using React Native, clean architecture, and scalable frontend practices.",
+      "Designed and maintained customer-facing mobile banking experiences using React Native and scalable frontend architecture.",
     image: "/alrajhi2022.png",
     industry: "Digital Banking",
     category: "Mobile Architecture",
@@ -61,7 +64,7 @@ const PROJECTS: Project[] = [
   {
     title: "Munaseb Digital Platform",
     subtitle:
-      "Led engineering management and product delivery for Munaseb, aligning technology, user experience, and business goals into a focused digital platform.",
+      "Led engineering and product delivery for a digital financing platform, aligning technology, user experience, and business goals.",
     image: "/munasib.png",
     industry: "Digital Product",
     category: "Engineering Management",
@@ -72,7 +75,7 @@ const PROJECTS: Project[] = [
   {
     title: "Saudi Aramco",
     subtitle:
-      "An early engineering and innovation experience that strengthened my foundations in enterprise technology, software delivery, and structured problem-solving.",
+      "Built an early foundation in enterprise technology, software delivery, and structured engineering problem-solving.",
     image: "/aramco.jpeg",
     industry: "Energy & Enterprise",
     category: "Engineering COOP",
@@ -82,163 +85,338 @@ const PROJECTS: Project[] = [
   },
 ];
 
-export default function FeaturedWork() {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const activeIndexRef = useRef(INITIAL_PROJECT_INDEX);
-  const scrollFrameRef = useRef<number | null>(null);
+const REAL_START_INDEX = CLONE_COUNT;
+const REAL_END_INDEX =
+  REAL_START_INDEX + PROJECTS.length - 1;
 
-  const [activeIndex, setActiveIndex] = useState(
-    INITIAL_PROJECT_INDEX,
+function positiveModulo(value: number, divisor: number) {
+  return ((value % divisor) + divisor) % divisor;
+}
+
+function getRealProjectIndex(virtualIndex: number) {
+  return positiveModulo(
+    virtualIndex - REAL_START_INDEX,
+    PROJECTS.length,
+  );
+}
+
+export default function FeaturedWork() {
+  /*
+   * Two duplicates are placed on each side.
+   *
+   * This keeps neighboring cards identical during the
+   * invisible loop correction, preventing a visible flash.
+   */
+  const carouselProjects = useMemo(
+    () => [
+      ...PROJECTS.slice(-CLONE_COUNT),
+      ...PROJECTS,
+      ...PROJECTS.slice(0, CLONE_COUNT),
+    ],
+    [],
   );
 
-  const updateActiveIndex = useCallback((index: number) => {
-    const safeIndex = Math.max(
-      0,
-      Math.min(index, PROJECTS.length - 1),
-    );
+  const viewportRef = useRef<HTMLDivElement>(null);
 
-    activeIndexRef.current = safeIndex;
-    setActiveIndex(safeIndex);
+  const slideRefs = useRef<
+    Array<HTMLDivElement | null>
+  >([]);
+
+  const virtualIndexRef = useRef(REAL_START_INDEX);
+  const touchStartXRef = useRef<number | null>(null);
+
+  const firstJumpFrameRef = useRef<number | null>(null);
+  const secondJumpFrameRef = useRef<number | null>(null);
+
+  const [virtualIndex, setVirtualIndex] =
+    useState(REAL_START_INDEX);
+
+  const [translateX, setTranslateX] = useState(0);
+  const [viewportHeight, setViewportHeight] =
+    useState<number | undefined>(undefined);
+
+  const [transitionEnabled, setTransitionEnabled] =
+    useState(false);
+
+  const [isPaused, setIsPaused] = useState(false);
+
+  const activeProjectIndex =
+    getRealProjectIndex(virtualIndex);
+
+  const measureSlide = useCallback((index: number) => {
+    const viewport = viewportRef.current;
+    const slide = slideRefs.current[index];
+
+    if (!viewport || !slide) {
+      return;
+    }
+
+    /*
+     * Center the selected project inside the viewport.
+     */
+    const slideCenter =
+      slide.offsetLeft + slide.offsetWidth / 2;
+
+    const viewportCenter =
+      viewport.clientWidth / 2;
+
+    setTranslateX(viewportCenter - slideCenter);
+
+    /*
+     * The carousel viewport follows the full card height.
+     * This prevents the mobile text section from being cut.
+     */
+    setViewportHeight(slide.offsetHeight);
   }, []);
 
-  const scrollToIndex = useCallback(
-    (
-      index: number,
-      behavior: ScrollBehavior = "smooth",
-    ) => {
-      const scroller = scrollerRef.current;
-
+  const moveToIndex = useCallback(
+    (nextIndex: number) => {
       const safeIndex = Math.max(
         0,
-        Math.min(index, PROJECTS.length - 1),
+        Math.min(
+          nextIndex,
+          carouselProjects.length - 1,
+        ),
       );
 
-      const card = cardRefs.current[safeIndex];
+      virtualIndexRef.current = safeIndex;
 
-      if (!scroller || !card) {
-        return;
-      }
-
-      const cardCenter =
-        card.offsetLeft + card.clientWidth / 2;
-
-      const viewportCenter = scroller.clientWidth / 2;
-
-      const targetLeft = cardCenter - viewportCenter;
-
-      scroller.scrollTo({
-        left: targetLeft,
-        behavior,
-      });
-
-      updateActiveIndex(safeIndex);
+      setTransitionEnabled(true);
+      setVirtualIndex(safeIndex);
     },
-    [updateActiveIndex],
+    [carouselProjects.length],
   );
 
-  const showNextProject = () => {
-    const nextIndex = activeIndexRef.current + 1;
+  const jumpToIndex = useCallback(
+    (nextIndex: number) => {
+      virtualIndexRef.current = nextIndex;
 
-    if (nextIndex >= PROJECTS.length) {
-      return;
-    }
+      /*
+       * Disable movement animation before changing
+       * from a duplicate card to its matching real card.
+       */
+      setTransitionEnabled(false);
+      setVirtualIndex(nextIndex);
 
-    scrollToIndex(nextIndex);
-  };
-
-  const showPreviousProject = () => {
-    const previousIndex = activeIndexRef.current - 1;
-
-    if (previousIndex < 0) {
-      return;
-    }
-
-    scrollToIndex(previousIndex);
-  };
-
-  const handleCarouselScroll = () => {
-    const scroller = scrollerRef.current;
-
-    if (!scroller) {
-      return;
-    }
-
-    if (scrollFrameRef.current !== null) {
-      window.cancelAnimationFrame(scrollFrameRef.current);
-    }
-
-    scrollFrameRef.current = window.requestAnimationFrame(() => {
-      const viewportCenter =
-        scroller.scrollLeft + scroller.clientWidth / 2;
-
-      let nearestIndex = activeIndexRef.current;
-      let smallestDistance = Number.POSITIVE_INFINITY;
-
-      cardRefs.current.forEach((card, index) => {
-        if (!card) {
-          return;
-        }
-
-        const cardCenter =
-          card.offsetLeft + card.clientWidth / 2;
-
-        const distance = Math.abs(
-          cardCenter - viewportCenter,
+      if (firstJumpFrameRef.current !== null) {
+        cancelAnimationFrame(
+          firstJumpFrameRef.current,
         );
-
-        if (distance < smallestDistance) {
-          smallestDistance = distance;
-          nearestIndex = index;
-        }
-      });
-
-      if (nearestIndex !== activeIndexRef.current) {
-        updateActiveIndex(nearestIndex);
       }
-    });
-  };
 
+      if (secondJumpFrameRef.current !== null) {
+        cancelAnimationFrame(
+          secondJumpFrameRef.current,
+        );
+      }
+
+      firstJumpFrameRef.current =
+        requestAnimationFrame(() => {
+          measureSlide(nextIndex);
+
+          secondJumpFrameRef.current =
+            requestAnimationFrame(() => {
+              setTransitionEnabled(true);
+            });
+        });
+    },
+    [measureSlide],
+  );
+
+  const showNextProject = useCallback(() => {
+    moveToIndex(virtualIndexRef.current + 1);
+  }, [moveToIndex]);
+
+  const showPreviousProject = useCallback(() => {
+    moveToIndex(virtualIndexRef.current - 1);
+  }, [moveToIndex]);
+
+  const showProject = useCallback(
+    (projectIndex: number) => {
+      moveToIndex(REAL_START_INDEX + projectIndex);
+    },
+    [moveToIndex],
+  );
+
+  /*
+   * Measure and center the selected card whenever its
+   * virtual position changes.
+   */
+  useLayoutEffect(() => {
+    measureSlide(virtualIndex);
+  }, [measureSlide, virtualIndex]);
+
+  /*
+   * Watch the active card for height changes caused by
+   * responsive text wrapping or image loading.
+   */
   useEffect(() => {
-    const initialFrame = window.requestAnimationFrame(() => {
-      scrollToIndex(INITIAL_PROJECT_INDEX, "auto");
+    const activeSlide =
+      slideRefs.current[virtualIndex];
+
+    if (!activeSlide) {
+      return;
+    }
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      measureSlide(virtualIndex);
     });
 
+    resizeObserver.observe(activeSlide);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [measureSlide, virtualIndex]);
+
+  /*
+   * Recalculate card positioning when the browser width
+   * changes or the phone rotates.
+   */
+  useEffect(() => {
     const handleResize = () => {
-      scrollToIndex(activeIndexRef.current, "auto");
+      setTransitionEnabled(false);
+
+      requestAnimationFrame(() => {
+        measureSlide(virtualIndexRef.current);
+
+        requestAnimationFrame(() => {
+          setTransitionEnabled(true);
+        });
+      });
     };
 
     window.addEventListener("resize", handleResize);
 
     return () => {
-      window.cancelAnimationFrame(initialFrame);
-      window.removeEventListener("resize", handleResize);
-
-      if (scrollFrameRef.current !== null) {
-        window.cancelAnimationFrame(
-          scrollFrameRef.current,
-        );
-      }
+      window.removeEventListener(
+        "resize",
+        handleResize,
+      );
     };
-  }, [scrollToIndex]);
+  }, [measureSlide]);
 
+  /*
+   * Initial positioning.
+   */
   useEffect(() => {
-    if (activeIndex >= PROJECTS.length - 1) {
+    const initialFrame = requestAnimationFrame(() => {
+      measureSlide(REAL_START_INDEX);
+
+      requestAnimationFrame(() => {
+        setTransitionEnabled(true);
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(initialFrame);
+    };
+  }, [measureSlide]);
+
+  /*
+   * Autoplay waits ten seconds after every movement.
+   */
+  useEffect(() => {
+    if (isPaused) {
       return;
     }
 
     const autoplayTimer = window.setTimeout(() => {
-      scrollToIndex(activeIndex + 1);
+      showNextProject();
     }, AUTOPLAY_MS);
 
     return () => {
       window.clearTimeout(autoplayTimer);
     };
-  }, [activeIndex, scrollToIndex]);
+  }, [
+    isPaused,
+    showNextProject,
+    virtualIndex,
+  ]);
 
-  const isFirstProject = activeIndex === 0;
-  const isLastProject =
-    activeIndex === PROJECTS.length - 1;
+  /*
+   * After reaching a duplicated boundary card, instantly
+   * align to the equivalent real card.
+   *
+   * Because the cards and their neighbors are identical,
+   * this correction is invisible.
+   */
+  const handleTrackTransitionEnd = (
+    event: TransitionEvent<HTMLDivElement>,
+  ) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+
+    const firstTrailingClone =
+      REAL_START_INDEX + PROJECTS.length;
+
+    const finalLeadingClone =
+      REAL_START_INDEX - 1;
+
+    if (virtualIndex >= firstTrailingClone) {
+      const matchingRealIndex =
+        REAL_START_INDEX +
+        (virtualIndex - firstTrailingClone);
+
+      jumpToIndex(matchingRealIndex);
+      return;
+    }
+
+    if (virtualIndex <= finalLeadingClone) {
+      const distanceFromFinalLeadingClone =
+        finalLeadingClone - virtualIndex;
+
+      const matchingRealIndex =
+        REAL_END_INDEX -
+        distanceFromFinalLeadingClone;
+
+      jumpToIndex(matchingRealIndex);
+    }
+  };
+
+  const handleTouchStart = (
+    event: TouchEvent<HTMLDivElement>,
+  ) => {
+    touchStartXRef.current =
+      event.touches[0]?.clientX ?? null;
+
+    setIsPaused(true);
+  };
+
+  const handleTouchEnd = (
+    event: TouchEvent<HTMLDivElement>,
+  ) => {
+    const startX = touchStartXRef.current;
+    const endX =
+      event.changedTouches[0]?.clientX;
+
+    touchStartXRef.current = null;
+    setIsPaused(false);
+
+    if (
+      startX === null ||
+      endX === undefined
+    ) {
+      return;
+    }
+
+    const distance = startX - endX;
+
+    if (Math.abs(distance) < 45) {
+      return;
+    }
+
+    if (distance > 0) {
+      showNextProject();
+    } else {
+      showPreviousProject();
+    }
+  };
 
   return (
     <section
@@ -246,51 +424,98 @@ export default function FeaturedWork() {
       className="featured-work"
     >
       <div className="featured-heading">
-        <div style={pillStyle}>Projects</div>
+        <div className="featured-pill">
+          Projects
+        </div>
 
-        <h2 style={titleStyle}>
+        <h2 className="featured-title">
           Featured Work
         </h2>
 
-        <p style={subtitleStyle}>
+        <p className="featured-subtitle">
           Engineering initiatives and digital products
           delivered across government, fintech, banking,
           and innovation.
         </p>
       </div>
 
-      <div className="carousel-stage">
+      <div
+        className="carousel-stage"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onFocusCapture={() => setIsPaused(true)}
+        onBlurCapture={() => setIsPaused(false)}
+      >
         <button
           type="button"
+          className="
+            carousel-navigation
+            carousel-navigation-previous
+          "
           onClick={showPreviousProject}
-          disabled={isFirstProject}
-          className="featured-arrow featured-arrow-left"
           aria-label="Show previous project"
         >
           ‹
         </button>
 
         <div
-          ref={scrollerRef}
-          className="featured-scroller"
-          onScroll={handleCarouselScroll}
+          ref={viewportRef}
+          className="carousel-viewport"
+          style={{
+            height:
+              viewportHeight === undefined
+                ? undefined
+                : `${viewportHeight}px`,
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={() => {
+            touchStartXRef.current = null;
+            setIsPaused(false);
+          }}
         >
-          {PROJECTS.map((project, index) => (
-            <ProjectCard
-              key={project.title}
-              project={project}
-              refCallback={(element) => {
-                cardRefs.current[index] = element;
-              }}
-            />
-          ))}
+          <div
+            className="carousel-track"
+            onTransitionEnd={
+              handleTrackTransitionEnd
+            }
+            style={{
+              transform: `translate3d(${translateX}px, 0, 0)`,
+
+              transition: transitionEnabled
+                ? "transform 700ms cubic-bezier(0.16, 1, 0.3, 1)"
+                : "none",
+            }}
+          >
+            {carouselProjects.map(
+              (project, index) => (
+                <div
+                  key={`${project.title}-${index}`}
+                  ref={(element) => {
+                    slideRefs.current[index] =
+                      element;
+                  }}
+                  className="project-slide"
+                  aria-hidden={
+                    index !== virtualIndex
+                  }
+                >
+                  <ProjectCard
+                    project={project}
+                  />
+                </div>
+              ),
+            )}
+          </div>
         </div>
 
         <button
           type="button"
+          className="
+            carousel-navigation
+            carousel-navigation-next
+          "
           onClick={showNextProject}
-          disabled={isLastProject}
-          className="featured-arrow featured-arrow-right"
           aria-label="Show next project"
         >
           ›
@@ -299,26 +524,26 @@ export default function FeaturedWork() {
 
       <div
         className="carousel-progress"
-        aria-label={`Project ${activeIndex + 1} of ${
-          PROJECTS.length
-        }`}
+        aria-label={`Project ${
+          activeProjectIndex + 1
+        } of ${PROJECTS.length}`}
       >
         {PROJECTS.map((project, index) => (
           <button
             key={project.title}
             type="button"
             className={
-              index === activeIndex
+              index === activeProjectIndex
                 ? "carousel-dot carousel-dot-active"
                 : "carousel-dot"
             }
             aria-label={`Show ${project.title}`}
             aria-current={
-              index === activeIndex
+              index === activeProjectIndex
                 ? "true"
                 : undefined
             }
-            onClick={() => scrollToIndex(index)}
+            onClick={() => showProject(index)}
           />
         ))}
       </div>
@@ -326,7 +551,7 @@ export default function FeaturedWork() {
       <div className="featured-cta">
         <Link
           href="/projects"
-          style={viewAllStyle}
+          className="featured-view-all"
         >
           View All Projects
         </Link>
@@ -334,117 +559,256 @@ export default function FeaturedWork() {
 
       <style>{`
         .featured-work {
-          --featured-card-width: min(
-            900px,
-            calc(100vw - 48px)
-          );
+          /*
+           * Smaller desktop cards and larger empty spaces.
+           */
+          --project-card-width:
+            clamp(700px, 54vw, 900px);
 
-          --featured-card-half: min(
-            450px,
-            calc((100vw - 48px) / 2)
-          );
+          --project-card-half:
+            clamp(350px, 27vw, 450px);
 
-          --featured-card-gap: 120px;
+          --project-gap:
+            clamp(100px, 6.5vw, 120px);
+
+          --project-gap-half:
+            clamp(50px, 3.25vw, 60px);
+
+          --carousel-arrow-size: 46px;
 
           width: 100%;
-          overflow: hidden;
-          padding: clamp(84px, 9vw, 120px) 0;
+          box-sizing: border-box;
 
-          background: var(--bg-primary);
+          overflow-x: hidden;
+          overflow-x: clip;
+          overflow-y: visible;
+
+          padding:
+            clamp(84px, 9vw, 120px)
+            0
+            clamp(145px, 13vw, 190px);
+
+          background:
+            var(--bg-primary, #ffffff);
 
           transition:
-            background-color 0.35s ease;
+            background-color 350ms ease;
         }
 
         .featured-heading {
-          width: min(1180px, calc(100% - 48px));
+          width:
+            min(1180px, calc(100% - 48px));
+
           margin: 0 auto;
           text-align: center;
+        }
+
+        .featured-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+
+          min-height: 38px;
+
+          box-sizing: border-box;
+
+          padding: 7px 18px;
+          margin-bottom: 25px;
+
+          color:
+            var(--text-secondary, #666666);
+
+          background:
+            var(--bg-pill, #f1f1f1);
+
+          border-radius: 999px;
+
+          font-size: 14px;
+          font-weight: 500;
+          line-height: 1;
+
+          transition:
+            color 350ms ease,
+            background-color 350ms ease;
+        }
+
+        .featured-title {
+          width: 100%;
+          max-width: 850px;
+
+          margin: 0 auto;
+
+          color:
+            var(--text-primary, #090909);
+
+          font-size:
+            clamp(46px, 5.2vw, 72px);
+
+          font-weight: 800;
+          line-height: 1;
+          letter-spacing: -0.055em;
+
+          text-wrap: balance;
+
+          transition: color 350ms ease;
+        }
+
+        .featured-subtitle {
+          width: 100%;
+          max-width: 760px;
+
+          margin: 20px auto 0;
+
+          color:
+            var(--text-secondary, #666666);
+
+          font-size:
+            clamp(19px, 1.8vw, 25px);
+
+          font-weight: 600;
+          line-height: 1.28;
+          letter-spacing: -0.025em;
+
+          text-wrap: balance;
+
+          transition: color 350ms ease;
         }
 
         .carousel-stage {
           position: relative;
           width: 100%;
-          margin-top: clamp(48px, 5vw, 68px);
+
+          margin-top:
+            clamp(48px, 5vw, 68px);
+
+          overflow: visible;
         }
 
-        .featured-scroller {
-          display: flex;
-          gap: var(--featured-card-gap);
+        /*
+         * The viewport height is controlled by the active
+         * slide measurement in React.
+         */
+        .carousel-viewport {
+          position: relative;
 
           width: 100%;
-          overflow-x: auto;
-          overflow-y: visible;
-
-          scroll-snap-type: x mandatory;
-          scroll-behavior: smooth;
-          overscroll-behavior-inline: contain;
-
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-
-          padding-inline: calc(
-            (100vw - var(--featured-card-width)) / 2
-          );
-
-          padding-block: 14px 20px;
-        }
-
-        .featured-scroller::-webkit-scrollbar {
-          display: none;
-        }
-
-        .project-slide {
-          flex: 0 0 auto;
-          width: var(--featured-card-width);
-
-          scroll-snap-align: center;
-          scroll-snap-stop: always;
-        }
-
-        .project-card {
-          box-sizing: border-box;
-
-          width: 100%;
-          min-height: 410px;
-
-          display: grid;
-          grid-template-columns:
-            minmax(0, 1.05fr)
-            minmax(0, 0.95fr);
-
-          gap: clamp(24px, 3vw, 38px);
-          padding: 22px;
+          min-height: 1px;
 
           overflow: hidden;
 
-          background: var(--bg-card);
-          border: 1px solid var(--border-subtle);
-          border-radius: 34px;
+          touch-action: pan-y;
 
           transition:
-            background-color 0.35s ease,
-            border-color 0.35s ease,
-            box-shadow 0.35s ease;
+            height 420ms
+            cubic-bezier(
+              0.16,
+              1,
+              0.3,
+              1
+            );
+        }
+
+        .carousel-track {
+          display: flex;
+          align-items: flex-start;
+
+          width: max-content;
+
+          gap: var(--project-gap);
+
+          will-change: transform;
+        }
+
+        .project-slide {
+          flex:
+            0 0
+            var(--project-card-width);
+
+          width:
+            var(--project-card-width);
+
+          min-width: 0;
+          height: auto;
+        }
+
+        .project-slide > a {
+          display: block;
+
+          width: 100%;
+          height: auto;
+
+          color: inherit;
+          text-decoration: none;
+
+          border-radius: 30px;
+        }
+
+        .project-slide > a:focus-visible {
+          outline:
+            3px solid
+            var(--accent, #1495ff);
+
+          outline-offset: 5px;
+        }
+
+        .project-card {
+          width: 100%;
+          min-height: 370px;
+
+          box-sizing: border-box;
+
+          display: grid;
+
+          grid-template-columns:
+            minmax(0, 1.04fr)
+            minmax(0, 0.96fr);
+
+          gap:
+            clamp(24px, 2.4vw, 34px);
+
+          padding: 20px;
+
+          overflow: hidden;
+
+          background:
+            var(--bg-card, #f3f3f3);
+
+          border:
+            1px solid
+            var(
+              --border-subtle,
+              rgba(0, 0, 0, 0.04)
+            );
+
+          border-radius: 30px;
+
+          transition:
+            background-color 350ms ease,
+            border-color 350ms ease,
+            box-shadow 350ms ease;
         }
 
         .project-media {
           position: relative;
 
+          width: 100%;
           min-width: 0;
-          min-height: 364px;
+          min-height: 330px;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
+          box-sizing: border-box;
           overflow: hidden;
 
-          background: var(--bg-card-muted);
-          border-radius: 25px;
+          background:
+            var(--bg-card-muted, #e8e8e8);
+
+          border-radius: 23px;
 
           transition:
-            background-color 0.35s ease;
+            background-color 350ms ease;
         }
 
         .project-media-photo {
@@ -452,7 +816,8 @@ export default function FeaturedWork() {
         }
 
         .project-media-mockup {
-          padding: clamp(20px, 2.5vw, 34px);
+          padding:
+            clamp(22px, 2.6vw, 36px);
         }
 
         .project-image {
@@ -462,8 +827,13 @@ export default function FeaturedWork() {
           height: 100%;
 
           transition:
-            transform 0.45s
-            cubic-bezier(0.16, 1, 0.3, 1);
+            transform 450ms
+            cubic-bezier(
+              0.16,
+              1,
+              0.3,
+              1
+            );
         }
 
         .project-media-photo .project-image {
@@ -478,6 +848,73 @@ export default function FeaturedWork() {
           transform: scale(1.025);
         }
 
+        .project-open-arrow {
+          position: absolute;
+
+          right: 18px;
+          bottom: 18px;
+          z-index: 5;
+
+          width: 50px;
+          height: 50px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          border-radius: 50%;
+
+          color:
+            var(--bg-primary, #ffffff);
+
+          background:
+            var(--text-primary, #090909);
+
+          box-shadow:
+            0 14px 32px
+            rgba(0, 0, 0, 0.2);
+
+          font-size: 28px;
+          font-weight: 300;
+          line-height: 1;
+
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+
+          transform:
+            translateY(12px)
+            scale(0.78)
+            rotate(-45deg);
+
+          transition:
+            opacity 260ms ease,
+            visibility 260ms ease,
+            transform 380ms
+              cubic-bezier(
+                0.16,
+                1,
+                0.3,
+                1
+              ),
+            background-color 350ms ease,
+            color 350ms ease,
+            box-shadow 350ms ease;
+        }
+
+        .project-card:hover .project-open-arrow,
+        .project-slide
+          > a:focus-visible
+          .project-open-arrow {
+          opacity: 1;
+          visibility: visible;
+
+          transform:
+            translateY(0)
+            scale(1)
+            rotate(-45deg);
+        }
+
         .project-copy {
           min-width: 0;
 
@@ -485,10 +922,12 @@ export default function FeaturedWork() {
           flex-direction: column;
           justify-content: space-between;
 
+          box-sizing: border-box;
+
           padding:
-            clamp(22px, 3vw, 34px)
-            12px
+            clamp(20px, 2.4vw, 30px)
             10px
+            8px
             0;
 
           text-align: left;
@@ -499,50 +938,59 @@ export default function FeaturedWork() {
         }
 
         .project-title {
-          max-width: 390px;
+          max-width: 370px;
+
           margin: 0;
 
-          color: var(--text-primary);
+          color:
+            var(--text-primary, #090909);
 
-          font-size: clamp(28px, 2.5vw, 38px);
+          font-size:
+            clamp(28px, 2.25vw, 36px);
+
           font-weight: 800;
-          line-height: 1.03;
+          line-height: 1.04;
           letter-spacing: -0.052em;
 
-          overflow-wrap: anywhere;
+          text-wrap: balance;
 
-          transition: color 0.35s ease;
+          transition: color 350ms ease;
         }
 
         .project-description {
           display: -webkit-box;
 
-          max-width: 390px;
-          margin: 18px 0 0;
+          max-width: 380px;
+
+          margin: 16px 0 0;
 
           overflow: hidden;
 
-          color: var(--text-secondary);
+          color:
+            var(--text-secondary, #666666);
 
-          font-size: clamp(15px, 1.25vw, 17px);
+          font-size:
+            clamp(15px, 1.1vw, 17px);
+
           font-weight: 400;
-          line-height: 1.55;
+          line-height: 1.5;
           letter-spacing: -0.012em;
 
           -webkit-box-orient: vertical;
-          -webkit-line-clamp: 5;
+          -webkit-line-clamp: 4;
 
-          transition: color 0.35s ease;
+          transition: color 350ms ease;
         }
 
         .project-tags {
           display: flex;
           flex-wrap: wrap;
+
           justify-content: flex-end;
           align-items: center;
 
           gap: 8px;
-          margin-top: 28px;
+          margin-top: 24px;
         }
 
         .project-chip {
@@ -550,99 +998,116 @@ export default function FeaturedWork() {
           align-items: center;
           justify-content: center;
 
-          min-height: 34px;
-          max-width: 180px;
+          min-height: 33px;
+          max-width: 175px;
+
+          box-sizing: border-box;
 
           padding: 7px 14px;
 
-          color: var(--chip-text);
-          background: var(--chip-bg);
+          color:
+            var(--chip-text, #555555);
+
+          background:
+            var(--chip-bg, #dedede);
+
           border-radius: 999px;
 
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 500;
           line-height: 1.2;
           text-align: center;
 
           transition:
-            color 0.35s ease,
-            background-color 0.35s ease;
+            color 350ms ease,
+            background-color 350ms ease;
         }
 
-        .featured-arrow {
+        /*
+         * Arrows are exactly centered in the empty spaces.
+         */
+        .carousel-navigation {
           position: absolute;
-          top: 50%;
-          z-index: 20;
 
-          width: 50px;
-          height: 50px;
+          top: 50%;
+          z-index: 30;
+
+          width:
+            var(--carousel-arrow-size);
+
+          height:
+            var(--carousel-arrow-size);
 
           display: flex;
           align-items: center;
           justify-content: center;
 
           padding: 0;
+
           border: none;
           border-radius: 50%;
 
-          color: var(--accent-contrast);
-          background: var(--accent);
+          color:
+            var(--accent-contrast, #ffffff);
+
+          background:
+            var(--accent, #1495ff);
 
           box-shadow:
-            0 14px 34px
-            rgba(20, 149, 255, 0.26);
+            0 12px 30px
+            rgba(
+              20,
+              149,
+              255,
+              0.25
+            );
 
           font-family: inherit;
-          font-size: 31px;
+          font-size: 28px;
           line-height: 1;
 
           cursor: pointer;
 
-          transform: translate(-50%, -50%);
+          transform:
+            translate(-50%, -50%);
 
           transition:
-            opacity 0.25s ease,
-            transform 0.25s ease,
-            background-color 0.25s ease,
-            box-shadow 0.25s ease;
+            transform 250ms ease,
+            box-shadow 250ms ease,
+            background-color 250ms ease;
         }
 
-        .featured-arrow:hover:not(:disabled) {
+        .carousel-navigation:hover {
           transform:
             translate(-50%, -50%)
             scale(1.07);
 
           box-shadow:
-            0 18px 42px
-            rgba(20, 149, 255, 0.32);
+            0 17px 38px
+            rgba(
+              20,
+              149,
+              255,
+              0.32
+            );
         }
 
-        .featured-arrow:active:not(:disabled) {
-          transform:
-            translate(-50%, -50%)
-            scale(0.96);
+        .carousel-navigation-previous {
+          left:
+            calc(
+              50% -
+              var(--project-card-half) -
+              var(--project-gap-half)
+            );
         }
 
-        .featured-arrow:disabled {
-          opacity: 0.25;
-          cursor: not-allowed;
-          box-shadow: none;
-        }
-
-        .featured-arrow-left {
-          left: calc(
-            50% -
-            var(--featured-card-half) -
-            (var(--featured-card-gap) / 2)
-          );
-        }
-
-        .featured-arrow-right {
-          left: calc(
-            50% +
-            var(--featured-card-half) +
-            (var(--featured-card-gap) / 2)
-          );
+        .carousel-navigation-next {
+          left:
+            calc(
+              50% +
+              var(--project-card-half) +
+              var(--project-gap-half)
+            );
         }
 
         .carousel-progress {
@@ -651,7 +1116,8 @@ export default function FeaturedWork() {
           justify-content: center;
 
           gap: 8px;
-          margin-top: 22px;
+
+          margin-top: 24px;
         }
 
         .carousel-dot {
@@ -659,16 +1125,19 @@ export default function FeaturedWork() {
           height: 8px;
 
           padding: 0;
+
           border: none;
           border-radius: 999px;
 
-          background: var(--chip-bg);
+          background:
+            var(--chip-bg, #dedede);
+
           cursor: pointer;
 
           transition:
-            width 0.3s ease,
-            background-color 0.3s ease,
-            transform 0.3s ease;
+            width 300ms ease,
+            background-color 300ms ease,
+            transform 300ms ease;
         }
 
         .carousel-dot:hover {
@@ -677,7 +1146,9 @@ export default function FeaturedWork() {
 
         .carousel-dot-active {
           width: 28px;
-          background: var(--accent);
+
+          background:
+            var(--accent, #1495ff);
         }
 
         .featured-cta {
@@ -685,93 +1156,452 @@ export default function FeaturedWork() {
           justify-content: center;
 
           margin-top:
-            clamp(32px, 4vw, 48px);
+            clamp(32px, 4vw, 46px);
         }
 
-        @media (max-width: 1100px) {
+        .featured-view-all {
+          min-height: 49px;
+
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+
+          box-sizing: border-box;
+
+          padding: 14px 29px;
+
+          border-radius: 999px;
+
+          color:
+            var(--accent-contrast, #ffffff);
+
+          background:
+            var(--accent, #1495ff);
+
+          box-shadow:
+            0 12px 30px
+            rgba(
+              20,
+              149,
+              255,
+              0.22
+            );
+
+          font-size: 15px;
+          font-weight: 600;
+          line-height: 1;
+
+          text-decoration: none;
+
+          transition:
+            transform 250ms ease,
+            box-shadow 250ms ease;
+        }
+
+        .featured-view-all:hover {
+          transform: translateY(-2px);
+
+          box-shadow:
+            0 16px 36px
+            rgba(
+              20,
+              149,
+              255,
+              0.28
+            );
+        }
+
+        @media (max-width: 1080px) {
           .featured-work {
-            --featured-card-gap: 36px;
+            --project-card-width:
+              min(
+                740px,
+                calc(100vw - 100px)
+              );
+
+            --project-gap: 50px;
           }
 
-          .featured-arrow {
+          .carousel-navigation {
             display: none;
           }
         }
 
+        /*
+         * Mobile viewport.
+         *
+         * The card remains in normal vertical flow,
+         * and its measured height controls the viewport.
+         */
         @media (max-width: 760px) {
           .featured-work {
-            --featured-card-width:
+            --project-card-width:
               calc(100vw - 32px);
+
+            --project-gap: 18px;
+
+            padding:
+              82px
+              0
+              max(
+                190px,
+                calc(
+                  160px +
+                  env(
+                    safe-area-inset-bottom
+                  )
+                )
+              );
           }
 
           .featured-heading {
-            width: calc(100% - 32px);
+            width:
+              calc(100% - 32px);
+
+            max-width: 520px;
           }
 
-          .featured-scroller {
-            gap: 18px;
-            padding-inline: 16px;
+          .featured-pill {
+            min-height: 36px;
+
+            padding: 7px 17px;
+            margin-bottom: 24px;
+
+            font-size: 14px;
+          }
+
+          .featured-title {
+            max-width: 430px;
+
+            font-size:
+              clamp(
+                42px,
+                11vw,
+                55px
+              );
+
+            line-height: 1.02;
+            letter-spacing: -0.055em;
+          }
+
+          .featured-subtitle {
+            max-width: 410px;
+
+            margin-top: 20px;
+
+            font-size:
+              clamp(
+                17px,
+                4.8vw,
+                21px
+              );
+
+            line-height: 1.3;
+          }
+
+          .carousel-stage {
+            margin-top: 50px;
+          }
+
+          .carousel-viewport {
+            /*
+             * The shadow and hover movement remain inside
+             * the viewport while the entire card stays visible.
+             */
+            padding: 4px 0 18px;
+
+            box-sizing: content-box;
+          }
+
+          .project-slide {
+            width:
+              var(--project-card-width);
+
+            height: auto;
+          }
+
+          .project-slide > a {
+            width: 100%;
+            height: auto;
           }
 
           .project-card {
-            min-height: 580px;
+            width: 100%;
+            height: auto;
+            min-height: 0;
 
-            grid-template-columns: 1fr;
-            grid-template-rows: 290px 1fr;
+            display: flex;
+            flex-direction: column;
 
             gap: 0;
-            padding: 16px;
 
-            border-radius: 28px;
+            padding: 14px;
+
+            overflow: hidden;
+
+            border-radius: 30px;
           }
 
           .project-media {
+            width: 100%;
+            height: auto;
             min-height: 0;
+
+            aspect-ratio: 1.12 / 1;
+
+            flex: none;
+
+            border-radius: 24px;
+          }
+
+          .project-media-photo {
+            padding: 0;
+          }
+
+          .project-media-mockup {
+            padding:
+              clamp(
+                16px,
+                5vw,
+                27px
+              );
+          }
+
+          .project-copy {
+            width: 100%;
+            min-height: 0;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+
+            box-sizing: border-box;
+
+            padding:
+              25px
+              16px
+              23px;
+
+            text-align: left;
+          }
+
+          .project-copy-main {
+            width: 100%;
+            min-width: 0;
+          }
+
+          /*
+           * Mobile tags appear above the heading.
+           */
+          .project-tags {
+            order: -1;
+
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+
+            gap: 8px;
+
+            margin:
+              0
+              0
+              21px;
+          }
+
+          .project-chip {
+            min-height: 33px;
+            max-width: 100%;
+
+            padding: 7px 13px;
+
+            font-size: 12px;
+            white-space: normal;
+          }
+
+          .project-title {
+            width: 100%;
+            max-width: none;
+
+            font-size:
+              clamp(
+                28px,
+                8vw,
+                36px
+              );
+
+            line-height: 1.06;
+            letter-spacing: -0.048em;
+
+            overflow-wrap: break-word;
+          }
+
+          .project-description {
+            width: 100%;
+            max-width: none;
+
+            margin-top: 15px;
+
+            font-size:
+              clamp(
+                15px,
+                4.2vw,
+                17px
+              );
+
+            line-height: 1.5;
+
+            /*
+             * Do not clamp on mobile.
+             * The complete description is visible.
+             */
+            display: block;
+            overflow: visible;
+
+            -webkit-line-clamp: unset;
+          }
+
+          /*
+           * There is no hover on mobile, so the internal
+           * project action remains visible.
+           */
+          .project-open-arrow {
+            right: 17px;
+            bottom: 17px;
+
+            width: 50px;
+            height: 50px;
+
+            font-size: 28px;
+
+            opacity: 1;
+            visibility: visible;
+
+            transform:
+              translateY(0)
+              scale(1)
+              rotate(-45deg);
+          }
+
+          .carousel-progress {
+            margin-top: 24px;
+          }
+
+          .featured-cta {
+            margin-top: 34px;
+          }
+
+          .featured-view-all {
+            min-height: 50px;
+
+            padding: 14px 28px;
+
+            font-size: 15px;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .featured-work {
+            --project-card-width:
+              calc(100vw - 24px);
+
+            --project-gap: 14px;
+          }
+
+          .featured-heading {
+            width:
+              calc(100% - 28px);
+          }
+
+          .project-card {
+            padding: 11px;
+
+            border-radius: 27px;
+          }
+
+          .project-media {
+            aspect-ratio: 1.08 / 1;
+
             border-radius: 21px;
           }
 
           .project-media-mockup {
-            padding: 20px;
+            padding: 14px;
           }
 
           .project-copy {
-            padding: 26px 8px 6px;
-          }
-
-          .project-title {
-            max-width: none;
-            font-size: 29px;
-          }
-
-          .project-description {
-            max-width: none;
-
-            margin-top: 13px;
-            font-size: 15px;
-
-            -webkit-line-clamp: 4;
+            padding:
+              22px
+              11px
+              19px;
           }
 
           .project-tags {
-            justify-content: flex-start;
-            margin-top: 24px;
+            margin-bottom: 18px;
           }
 
           .project-chip {
-            max-width: none;
-            font-size: 12px;
+            min-height: 31px;
+
+            padding: 6px 11px;
+
+            font-size: 11px;
+          }
+
+          .project-title {
+            font-size:
+              clamp(
+                27px,
+                8.5vw,
+                33px
+              );
+          }
+
+          .project-description {
+            font-size:
+              clamp(
+                14px,
+                4.3vw,
+                16px
+              );
+
+            line-height: 1.5;
+          }
+
+          .project-open-arrow {
+            right: 14px;
+            bottom: 14px;
+
+            width: 47px;
+            height: 47px;
+
+            font-size: 26px;
           }
         }
 
-        @media (prefers-reduced-motion: reduce) {
-          .featured-scroller {
-            scroll-behavior: auto;
-          }
+        :global(.dark) .project-card,
+        :global([data-theme="dark"])
+          .project-card {
+          border-color:
+            rgba(
+              255,
+              255,
+              255,
+              0.07
+            );
+        }
 
+        @media (
+          prefers-reduced-motion:
+          reduce
+        ) {
+          .carousel-track,
+          .carousel-viewport,
           .project-card,
           .project-image,
-          .featured-arrow,
-          .carousel-dot {
+          .project-open-arrow,
+          .carousel-navigation,
+          .carousel-dot,
+          .featured-view-all {
             transition: none !important;
           }
         }
@@ -780,150 +1610,81 @@ export default function FeaturedWork() {
   );
 }
 
+type ProjectCardProps = {
+  project: Project;
+};
+
 function ProjectCard({
   project,
-  refCallback,
-}: {
-  project: Project;
-  refCallback: (
-    element: HTMLDivElement | null,
-  ) => void;
-}) {
+}: ProjectCardProps) {
   const isPhoto =
     project.imageMode === "photo";
 
   return (
-    <div
-      ref={refCallback}
-      className="project-slide"
-    >
-      <Link
-        href={project.href}
-        style={{
-          display: "block",
-          color: "inherit",
-          textDecoration: "none",
+    <Link href={project.href}>
+      <motion.article
+        className="project-card"
+        whileHover={{
+          y: -5,
+          boxShadow:
+            "var(--shadow-card)",
+        }}
+        transition={{
+          duration: 0.35,
+          ease: [0.16, 1, 0.3, 1],
         }}
       >
-        <motion.article
-          className="project-card"
-          whileHover={{
-            y: -5,
-            boxShadow: "var(--shadow-card)",
-          }}
-          transition={{
-            duration: 0.35,
-            ease: [0.16, 1, 0.3, 1],
-          }}
+        <div
+          className={[
+            "project-media",
+            isPhoto
+              ? "project-media-photo"
+              : "project-media-mockup",
+          ].join(" ")}
         >
-          <div
-            className={[
-              "project-media",
-              isPhoto
-                ? "project-media-photo"
-                : "project-media-mockup",
-            ].join(" ")}
+          <img
+            src={project.image}
+            alt={project.title}
+            className="project-image"
+            loading="lazy"
+            draggable={false}
+            style={{
+              objectPosition:
+                project.imagePosition ??
+                "center center",
+            }}
+          />
+
+          <span
+            className="project-open-arrow"
+            aria-hidden="true"
           >
-            <img
-              src={project.image}
-              alt={project.title}
-              className="project-image"
-              style={{
-                objectPosition:
-                  project.imagePosition ??
-                  "center center",
-              }}
-            />
+            →
+          </span>
+        </div>
+
+        <div className="project-copy">
+          <div className="project-copy-main">
+            <h3 className="project-title">
+              {project.title}
+            </h3>
+
+            <p className="project-description">
+              {project.subtitle}
+            </p>
           </div>
 
-          <div className="project-copy">
-            <div className="project-copy-main">
-              <h3 className="project-title">
-                {project.title}
-              </h3>
+          <div className="project-tags">
+            <span className="project-chip">
+              {project.industry}
+            </span>
 
-              <p className="project-description">
-                {project.subtitle}
-              </p>
-            </div>
-
-            <div className="project-tags">
-              <span className="project-chip">
-                {project.industry}
-              </span>
-
-              <span className="project-chip">
-                {project.category}
-              </span>
-            </div>
+            <span className="project-chip">
+              {project.category}
+            </span>
           </div>
-        </motion.article>
-      </Link>
-    </div>
+        </div>
+      </motion.article>
+    </Link>
   );
 }
-
-const pillStyle: CSSProperties = {
-  display: "inline-flex",
-  padding: "8px 18px",
-  marginBottom: 25,
-
-  borderRadius: 999,
-
-  background: "var(--bg-pill)",
-  color: "var(--text-secondary)",
-
-  fontSize: 14,
-  fontWeight: 500,
-};
-
-const titleStyle: CSSProperties = {
-  maxWidth: 820,
-  margin: "0 auto",
-
-  color: "var(--text-primary)",
-
-  fontSize: "clamp(44px, 5vw, 68px)",
-  fontWeight: 800,
-  lineHeight: 1,
-  letterSpacing: "-0.055em",
-
-  transition: "color 0.35s ease",
-};
-
-const subtitleStyle: CSSProperties = {
-  maxWidth: 740,
-  margin: "20px auto 0",
-
-  color: "var(--text-secondary)",
-
-  fontSize: "clamp(18px, 1.8vw, 24px)",
-  fontWeight: 600,
-  lineHeight: 1.3,
-  letterSpacing: "-0.025em",
-
-  transition: "color 0.35s ease",
-};
-
-const viewAllStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-
-  minHeight: 48,
-  padding: "13px 27px",
-
-  borderRadius: 999,
-
-  color: "var(--accent-contrast)",
-  background: "var(--accent)",
-
-  boxShadow:
-    "0 12px 30px rgba(20,149,255,0.22)",
-
-  fontSize: 15,
-  fontWeight: 600,
-  lineHeight: 1,
-
-  textDecoration: "none",
-};
