@@ -1,42 +1,29 @@
 "use client";
 
-import Script from "next/script";
+import { useEffect } from "react";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
 export default function Analytics() {
-  return (
-    <>
-      {/* Google Tag Manager loader */}
-      {GTM_ID && (
-        <Script
-          id="gtm-script"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${GTM_ID}');`,
-          }}
-        />
-      )}
+  useEffect(() => {
+    if (GTM_ID) {
+      const s = document.createElement("script");
+      s.async = true;
+      s.src = `https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`;
+      document.head.appendChild(s);
 
-      {/* Microsoft Clarity */}
-      {CLARITY_PROJECT_ID && (
-        <Script
-          id="clarity-script"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(function(c,l,a,r,i,t,y){
-c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-})(window,document,"clarity","script","${CLARITY_PROJECT_ID}");`,
-          }}
-        />
-      )}
-    </>
-  );
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+    }
+
+    if (CLARITY_PROJECT_ID) {
+      const s = document.createElement("script");
+      s.async = true;
+      s.src = `https://www.clarity.ms/tag/${CLARITY_PROJECT_ID}`;
+      document.head.appendChild(s);
+    }
+  }, []);
+
+  return null;
 }
