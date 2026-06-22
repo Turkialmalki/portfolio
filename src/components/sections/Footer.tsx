@@ -9,6 +9,7 @@ import {
   FiLinkedin,
   FiMail,
 } from "react-icons/fi";
+import { trackEvent } from "@/lib/analytics";
 
 type Bezier = [number, number, number, number];
 
@@ -19,16 +20,19 @@ const SOCIAL_LINKS = [
     label: "LinkedIn",
     href: "https://www.linkedin.com/in/turki-almalki",
     Icon: FiLinkedin,
+    event: "linkedin_click",
   },
   {
     label: "GitHub",
     href: "https://github.com/Turkialmalki",
     Icon: FiGithub,
+    event: null,
   },
   {
     label: "Email",
     href: "mailto:turkialmalki202200@gmail.com",
     Icon: FiMail,
+    event: "email_click",
   },
 ];
 
@@ -102,6 +106,7 @@ export default function Footer() {
 
             <motion.a
               href="mailto:turkialmalki202200@gmail.com"
+              onClick={() => trackEvent("contact_click", { location: "footer" })}
               initial={{ opacity: 0, y: 14 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{
@@ -159,10 +164,11 @@ export default function Footer() {
               <h3>Turki Almalki</h3>
 
               <div className="social-links">
-                {SOCIAL_LINKS.map(({ label, href, Icon }) => (
+                {SOCIAL_LINKS.map(({ label, href, Icon, event }) => (
                   <motion.a
                     key={label}
                     href={href}
+                    onClick={event ? () => trackEvent(event, { location: "footer", label }) : undefined}
                     target={
                       href.startsWith("http")
                         ? "_blank"

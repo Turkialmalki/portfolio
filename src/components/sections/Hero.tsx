@@ -12,6 +12,7 @@ import {
   useScroll,
   useTransform,
 } from "framer-motion";
+import { trackEvent } from "@/lib/analytics";
 
 const EASE: [number, number, number, number] = [
   0.16,
@@ -1413,6 +1414,7 @@ function PillButton({
     >
       <Link
         href={href}
+        onClick={() => trackEvent("portfolio_cta_click", { location: "hero" })}
         style={{
           display: "inline-flex",
           alignItems: "center",

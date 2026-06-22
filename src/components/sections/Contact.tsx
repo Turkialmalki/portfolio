@@ -3,15 +3,16 @@
 import { useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { RiGithubLine, RiLinkedinLine, RiTwitterXLine, RiDribbbleLine } from "react-icons/ri";
+import { trackEvent } from "@/lib/analytics";
 
 type Bezier = [number, number, number, number];
 const EASE: Bezier = [0.16, 1, 0.3, 1];
 
 const socialLinks = [
-  { icon: RiGithubLine, label: "GitHub", href: "https://github.com" },
-  { icon: RiLinkedinLine, label: "LinkedIn", href: "https://linkedin.com" },
-  { icon: RiTwitterXLine, label: "Twitter / X", href: "https://twitter.com" },
-  { icon: RiDribbbleLine, label: "Dribbble", href: "https://dribbble.com" },
+  { icon: RiGithubLine, label: "GitHub", href: "https://github.com", event: null },
+  { icon: RiLinkedinLine, label: "LinkedIn", href: "https://linkedin.com", event: "linkedin_click" },
+  { icon: RiTwitterXLine, label: "Twitter / X", href: "https://twitter.com", event: null },
+  { icon: RiDribbbleLine, label: "Dribbble", href: "https://dribbble.com", event: null },
 ];
 
 export default function Contact() {
@@ -84,6 +85,7 @@ export default function Contact() {
             href="mailto:turkialmalki202200@gmail.com"
             onMouseEnter={() => setEmailHovered(true)}
             onMouseLeave={() => setEmailHovered(false)}
+            onClick={() => trackEvent("email_click", { location: "contact" })}
             className="inline-flex items-center gap-4 group"
             data-cursor-hover
           >
@@ -128,6 +130,7 @@ export default function Contact() {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={social.event ? () => trackEvent(social.event!, { location: "contact", label: social.label }) : undefined}
                 className="flex items-center gap-2 text-gray-accent hover:text-white transition-colors duration-300 group"
                 data-cursor-hover
               >

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter, Dancing_Script, Noto_Naskh_Arabic } from "next/font/google";
 import "./globals.css";
 import LenisProvider from "@/providers/LenisProvider";
+import Analytics from "@/components/Analytics";
+
+const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -45,7 +48,19 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${dancingScript.variable} ${notoNaskhArabic.variable}`}>
       <body className="antialiased overflow-x-hidden">
-        <LenisProvider>{children}</LenisProvider>
+        {/* GTM noscript — must be first child of body */}
+        {GTM_ID && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+        )}
+<LenisProvider>{children}</LenisProvider>
+        <Analytics />
       </body>
     </html>
   );
