@@ -1,15 +1,16 @@
 "use client";
 
 import {
+  useState,
+  useEffect,
   useRef,
   type CSSProperties,
   type ReactNode,
 } from "react";
 import Image from "next/image";
-import {
-  motion,
-  useInView,
-} from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
+
+/* ── Types ─────────────────────────────────────── */
 
 type Bezier = [number, number, number, number];
 
@@ -21,11 +22,18 @@ type RevealCardProps = {
   style?: CSSProperties;
 };
 
-type CareerItem = {
+type StorySlide = {
   company: string;
+  initials: string;
+  logoGradient: string;
+  blobGradient: string;
+  bgTint: string;
+  impactWord: string;
+  tagline: string;
+  highlight: string;
   role: string;
   period: string;
-  initial: string;
+  cta: string;
 };
 
 type Technology = {
@@ -63,32 +71,65 @@ type TestimonialData = {
   isMock?: boolean;
 };
 
+/* ── Constants ─────────────────────────────────── */
+
 const EASE: Bezier = [0.16, 1, 0.3, 1];
 
-const CAREER_ITEMS: CareerItem[] = [
+const SLIDE_DURATION = 3800;
+const TICK_MS        = 40;
+
+const STORY_SLIDES: StorySlide[] = [
   {
-    company: "Monsha'at",
-    role: "Software Engineering Leader",
-    period: "2024 — Present",
-    initial: "M",
+    company:      "Monsha'at",
+    initials:     "MN",
+    logoGradient: "linear-gradient(145deg, #064e2e, #22c55e)",
+    blobGradient: "linear-gradient(135deg, #6ee7b7 0%, #34d399 40%, #38bdf8 100%)",
+    bgTint:       "#edfaf5",
+    impactWord:   "BUILD",
+    tagline:      "Saudi Arabia's government platform for startups.",
+    highlight:    "Engineering Leader · 50+ programs supported",
+    role:         "Software Engineering Leader",
+    period:       "2024 — Now",
+    cta:          "Current Role",
   },
   {
-    company: "Emkan",
-    role: "Software Engineer III · Innovation Lab",
-    period: "2022 — 2024",
-    initial: "E",
+    company:      "Emkan",
+    initials:     "EK",
+    logoGradient: "linear-gradient(145deg, #7c2d12, #f97316)",
+    blobGradient: "linear-gradient(135deg, #fdba74 0%, #f43f5e 50%, #c026d3 100%)",
+    bgTint:       "#fff8f3",
+    impactWord:   "SCALE",
+    tagline:      "Fintech products reaching millions of users.",
+    highlight:    "Innovation Lab Lead · Mobile & platform teams",
+    role:         "Software Engineer III / Innovation Lab Lead",
+    period:       "2022 — 2024",
+    cta:          "Fintech",
   },
   {
-    company: "Al Rajhi Bank",
-    role: "Senior Software Engineer",
-    period: "2019 — 2022",
-    initial: "R",
+    company:      "Al Rajhi Bank",
+    initials:     "AR",
+    logoGradient: "linear-gradient(145deg, #78350f, #d97706)",
+    blobGradient: "linear-gradient(135deg, #fde68a 0%, #fb923c 45%, #ef4444 100%)",
+    bgTint:       "#fffbeb",
+    impactWord:   "SHIP",
+    tagline:      "Mobile banking for millions of Saudi customers.",
+    highlight:    "Senior Engineer · World's largest Islamic bank",
+    role:         "Senior Software Engineer",
+    period:       "2019 — 2022",
+    cta:          "Banking",
   },
   {
-    company: "Saudi Aramco",
-    role: "Engineering Intern",
-    period: "2018",
-    initial: "A",
+    company:      "Saudi Aramco",
+    initials:     "SA",
+    logoGradient: "linear-gradient(145deg, #1e3a8a, #60a5fa)",
+    blobGradient: "linear-gradient(135deg, #93c5fd 0%, #818cf8 50%, #c084fc 100%)",
+    bgTint:       "#eff6ff",
+    impactWord:   "GROW",
+    tagline:      "Enterprise foundations at the world's largest energy company.",
+    highlight:    "Intern · Where the journey began",
+    role:         "Engineering Intern",
+    period:       "2018",
+    cta:          "Foundation",
   },
 ];
 
@@ -102,738 +143,628 @@ const TECH_ROW_ONE: Technology[] = [
 ];
 
 const TECH_ROW_TWO: Technology[] = [
-  { name: "Next.js",          shortName: "NX", accent: "#121212", background: "#EEEEEE" },
-  { name: "JavaScript",       shortName: "JS", accent: "#8F7900", background: "#FFF8CB" },
+  { name: "Next.js",          shortName: "NX", accent: "#111111", background: "#EBEBEB" },
+  { name: "JavaScript",       shortName: "JS", accent: "#7A6500", background: "#FFF7C2" },
   { name: "Metabase",         shortName: "MB", accent: "#509EE3", background: "#EAF5FE" },
   { name: "NoCoDB",           shortName: "NC", accent: "#7248E8", background: "#F0ECFF" },
-  { name: "Product Strategy", shortName: "PS", accent: "#EB5A72", background: "#FFF0F3" },
+  { name: "Product Strategy", shortName: "PS", accent: "#D63B5A", background: "#FFF0F3" },
   { name: "System Design",    shortName: "SD", accent: "#15966A", background: "#E8F8F0" },
 ];
 
 const ACHIEVEMENTS: Achievement[] = [
   {
-    label: "Innovation Center",
-    description:
-      "Led the digital revamp of Monsha'at's Innovation Center website and experience.",
+    label:       "Innovation Center",
+    description: "Led the digital revamp of Monsha'at's Innovation Center website and experience.",
   },
   {
-    label: "Internal platforms",
-    description:
-      "Architected scalable NoCoDB data platform and Metabase dashboards for real-time KPI visibility.",
+    label:       "Internal Platforms",
+    description: "Architected scalable NoCoDB data platform and Metabase dashboards for real-time KPI visibility.",
   },
   {
-    label: "Startup enablement",
-    description:
-      "Mentored startup teams and accelerated multiple MVP deliveries through the innovation lab.",
+    label:       "Startup Enablement",
+    description: "Mentored startup teams and accelerated multiple MVP deliveries through the innovation lab.",
+  },
+  {
+    label:       "Fintech Modernization",
+    description: "Led mobile banking product modernization and technical infrastructure at Al Rajhi Bank.",
   },
 ];
 
-// Replace with verified certificates when available
 const CERTIFICATES: Certificate[] = [
-  { title: "Digital Product Leadership",    issuer: "Sample Academy",   year: "2025", isMock: true },
+  { title: "Digital Product Leadership",     issuer: "Sample Academy",   year: "2025", isMock: true },
   { title: "Cloud Architecture Foundations", issuer: "Sample Institute", year: "2024", isMock: true },
   { title: "Innovation Management",          issuer: "Sample Program",   year: "2023", isMock: true },
 ];
 
 const FEATURED_PROJECT: ProjectData = {
-  title: "Monsha'at Innovation Center",
-  description:
-    "Led the digital revamp of the Innovation Center and built scalable internal systems, dashboards, and data platforms supporting startups and innovation programs.",
-  tags: ["Government Innovation", "Engineering Leadership", "Digital Transformation"],
-  image: "/monshaat.jpg",
-  imageAlt: "Monsha'at Innovation Center – digital platform and internal systems",
+  title:       "Monsha'at Innovation Center",
+  description: "Led the digital revamp of the Innovation Center and built scalable internal systems, dashboards, and data platforms supporting startups and innovation programs.",
+  tags:        ["Government Innovation", "Engineering Leadership", "Digital Transformation"],
+  image:       "/monshaat.jpg",
+  imageAlt:    "Monsha'at Innovation Center – digital platform and internal systems",
 };
 
-// Replace with a verified colleague or client quote
 const TESTIMONIAL: TestimonialData = {
-  quote:
-    "Turki brings structure to complex technical challenges and helps teams move from ideas to confident delivery.",
+  quote:       "Turki brings structure to complex technical challenges and helps teams move from ideas to confident delivery.",
   attribution: "Sample testimonial",
-  role: "Replace with a verified colleague or client quote",
-  initials: "ST",
-  isMock: true,
+  role:        "Replace with a verified colleague or client quote",
+  initials:    "ST",
+  isMock:      true,
 };
+
+/* ── Section ────────────────────────────────────── */
 
 export default function Projects() {
   const sectionRef = useRef<HTMLElement>(null);
-
-  const inView = useInView(sectionRef, {
-    once: true,
-    margin: "-80px",
-  });
+  const inView = useInView(sectionRef, { once: true, margin: "-80px" });
 
   return (
-    <section id="projects" ref={sectionRef} className="value-section">
-      <div className="value-container">
+    <section id="projects" ref={sectionRef} className="vs">
+      <div className="vs-wrap">
 
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          className="vs-pill"
+          initial={{ opacity: 0, y: 10 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.55, ease: EASE }}
-          className="value-pill"
+          transition={{ duration: 0.5, ease: EASE }}
         >
           Value
         </motion.div>
 
         <motion.h2
-          initial={{ opacity: 0, y: 24 }}
+          className="vs-h2"
+          initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.75, ease: EASE, delay: 0.04 }}
-          className="value-heading"
+          transition={{ duration: 0.68, ease: EASE, delay: 0.05 }}
         >
-          Why Work With Me?
+          Why Me?
         </motion.h2>
 
         <motion.p
-          initial={{ opacity: 0, y: 18 }}
+          className="vs-sub"
+          initial={{ opacity: 0, y: 14 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
-          className="value-subheading"
+          transition={{ duration: 0.62, ease: EASE, delay: 0.1 }}
         >
           Engineering leadership, product thinking, and innovation grounded in real delivery.
         </motion.p>
 
-        <div className="value-bento">
+        <div className="vs-grid">
           <ExperienceCard   index={0} inView={inView} />
-          <TechnologyCard   index={1} inView={inView} />
-          <AchievementsCard index={2} inView={inView} />
-          <CertificatesCard index={3} inView={inView} />
-          <ProjectCard      index={4} inView={inView} />
-          <TestimonialCard  index={5} inView={inView} />
+
         </div>
 
       </div>
 
       <style>{`
 
-        /* ── Layout ───────────────────────────────── */
+        /* ─── Section ──────────────────────────────────────── */
 
-        .value-section {
+        .vs {
           width: 100%;
           box-sizing: border-box;
           overflow: hidden;
           padding:
-            clamp(82px, 9vw, 124px)
-            clamp(18px, 3vw, 32px)
-            clamp(110px, 11vw, 145px);
-          color: var(--text-primary, #0b0b0d);
-          background: var(--bg-primary, #ffffff);
+            clamp(80px, 9vw, 118px)
+            clamp(16px, 3vw, 32px)
+            clamp(96px, 10vw, 136px);
+          color: var(--text-primary);
+          background: var(--bg-primary);
           transition: color 350ms ease, background-color 350ms ease;
         }
 
-        .value-container {
+        .vs-wrap {
           width: 100%;
           max-width: 1180px;
           margin: 0 auto;
           text-align: center;
         }
 
-        /* ── Header ───────────────────────────────── */
+        /* ─── Header ───────────────────────────────────────── */
 
-        .value-pill {
+        .vs-pill {
           display: inline-flex;
           align-items: center;
-          justify-content: center;
-          min-height: 37px;
-          padding: 7px 18px;
-          margin-bottom: 24px;
+          height: 35px;
+          padding: 0 15px;
           border-radius: 999px;
-          color: var(--text-secondary, #666666);
-          background: var(--bg-pill, #f0f0f0);
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 500;
-          line-height: 1;
+          margin-bottom: 20px;
+          color: var(--text-secondary);
+          background: var(--bg-pill);
           transition: color 350ms ease, background-color 350ms ease;
         }
 
-        .value-heading {
-          width: 100%;
-          max-width: 900px;
-          margin: 0 auto;
-          color: var(--text-primary, #09090b);
-          font-size: clamp(44px, 5vw, 70px);
+        .vs-h2 {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: clamp(40px, 5vw, 66px);
           font-weight: 800;
           line-height: 0.98;
-          letter-spacing: -0.057em;
+          letter-spacing: -0.055em;
           text-wrap: balance;
           transition: color 350ms ease;
         }
 
-        .value-subheading {
-          width: 100%;
-          max-width: 670px;
-          margin: 20px auto clamp(52px, 6vw, 72px);
-          color: var(--text-secondary, #666666);
-          font-size: clamp(19px, 1.8vw, 26px);
-          font-weight: 580;
-          line-height: 1.24;
-          letter-spacing: -0.026em;
+        .vs-sub {
+          max-width: 620px;
+          margin: 17px auto clamp(46px, 6vw, 66px);
+          color: var(--text-secondary);
+          font-size: clamp(17px, 1.65vw, 23px);
+          font-weight: 490;
+          line-height: 1.28;
+          letter-spacing: -0.023em;
           text-wrap: balance;
           transition: color 350ms ease;
         }
 
-        /* ── Bento grid ───────────────────────────── */
+        /* ─── Grid ─────────────────────────────────────────── */
 
-        .value-bento {
+        .vs-grid {
           display: grid;
           grid-template-columns: repeat(12, minmax(0, 1fr));
-          grid-auto-rows: 174px;
-          gap: 16px;
+          gap: 13px;
           width: 100%;
+          align-items: start;
         }
 
-        /* ── Base card ────────────────────────────── */
+        /* ─── Base card ────────────────────────────────────── */
 
-        .bento-card {
+        .bc {
           position: relative;
-          min-width: 0;
-          width: 100%;
-          height: 100%;
           box-sizing: border-box;
           overflow: hidden;
-          padding: 22px;
+          min-width: 0;
           text-align: left;
-          color: var(--text-primary, #0b0b0d);
-          background: var(--bg-card, #f3f3f3);
-          border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.055));
-          border-radius: 26px;
+          color: var(--text-primary);
+          background: var(--bg-card);
+          border: 1px solid var(--border-subtle);
+          border-radius: 22px;
           transition:
             color 350ms ease,
-            border-color 350ms ease,
             background-color 350ms ease,
+            border-color 350ms ease,
             box-shadow 300ms ease;
         }
 
-        .bento-card:hover {
-          box-shadow: var(--shadow-soft, 0 18px 42px rgba(0, 0, 0, 0.075));
+        .bc:hover {
+          box-shadow: var(--shadow-soft, 0 14px 36px rgba(0, 0, 0, 0.07));
         }
 
-        /* ── Grid placements ──────────────────────── */
+        /* ─── Shared label ─────────────────────────────────── */
 
-        .experience-card {
-          grid-column: span 5;
-          grid-row: span 2;
-          display: flex;
-          flex-direction: column;
-          padding: 26px;
-          color: #ffffff;
-          background: linear-gradient(145deg, #111827 0%, #17233d 55%, #143c49 100%);
-          border-color: rgba(255, 255, 255, 0.08);
-        }
-
-        .technology-card {
-          grid-column: span 7;
-          grid-row: span 1;
-          display: grid;
-          grid-template-columns: minmax(185px, 0.75fr) minmax(0, 1.25fr);
-          align-items: center;
-          gap: 20px;
-          padding: 20px 0 20px 22px;
-        }
-
-        .achievements-card {
-          grid-column: span 4;
-          grid-row: span 1;
-          display: flex;
-          flex-direction: column;
-          padding: 20px;
-        }
-
-        .certificates-card {
-          grid-column: span 3;
-          grid-row: span 1;
-          display: flex;
-          flex-direction: column;
-          padding: 20px;
-          background: var(--bg-elevated, #ffffff);
-        }
-
-        .project-card {
-          grid-column: span 7;
-          grid-row: span 2;
-          padding: 0;
-          display: flex;
-          flex-direction: column;
-          background: var(--bg-card, #f3f3f3);
-        }
-
-        .testimonial-card {
-          grid-column: span 5;
-          grid-row: span 2;
-          display: flex;
-          flex-direction: column;
-          background: var(--bg-elevated, #ffffff);
-          padding: 28px;
-        }
-
-        /* ── Shared text ──────────────────────────── */
-
-        .card-label {
+        .clabel {
           display: inline-flex;
           align-items: center;
-          width: fit-content;
-          min-height: 27px;
-          padding: 5px 10px;
+          gap: 5px;
+          height: 26px;
+          padding: 0 9px;
           border-radius: 999px;
-          color: var(--text-secondary, #666666);
-          background: var(--bg-pill, #e9e9e9);
-          font-size: 10px;
+          font-size: 9.5px;
           font-weight: 650;
-          line-height: 1;
           letter-spacing: 0.07em;
           text-transform: uppercase;
+          flex-shrink: 0;
+          color: var(--text-secondary);
+          background: var(--bg-pill);
           transition: color 350ms ease, background-color 350ms ease;
         }
 
-        .card-title {
-          margin: 0;
-          color: var(--text-primary, #0b0b0d);
-          font-size: clamp(23px, 2vw, 31px);
-          font-weight: 800;
-          line-height: 1.02;
-          letter-spacing: -0.05em;
-          text-wrap: balance;
-          transition: color 350ms ease;
-        }
+        /* ═══════════════════════════════════════════════════════
+           Experience card — animated story card
+        ═══════════════════════════════════════════════════════ */
 
-        .card-description {
-          margin: 0;
-          color: var(--text-secondary, #666666);
-          font-size: 13px;
-          line-height: 1.45;
-          letter-spacing: -0.015em;
-          transition: color 350ms ease;
-        }
-
-        /* ── Experience card ──────────────────────── */
-
-        .experience-glow {
-          position: absolute;
-          width: 260px;
-          height: 260px;
-          right: -110px;
-          top: -130px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(34, 194, 197, 0.32), transparent 68%);
-          pointer-events: none;
-        }
-
-        .experience-header {
-          position: relative;
-          z-index: 2;
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 20px;
-        }
-
-        .experience-card .card-label {
-          color: rgba(255, 255, 255, 0.68);
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.09);
-        }
-
-        .experience-number {
-          margin-top: 22px;
-          color: #ffffff;
-          font-size: clamp(64px, 6vw, 92px);
-          font-weight: 820;
-          line-height: 0.82;
-          letter-spacing: -0.09em;
-        }
-
-        .experience-number span {
-          color: #43ded1;
-        }
-
-        .experience-heading {
-          max-width: 340px;
-          margin: 18px 0 8px;
-          color: #ffffff;
-          font-size: clamp(22px, 2vw, 30px);
-          font-weight: 780;
-          line-height: 1.02;
-          letter-spacing: -0.05em;
-          text-wrap: balance;
-        }
-
-        .experience-description {
-          max-width: 360px;
-          color: rgba(255, 255, 255, 0.58);
-          font-size: 12px;
-          line-height: 1.45;
-        }
-
-        .career-timeline {
-          display: flex;
-          flex-direction: column;
-          gap: 0;
-          margin-top: auto;
-          padding-top: 18px;
-        }
-
-        .career-item {
-          position: relative;
-          display: grid;
-          grid-template-columns: 11px minmax(0, 1fr) auto;
-          align-items: center;
-          gap: 10px;
-          min-height: 42px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .career-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.32);
-        }
-
-        .career-item:first-child .career-dot {
-          background: #43ded1;
-          box-shadow: 0 0 0 5px rgba(67, 222, 209, 0.11);
-        }
-
-        .career-company {
-          overflow: hidden;
-          color: rgba(255, 255, 255, 0.9);
-          font-size: 11px;
-          font-weight: 680;
-          white-space: nowrap;
-          text-overflow: ellipsis;
-        }
-
-        .career-role {
-          display: block;
-          overflow: hidden;
-          margin-top: 2px;
-          color: rgba(255, 255, 255, 0.42);
-          font-size: 10px;
-          font-weight: 440;
-          white-space: nowrap;
-          text-overflow: ellipsis;
-        }
-
-        .career-period {
-          color: rgba(255, 255, 255, 0.44);
-          font-size: 10px;
-          white-space: nowrap;
-        }
-
-        /* ── Technology card ──────────────────────── */
-
-        .technology-copy {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 10px;
-        }
-
-        .technology-copy .card-title {
-          max-width: 240px;
-        }
-
-        .technology-marquee-wrapper {
-          display: flex;
-          flex-direction: column;
-          gap: 9px;
-          min-width: 0;
-          overflow: hidden;
-          mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-          -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-        }
-
-        .technology-row {
+        .ec {
+          grid-column: 1 / span 4;
+          grid-row: 1 / span 2;
           width: 100%;
+          aspect-ratio: 2 / 3;
+          min-height: 520px;
+          padding: 0;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          background: #edfaf5;
+          border: 1px solid rgba(100, 180, 140, 0.18);
+          border-radius: clamp(28px, 3.5vw, 48px);
+          box-shadow:
+            0 20px 60px rgba(15, 23, 42, 0.09),
+            0 4px 14px rgba(15, 23, 42, 0.06);
+        }
+
+        .ec:hover {
+          box-shadow:
+            0 28px 72px rgba(15, 23, 42, 0.13),
+            0 6px 20px rgba(15, 23, 42, 0.07) !important;
+        }
+
+        /* per-slide background tint — fades between companies */
+        .ec-bg {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+        }
+
+        /* dark overlay — covers light tint in dark mode */
+        .ec-dark-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          background: #0d1120;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 350ms ease;
+        }
+
+        .dark .ec-dark-overlay,
+        [data-theme="dark"] .ec-dark-overlay {
+          opacity: 1;
+        }
+
+        /* blob layer — always drifting */
+        .ec-blob-layer {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          pointer-events: none;
           overflow: hidden;
         }
 
-        .technology-track {
+        .ec-blob-1,
+        .ec-blob-2 {
+          position: absolute;
+        }
+
+        .ec-blob-1 {
+          width: 320px;
+          height: 290px;
+          top: -100px;
+          right: -90px;
+          border-radius: 63% 37% 54% 46% / 55% 48% 52% 45%;
+          opacity: 0.75;
+          animation: ec-drift-a 10s ease-in-out infinite;
+        }
+
+        .ec-blob-2 {
+          width: 260px;
+          height: 235px;
+          bottom: -85px;
+          left: -80px;
+          border-radius: 41% 59% 47% 53% / 52% 44% 56% 48%;
+          opacity: 0.52;
+          animation: ec-drift-b 13s ease-in-out infinite;
+        }
+
+        @keyframes ec-drift-a {
+          0%, 100% { transform: translate(0,    0)    scale(1)    rotate(0deg); }
+          30%      { transform: translate(26px, -20px) scale(1.09) rotate(7deg);  }
+          65%      { transform: translate(-16px, 26px) scale(0.93) rotate(-5deg); }
+        }
+
+        @keyframes ec-drift-b {
+          0%, 100% { transform: translate(0,     0)    scale(1)    rotate(0deg);  }
+          40%      { transform: translate(-24px,  18px) scale(1.08) rotate(-9deg); }
+          75%      { transform: translate( 18px, -24px) scale(0.94) rotate( 6deg); }
+        }
+
+        /* foreground content */
+        .ec-fg {
+          position: relative;
+          z-index: 3;
+          flex: 1;
           display: flex;
-          align-items: center;
-          width: max-content;
-          will-change: transform;
-          animation-duration: 26s;
-          animation-timing-function: linear;
-          animation-iteration-count: infinite;
+          flex-direction: column;
+          padding: 24px 26px 0;
         }
 
-        .technology-track-forward {
-          animation-name: technology-scroll-forward;
-        }
-
-        .technology-track-reverse {
-          animation-name: technology-scroll-reverse;
-          animation-duration: 30s;
-        }
-
-        .technology-card:hover .technology-track {
-          animation-play-state: paused;
-        }
-
-        .technology-group {
+        /* story progress bars */
+        .ec-bars {
           display: flex;
-          align-items: center;
-          gap: 8px;
-          padding-right: 8px;
+          gap: 5px;
+          flex-shrink: 0;
         }
 
-        .technology-item {
-          --tech-accent: #222222;
-          --tech-background: #eeeeee;
-
-          flex: 0 0 auto;
-          min-width: 128px;
-          height: 48px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          box-sizing: border-box;
-          padding: 6px 12px 6px 6px;
-          border-radius: 15px;
-          background: var(--tech-background);
-          border: 1px solid color-mix(in srgb, var(--tech-accent) 14%, transparent);
-          transition: transform 250ms ease, box-shadow 250ms ease;
-        }
-
-        .technology-item:hover {
-          transform: translateY(-2px) scale(1.015);
-          box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
-        }
-
-        .technology-mark {
-          flex: 0 0 auto;
-          width: 35px;
-          height: 35px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 11px;
-          color: #ffffff;
-          background: var(--tech-accent);
-          font-size: 9px;
-          font-weight: 800;
-        }
-
-        .technology-name {
-          max-width: 72px;
+        .ec-bar-bg {
+          flex: 1;
+          height: 2.5px;
+          border-radius: 999px;
+          background: rgba(15, 23, 42, 0.14);
           overflow: hidden;
-          color: #171719;
-          font-size: 10px;
-          font-weight: 680;
+        }
+
+        .ec-bar-fill {
+          height: 100%;
+          border-radius: 999px;
+          background: rgba(15, 23, 42, 0.54);
+          transition: width 50ms linear;
+        }
+
+        /* sr-only */
+        .ec-sr {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
           white-space: nowrap;
-          text-overflow: ellipsis;
+          border-width: 0;
         }
 
-        /* ── Achievements card ────────────────────── */
-
-        .achievement-header {
+        /* slide wrapper */
+        .ec-slide {
+          flex: 1;
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          gap: 8px;
-          margin-bottom: 10px;
+          min-height: 0;
         }
 
-        .achievement-list {
+        /* header row: logo + stacked company/period */
+        .ec-slide-hdr {
           display: flex;
-          flex-direction: column;
-          gap: 0;
-          margin-top: auto;
-        }
-
-        .achievement-item {
-          display: grid;
-          grid-template-columns: 7px minmax(0, 1fr);
-          gap: 9px;
-          padding: 9px 0;
-          border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
-        }
-
-        .achievement-dot {
-          width: 6px;
-          height: 6px;
-          margin-top: 4px;
-          border-radius: 50%;
-          background: var(--accent, #1495ff);
-          flex: 0 0 auto;
-        }
-
-        .achievement-item strong {
-          display: block;
-          margin-bottom: 2px;
-          color: var(--text-primary, #0b0b0d);
-          font-size: 11px;
-          font-weight: 700;
-          transition: color 350ms ease;
-        }
-
-        .achievement-item p {
-          margin: 0;
-          color: var(--text-secondary, #666666);
-          font-size: 10px;
-          line-height: 1.35;
-          transition: color 350ms ease;
-        }
-
-        /* ── Certificates card ────────────────────── */
-
-        .certificate-list {
-          display: flex;
-          flex-direction: column;
-          gap: 7px;
-          margin-top: auto;
-          padding-top: 12px;
-        }
-
-        .certificate-item {
-          display: grid;
-          grid-template-columns: 30px minmax(0, 1fr) auto;
           align-items: center;
-          gap: 8px;
-          min-height: 44px;
-          padding: 6px 8px;
-          border-radius: 13px;
-          background: var(--bg-card, #f3f3f3);
-          border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.045));
-          transition:
-            background-color 350ms ease,
-            border-color 350ms ease,
-            transform 220ms ease;
+          gap: 11px;
+          margin-top: 20px;
+          flex-shrink: 0;
         }
 
-        .certificate-item:hover {
-          transform: translateX(3px);
-        }
-
-        .certificate-icon {
-          width: 30px;
-          height: 30px;
+        .ec-logo-circle {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 9px;
-          color: #7658e7;
-          background: #efebff;
-          font-size: 14px;
-          flex: 0 0 auto;
+          flex-shrink: 0;
+          box-shadow:
+            0 4px 12px rgba(0, 0, 0, 0.22),
+            0 1px 0   rgba(255, 255, 255, 0.26) inset;
         }
 
-        .certificate-content {
+        .ec-logo-circle span {
+          font-size: 12px;
+          font-weight: 860;
+          color: #fff;
+          letter-spacing: -0.02em;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+        }
+
+        .ec-hdr-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          flex: 1;
           min-width: 0;
         }
 
-        .certificate-content strong {
+        .ec-slide-co {
           display: block;
-          overflow: hidden;
-          color: var(--text-primary, #0b0b0d);
-          font-size: 10px;
-          font-weight: 680;
-          line-height: 1.15;
+          font-size: 14px;
+          font-weight: 720;
+          color: #0f172a;
           white-space: nowrap;
+          overflow: hidden;
           text-overflow: ellipsis;
-          transition: color 350ms ease;
+          line-height: 1.1;
+          letter-spacing: -0.02em;
         }
 
-        .certificate-content small {
+        .ec-slide-per {
           display: block;
-          overflow: hidden;
-          margin-top: 2px;
-          color: var(--text-secondary, #777777);
-          font-size: 10px;
+          font-size: 11px;
+          font-weight: 420;
+          color: rgba(15, 23, 42, 0.4);
           white-space: nowrap;
-          text-overflow: ellipsis;
-          transition: color 350ms ease;
+          line-height: 1.1;
         }
 
-        .mock-badge {
+        /* centred body */
+        .ec-body {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          gap: 16px;
+          padding: 24px 16px 20px;
+        }
+
+        /* massive impact word */
+        .ec-impact {
+          margin: 0;
+          font-size: clamp(80px, 19vw, 100px);
+          font-weight: 900;
+          line-height: 0.86;
+          letter-spacing: -0.07em;
+          color: #0f172a;
+          text-transform: uppercase;
+        }
+
+        /* one-line tagline */
+        .ec-tagline {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 480;
+          line-height: 1.5;
+          color: rgba(15, 23, 42, 0.62);
+          max-width: 260px;
+        }
+
+        /* context badge below tagline */
+        .ec-highlight {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 6px 14px;
+          border-radius: 999px;
+          background: rgba(15, 23, 42, 0.06);
+          font-size: 10.5px;
+          font-weight: 580;
+          color: rgba(15, 23, 42, 0.5);
+          letter-spacing: 0.01em;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
+        }
+
+        /* CTA row */
+        .ec-cta-row {
+          padding: 0 26px 34px;
+          display: flex;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .ec-cta {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-height: 20px;
-          padding: 3px 7px;
+          height: 46px;
+          padding: 0 34px;
           border-radius: 999px;
-          color: #876a24;
-          background: #fff5d6;
-          font-size: 8px;
-          font-weight: 750;
-          letter-spacing: 0.06em;
+          background: rgba(255, 255, 255, 0.9);
+          color: #0f172a;
+          font-size: 10px;
+          font-weight: 760;
+          letter-spacing: 0.12em;
           text-transform: uppercase;
-          flex: 0 0 auto;
+          box-shadow:
+            0 4px 20px rgba(0, 0, 0, 0.1),
+            0 1px  4px rgba(0, 0, 0, 0.06);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
         }
 
-        /* ── Project card ─────────────────────────── */
+        /* ── dark mode ── */
+        .dark .ec,
+        [data-theme="dark"] .ec {
+          background: #0d1120;
+          border-color: rgba(120, 140, 255, 0.1);
+          box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.36),
+            0 4px 14px rgba(0, 0, 0, 0.22);
+        }
 
-        .project-card {
+        .dark .ec-bar-bg,
+        [data-theme="dark"] .ec-bar-bg {
+          background: rgba(255, 255, 255, 0.16);
+        }
+
+        .dark .ec-bar-fill,
+        [data-theme="dark"] .ec-bar-fill {
+          background: rgba(255, 255, 255, 0.8);
+        }
+
+        .dark .ec-slide-co,
+        [data-theme="dark"] .ec-slide-co {
+          color: #dde4f0;
+        }
+
+        .dark .ec-slide-per,
+        [data-theme="dark"] .ec-slide-per {
+          color: rgba(221, 228, 240, 0.4);
+        }
+
+        .dark .ec-impact,
+        [data-theme="dark"] .ec-impact {
+          color: #f1f5f9;
+        }
+
+        .dark .ec-tagline,
+        [data-theme="dark"] .ec-tagline {
+          color: rgba(226, 232, 240, 0.62);
+        }
+
+        .dark .ec-highlight,
+        [data-theme="dark"] .ec-highlight {
+          background: rgba(255, 255, 255, 0.07);
+          color: rgba(226, 232, 240, 0.46);
+        }
+
+        .dark .ec-cta,
+        [data-theme="dark"] .ec-cta {
+          background: rgba(255, 255, 255, 0.1);
+          color: #f1f5f9;
+          box-shadow:
+            0 4px 20px rgba(0, 0, 0, 0.28),
+            0 0 0 1px rgba(255, 255, 255, 0.09);
+        }
+
+        /* ─── Project card ─────────────────────────────────── */
+
+        .pc {
+          grid-column: 5 / span 8;
+          grid-row: 1 / span 2;
+          display: flex;
+          flex-direction: column;
+          padding: 0;
+          min-height: 436px;
           cursor: default;
         }
 
-        .project-image-wrapper {
+        .pc-img-wrap {
           position: relative;
           width: 100%;
-          height: 56%;
+          height: 230px;
+          flex: 0 0 230px;
           overflow: hidden;
-          flex: 0 0 56%;
-          border-radius: 26px 26px 0 0;
+          border-radius: 22px 22px 0 0;
         }
 
-        .project-image {
+        .pc-img {
           width: 100%;
           height: 100%;
           object-fit: cover;
           object-position: center top;
           display: block;
-          transition: transform 600ms ease;
+          transition: transform 650ms ease;
         }
 
-        .project-card:hover .project-image {
+        .pc:hover .pc-img {
           transform: scale(1.04);
         }
 
-        .project-content {
+        .pc-body {
           flex: 1;
           padding: 16px 20px 18px;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 7px;
           min-height: 0;
         }
 
-        .project-label-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 2px;
-        }
-
-        .project-title {
+        .pc-title {
           margin: 0;
-          color: var(--text-primary, #0b0b0d);
-          font-size: clamp(16px, 1.5vw, 20px);
-          font-weight: 760;
-          line-height: 1.05;
+          color: var(--text-primary);
+          font-size: clamp(15px, 1.35vw, 19px);
+          font-weight: 730;
+          line-height: 1.06;
           letter-spacing: -0.04em;
           transition: color 350ms ease;
         }
 
-        .project-description {
+        .pc-desc {
           margin: 0;
-          color: var(--text-secondary, #666666);
-          font-size: 12px;
-          line-height: 1.48;
           flex: 1;
+          color: var(--text-secondary);
+          font-size: 11.5px;
+          line-height: 1.52;
           transition: color 350ms ease;
         }
 
-        .project-footer {
+        .pc-footer {
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 8px;
-          padding-top: 8px;
+          padding-top: 6px;
         }
 
-        .project-tags {
+        .pc-tags {
           display: flex;
           flex-wrap: wrap;
           gap: 5px;
@@ -841,366 +772,549 @@ export default function Projects() {
           min-width: 0;
         }
 
-        .project-tag {
+        .pc-tag {
           display: inline-flex;
           align-items: center;
-          min-height: 24px;
-          padding: 4px 9px;
+          height: 23px;
+          padding: 0 9px;
           border-radius: 999px;
-          color: var(--text-secondary, #666);
-          background: var(--bg-pill, #f1f1f1);
-          border: 1px solid var(--border-subtle, rgba(0,0,0,0.07));
-          font-size: 10px;
-          font-weight: 600;
+          font-size: 9.5px;
+          font-weight: 570;
           white-space: nowrap;
-          transition: color 350ms ease, background-color 350ms ease, border-color 350ms ease;
+          color: var(--text-secondary);
+          background: var(--bg-pill);
+          border: 1px solid var(--border-subtle);
+          transition:
+            color 350ms ease,
+            background-color 350ms ease,
+            border-color 350ms ease;
         }
 
-        .project-arrow {
+        .pc-arrow {
+          flex-shrink: 0;
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 32px;
-          height: 32px;
+          width: 30px;
+          height: 30px;
           border-radius: 50%;
           background: var(--accent, #1495ff);
           color: #ffffff;
-          font-size: 15px;
-          flex: 0 0 auto;
-          opacity: 0;
-          transform: translateX(-6px);
-          transition: opacity 280ms ease, transform 280ms ease;
+          font-size: 14px;
           line-height: 1;
+          opacity: 0;
+          transform: translateX(-5px);
+          transition: opacity 270ms ease, transform 270ms ease;
         }
 
-        .project-card:hover .project-arrow {
+        .pc:hover .pc-arrow {
           opacity: 1;
           transform: translateX(0);
         }
 
-        /* ── Testimonial card ─────────────────────── */
+        /* ─── Tech card ────────────────────────────────────── */
 
-        .testimonial-mark {
-          display: block;
-          color: var(--accent, #1495ff);
-          font-size: 52px;
-          line-height: 0.7;
-          font-weight: 900;
-          margin-bottom: 18px;
-          opacity: 0.55;
-          letter-spacing: -0.04em;
-          font-family: Georgia, serif;
+        .tc {
+          grid-column: 1 / span 7;
+          grid-row: 3;
+          display: grid;
+          grid-template-columns: 200px minmax(0, 1fr);
+          align-items: center;
+          gap: 18px;
+          padding: 19px 0 19px 21px;
         }
 
-        .testimonial-quote {
+        .tc-copy {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 7px;
+        }
+
+        .tc-title {
           margin: 0;
-          color: var(--text-primary, #0b0b0d);
-          font-size: clamp(16px, 1.4vw, 20px);
-          font-weight: 650;
-          line-height: 1.2;
-          letter-spacing: -0.035em;
+          color: var(--text-primary);
+          font-size: clamp(17px, 1.6vw, 22px);
+          font-weight: 730;
+          line-height: 1.05;
+          letter-spacing: -0.046em;
+          max-width: 185px;
           text-wrap: balance;
-          flex: 1;
           transition: color 350ms ease;
         }
 
-        .testimonial-footer {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-top: auto;
-          padding-top: 20px;
+        .tc-desc {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 11px;
+          line-height: 1.42;
+          max-width: 185px;
+          transition: color 350ms ease;
         }
 
-        .testimonial-avatar {
-          width: 36px;
-          height: 36px;
+        .tc-marquee {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          min-width: 0;
+          overflow: hidden;
+          mask-image: linear-gradient(
+            to right,
+            transparent 0%,
+            black 8%,
+            black 92%,
+            transparent 100%
+          );
+          -webkit-mask-image: linear-gradient(
+            to right,
+            transparent 0%,
+            black 8%,
+            black 92%,
+            transparent 100%
+          );
+        }
+
+        .tc-row { overflow: hidden; }
+
+        .tc-track {
+          display: flex;
+          align-items: center;
+          width: max-content;
+          will-change: transform;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
+        }
+
+        .tc-track-fwd { animation-name: tech-fwd; animation-duration: 26s; }
+        .tc-track-rev { animation-name: tech-rev; animation-duration: 30s; }
+
+        .tc:hover .tc-track { animation-play-state: paused; }
+
+        .tc-group {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding-right: 7px;
+        }
+
+        .tc-chip {
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          height: 40px;
+          min-width: 116px;
+          padding: 0 10px 0 5px;
+          border-radius: 12px;
+          border: 1px solid color-mix(in srgb, var(--chip-accent, #222) 13%, transparent);
+          background: var(--chip-bg, #ebebeb);
+          transition: transform 240ms ease, box-shadow 240ms ease;
+        }
+
+        .tc-chip:hover {
+          transform: translateY(-2px) scale(1.015);
+          box-shadow: 0 7px 18px rgba(0, 0, 0, 0.07);
+        }
+
+        .tc-mark {
+          flex-shrink: 0;
+          width: 30px;
+          height: 30px;
           display: flex;
           align-items: center;
           justify-content: center;
-          flex: 0 0 auto;
-          border-radius: 50%;
+          border-radius: 9px;
+          background: var(--chip-accent, #222);
           color: #ffffff;
-          background: linear-gradient(145deg, #25262c, #646773);
-          font-size: 10px;
-          font-weight: 750;
+          font-size: 8px;
+          font-weight: 800;
         }
 
-        .testimonial-person strong {
-          display: block;
-          color: var(--text-primary, #0b0b0d);
-          font-size: 11px;
-          font-weight: 680;
+        .tc-name {
+          max-width: 68px;
+          overflow: hidden;
+          color: #1a1a1a;
+          font-size: 9.5px;
+          font-weight: 640;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
+
+        /* ─── Achievements card ────────────────────────────── */
+
+        .ac {
+          grid-column: 8 / span 5;
+          grid-row: 3;
+          display: flex;
+          flex-direction: column;
+          padding: 20px;
+        }
+
+        .ac-head {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 7px;
+          margin-bottom: 10px;
+        }
+
+        .ac-title {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: clamp(17px, 1.6vw, 21px);
+          font-weight: 720;
+          line-height: 1.05;
+          letter-spacing: -0.044em;
           transition: color 350ms ease;
         }
 
-        .testimonial-person small {
-          display: block;
+        .ac-list {
+          display: flex;
+          flex-direction: column;
+          margin-top: auto;
+        }
+
+        .ac-item {
+          display: grid;
+          grid-template-columns: 6px minmax(0, 1fr);
+          gap: 9px;
+          padding: 8px 0;
+          border-top: 1px solid var(--border-subtle);
+        }
+
+        .ac-dot {
+          width: 6px;
+          height: 6px;
           margin-top: 3px;
-          color: var(--text-secondary, #777777);
-          font-size: 10px;
-          line-height: 1.3;
+          border-radius: 50%;
+          background: var(--accent, #1495ff);
+          flex-shrink: 0;
+        }
+
+        .ac-item strong {
+          display: block;
+          color: var(--text-primary);
+          font-size: 10.5px;
+          font-weight: 700;
+          margin-bottom: 2px;
           transition: color 350ms ease;
         }
 
-        .testimonial-placeholder-note {
+        .ac-item p {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 10px;
+          line-height: 1.4;
+          transition: color 350ms ease;
+        }
+
+        /* ─── Testimonial card ─────────────────────────────── */
+
+        .tmc {
+          grid-column: 1 / span 8;
+          grid-row: 4;
+          display: flex;
+          flex-direction: column;
+          padding: 24px;
+          background: var(--bg-elevated);
+        }
+
+        .tmc-quotemark {
+          color: var(--accent, #1495ff);
+          font-size: 46px;
+          line-height: 0.7;
+          font-weight: 900;
+          margin-bottom: 14px;
+          opacity: 0.48;
+          letter-spacing: -0.03em;
+          font-family: Georgia, serif;
+        }
+
+        .tmc-quote {
+          margin: 0;
+          flex: 1;
+          color: var(--text-primary);
+          font-size: clamp(14px, 1.35vw, 18px);
+          font-weight: 600;
+          line-height: 1.28;
+          letter-spacing: -0.033em;
+          text-wrap: balance;
+          transition: color 350ms ease;
+        }
+
+        .tmc-footer {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-top: 18px;
+          padding-top: 16px;
+          border-top: 1px solid var(--border-subtle);
+        }
+
+        .tmc-avatar {
+          flex-shrink: 0;
+          width: 33px;
+          height: 33px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(145deg, #252731, #616473);
+          color: #ffffff;
+          font-size: 10px;
+          font-weight: 730;
+        }
+
+        .tmc-person strong {
+          display: block;
+          color: var(--text-primary);
+          font-size: 10.5px;
+          font-weight: 650;
+          transition: color 350ms ease;
+        }
+
+        .tmc-person small {
+          display: block;
+          margin-top: 2px;
+          color: var(--text-secondary);
+          font-size: 9.5px;
+          line-height: 1.35;
+          transition: color 350ms ease;
+        }
+
+        /* ─── Certificates card ────────────────────────────── */
+
+        .cc {
+          grid-column: 9 / span 4;
+          grid-row: 4;
+          display: flex;
+          flex-direction: column;
+          padding: 20px;
+          background: var(--bg-elevated);
+        }
+
+        .cc-title {
+          margin: 9px 0 0;
+          color: var(--text-primary);
+          font-size: clamp(15px, 1.35vw, 18px);
+          font-weight: 720;
+          line-height: 1.05;
+          letter-spacing: -0.043em;
+          transition: color 350ms ease;
+        }
+
+        .cc-list {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          margin-top: auto;
+          padding-top: 12px;
+        }
+
+        .cc-item {
+          display: grid;
+          grid-template-columns: 28px minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 8px;
+          min-height: 44px;
+          padding: 6px 8px;
+          border-radius: 12px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-subtle);
+          transition:
+            background-color 350ms ease,
+            border-color 350ms ease,
+            transform 220ms ease;
+        }
+
+        .cc-item:hover { transform: translateX(3px); }
+
+        .cc-icon {
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #eeebff;
+          color: #7250e5;
+          font-size: 13px;
+          flex-shrink: 0;
+        }
+
+        .cc-text strong {
+          display: block;
+          overflow: hidden;
+          color: var(--text-primary);
+          font-size: 10px;
+          font-weight: 660;
+          line-height: 1.2;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          transition: color 350ms ease;
+        }
+
+        .cc-text small {
+          display: block;
+          margin-top: 2px;
+          overflow: hidden;
+          color: var(--text-secondary);
+          font-size: 9.5px;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          transition: color 350ms ease;
+        }
+
+        /* ─── Shared badges ────────────────────────────────── */
+
+        .mock-pill {
           display: inline-flex;
           align-items: center;
-          min-height: 22px;
-          padding: 3px 8px;
+          height: 19px;
+          padding: 0 6px;
           border-radius: 999px;
-          color: #876a24;
-          background: #fff5d6;
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.05em;
+          color: #886720;
+          background: #fff4ce;
+          font-size: 7.5px;
+          font-weight: 750;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
-          margin-left: 6px;
+          flex-shrink: 0;
         }
 
-        /* ── Keyframes ────────────────────────────── */
+        .mock-badge {
+          display: inline-flex;
+          align-items: center;
+          height: 18px;
+          padding: 0 6px;
+          border-radius: 999px;
+          color: #886720;
+          background: #fff4ce;
+          font-size: 7px;
+          font-weight: 750;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          flex-shrink: 0;
+        }
 
-        @keyframes technology-scroll-forward {
+        /* ─── Keyframes ────────────────────────────────────── */
+
+        @keyframes tech-fwd {
           from { transform: translateX(0); }
           to   { transform: translateX(-50%); }
         }
 
-        @keyframes technology-scroll-reverse {
+        @keyframes tech-rev {
           from { transform: translateX(-50%); }
           to   { transform: translateX(0); }
         }
 
-        /* ── Dark mode ────────────────────────────── */
+        /* ─── Dark mode tweaks ─────────────────────────────── */
 
-        .dark .bento-card,
-        [data-theme="dark"] .bento-card {
-          border-color: rgba(255, 255, 255, 0.075);
-        }
-
-        .dark .technology-name,
-        [data-theme="dark"] .technology-name {
-          color: #171719;
-        }
-
-        .dark .certificate-item,
-        [data-theme="dark"] .certificate-item {
+        .dark .bc,
+        [data-theme="dark"] .bc {
           border-color: rgba(255, 255, 255, 0.07);
         }
 
-        /* ── Tablet ───────────────────────────────── */
+        .dark .cc-item,
+        [data-theme="dark"] .cc-item {
+          border-color: rgba(255, 255, 255, 0.07);
+        }
+
+        .dark .tc-name,
+        [data-theme="dark"] .tc-name {
+          color: #1a1a1a;
+        }
+
+        /* ─── Tablet ───────────────────────────────────────── */
 
         @media (max-width: 980px) {
-          .value-bento {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            grid-auto-rows: auto;
-          }
+          .vs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-          .experience-card,
-          .technology-card,
-          .project-card {
-            grid-column: 1 / -1;
-            grid-row: auto;
-          }
+          .ec, .pc, .tc { grid-column: 1 / -1; grid-row: auto; }
 
-          .experience-card {
-            min-height: 440px;
-          }
+          .ac  { grid-column: 1 / span 1; grid-row: auto; min-height: 250px; }
+          .tmc { grid-column: 1 / -1;     grid-row: auto; }
+          .cc  { grid-column: 2 / span 1; grid-row: auto; min-height: 250px; }
 
-          .technology-card {
-            min-height: 220px;
-          }
+          .ec { max-width: 480px; margin-inline: auto; }
+          .pc { min-height: 420px; }
 
-          .project-card {
-            min-height: 380px;
-          }
-
-          .project-image-wrapper {
-            height: 52%;
-            flex: 0 0 52%;
-          }
-
-          .achievements-card,
-          .certificates-card,
-          .testimonial-card {
-            grid-column: span 1;
-            min-height: 245px;
-            grid-row: auto;
-          }
-
-          .testimonial-card {
-            min-height: 265px;
+          .tc {
+            grid-template-columns: 195px minmax(0, 1fr);
+            min-height: 200px;
           }
         }
 
-        /* ── Mobile ───────────────────────────────── */
+        /* ─── Mobile ───────────────────────────────────────── */
 
         @media (max-width: 680px) {
-          .value-section {
-            padding: 80px 15px 125px;
+          .vs { padding: 76px 14px 118px; }
+          .vs-h2 { font-size: clamp(36px, 10.5vw, 50px); }
+          .vs-sub { font-size: clamp(16px, 5vw, 20px); margin-bottom: 40px; }
+
+          .vs-grid { grid-template-columns: 1fr; gap: 11px; }
+
+          .ec, .pc, .tc, .ac, .tmc, .cc {
+            grid-column: auto; grid-row: auto; width: 100%;
           }
 
-          .value-heading {
-            max-width: 390px;
-            font-size: clamp(42px, 11.5vw, 55px);
+          .bc { border-radius: 20px; }
+
+          .ec {
+            max-width: 100%;
+            aspect-ratio: 3 / 4;
+            min-height: 460px;
+            border-radius: 32px;
           }
 
-          .value-subheading {
-            max-width: 390px;
-            margin: 19px auto 48px;
-            font-size: clamp(18px, 5.4vw, 23px);
-          }
+          .ec-fg { padding: 20px 22px 0; }
+          .ec-blob-1 { width: 230px; height: 200px; top: -65px; right: -60px; }
+          .ec-blob-2 { width: 185px; height: 165px; bottom: -55px; left: -55px; }
 
-          .value-bento {
-            grid-template-columns: 1fr;
-            gap: 14px;
-          }
+          .pc { min-height: 370px; }
+          .pc-img-wrap { height: 190px; flex: 0 0 190px; border-radius: 20px 20px 0 0; }
 
-          .experience-card,
-          .technology-card,
-          .achievements-card,
-          .certificates-card,
-          .project-card,
-          .testimonial-card {
-            grid-column: auto;
-            grid-row: auto;
-            width: 100%;
-          }
+          .tc { grid-template-columns: 1fr; min-height: unset; padding: 19px 0 19px 19px; gap: 15px; }
+          .tc-copy { padding-right: 19px; }
+          .tc-title { max-width: unset; }
+          .tc-desc  { max-width: unset; }
 
-          .bento-card {
-            border-radius: 24px;
-          }
-
-          .experience-card {
-            min-height: 505px;
-            padding: 22px;
-          }
-
-          .experience-number {
-            font-size: clamp(74px, 23vw, 95px);
-          }
-
-          .experience-heading {
-            max-width: 320px;
-          }
-
-          .career-item {
-            min-height: 48px;
-            grid-template-columns: 11px minmax(0, 1fr);
-          }
-
-          .career-period {
-            grid-column: 2;
-            margin-top: -4px;
-            font-size: 10px;
-          }
-
-          .technology-card {
-            min-height: 300px;
-            grid-template-columns: 1fr;
-            align-items: stretch;
-            gap: 20px;
-            padding: 21px 0 21px 21px;
-          }
-
-          .technology-copy {
-            padding-right: 21px;
-          }
-
-          .technology-copy .card-title {
-            max-width: 330px;
-          }
-
-          .achievements-card {
-            min-height: 255px;
-            padding: 20px;
-          }
-
-          .certificates-card {
-            min-height: 255px;
-            padding: 20px;
-          }
-
-          .project-card {
-            min-height: 380px;
-          }
-
-          .project-image-wrapper {
-            height: 48%;
-            flex: 0 0 48%;
-            border-radius: 24px 24px 0 0;
-          }
-
-          .testimonial-card {
-            min-height: 280px;
-            padding: 22px;
-          }
-
-          .testimonial-mark {
-            font-size: 44px;
-            margin-bottom: 14px;
-          }
-
-          .testimonial-quote {
-            font-size: 17px;
-          }
-
-          .testimonial-placeholder-note {
-            display: none;
-          }
+          .ac  { min-height: unset; }
+          .tmc { padding: 20px; }
+          .cc  { min-height: unset; }
         }
 
-        /* ── Small mobile ─────────────────────────── */
+        @media (max-width: 420px) {
+          .ec { aspect-ratio: auto; height: 540px; }
+          .ec-impact { font-size: 68px; }
+          .ec-slide-sub { font-size: 13px; max-width: 240px; }
+          .ec-body { gap: 10px; padding: 20px 10px; }
+          .ec-blob-1 { width: 200px; height: 180px; top: -60px; right: -55px; }
+          .ec-blob-2 { width: 165px; height: 148px; bottom: -50px; left: -50px; }
+        }
 
         @media (max-width: 390px) {
-          .value-section {
-            padding-inline: 13px;
-          }
-
-          .value-heading {
-            font-size: 40px;
-          }
-
-          .value-subheading {
-            font-size: 18px;
-          }
-
-          .experience-card {
-            min-height: 525px;
-            padding: 20px;
-          }
-
-          .technology-card {
-            padding-left: 19px;
-          }
-
-          .technology-copy {
-            padding-right: 19px;
-          }
-
-          .project-card {
-            min-height: 360px;
-          }
-
-          .project-image-wrapper {
-            height: 45%;
-            flex: 0 0 45%;
-          }
+          .vs { padding-inline: 12px; }
+          .vs-h2  { font-size: 36px; }
+          .vs-sub { font-size: 16px; }
+          .ec { height: 500px; }
+          .ec-fg { padding: 18px 18px 0; }
+          .ec-impact { font-size: 60px; }
+          .ec-cta-row { padding: 0 18px 26px; }
+          .pc { min-height: 345px; }
+          .pc-img-wrap { height: 170px; flex: 0 0 170px; }
+          .tc { padding-left: 17px; }
+          .tc-copy { padding-right: 17px; }
         }
 
-        /* ── Reduced motion ───────────────────────── */
+        /* ─── Reduced motion ───────────────────────────────── */
 
         @media (prefers-reduced-motion: reduce) {
-          .bento-card,
-          .technology-item,
-          .certificate-item,
-          .project-image,
-          .project-arrow {
-            transition: none !important;
-          }
-
-          .technology-track {
-            animation-play-state: paused !important;
-          }
+          .tc-track                      { animation-play-state: paused !important; }
+          .ec-blob-1, .ec-blob-2         { animation-play-state: paused !important; }
+          .ec-bar-fill                   { transition: none !important; }
+          .bc, .tc-chip, .cc-item, .pc-img, .pc-arrow { transition: none !important; }
         }
 
       `}</style>
@@ -1210,113 +1324,241 @@ export default function Projects() {
 
 /* ── Sub-components ─────────────────────────────── */
 
+function RevealCard({ children, className, index, inView, style }: RevealCardProps) {
+  return (
+    <motion.article
+      className={`bc ${className}`}
+      initial={{ opacity: 0, y: 20, scale: 0.99 }}
+      animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
+      transition={{ duration: 0.62, ease: EASE, delay: 0.07 + index * 0.07 }}
+      whileHover={{ y: -3, transition: { duration: 0.24, ease: EASE } }}
+      style={style}
+    >
+      {children}
+    </motion.article>
+  );
+}
+
+/* ── ExperienceCard ──────────────────────────────── */
+
 function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [progress, setProgress]       = useState(0);
+  const tickRef     = useRef({ slide: 0, progress: 0 });
+  const isPausedRef = useRef(false);
+
+  useEffect(() => {
+    if (!inView) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) return;
+
+    const id = setInterval(() => {
+      if (isPausedRef.current) return;
+      tickRef.current.progress += (TICK_MS / SLIDE_DURATION) * 100;
+      if (tickRef.current.progress >= 100) {
+        tickRef.current.progress = 0;
+        tickRef.current.slide = (tickRef.current.slide + 1) % STORY_SLIDES.length;
+        setActiveSlide(tickRef.current.slide);
+        setProgress(0);
+      } else {
+        setProgress(tickRef.current.progress);
+      }
+    }, TICK_MS);
+
+    return () => clearInterval(id);
+  }, [inView]);
+
+  const slide = STORY_SLIDES[activeSlide];
+
   return (
-    <RevealCard className="bento-card experience-card" index={index} inView={inView}>
-      <div className="experience-glow" />
+    <RevealCard className="ec" index={index} inView={inView}>
 
-      <div className="experience-header">
-        <span className="card-label">Work experience</span>
-        <span className="card-label">Since 2017</span>
+      {/* layer 0: per-slide background tint, cross-fades on slide change */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`bg-${activeSlide}`}
+          className="ec-bg"
+          style={{ background: slide.bgTint }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.65, ease: "easeInOut" }}
+          aria-hidden="true"
+        />
+      </AnimatePresence>
+
+      {/* layer 1: dark mode overlay (covers light tint) */}
+      <div className="ec-dark-overlay" aria-hidden="true" />
+
+      {/* layer 2: blobs — continuously animated, colors swap per slide */}
+      <div className="ec-blob-layer" aria-hidden="true">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`blobs-${activeSlide}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7, ease: "easeInOut" }}
+            style={{ position: "absolute", inset: 0 }}
+          >
+            <div className="ec-blob-1" style={{ background: slide.blobGradient }} />
+            <div className="ec-blob-2" style={{ background: slide.blobGradient }} />
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      <div className="experience-number">
-        9<span>+</span>
-      </div>
-
-      <h3 className="experience-heading">
-        Building and leading digital products across complex industries.
-      </h3>
-
-      <p className="experience-description">
-        Government innovation, banking, fintech, startups, SaaS, and enterprise engineering.
-      </p>
-
-      <div className="career-timeline">
-        {CAREER_ITEMS.map((item) => (
-          <div key={`${item.company}-${item.period}`} className="career-item">
-            <span className="career-dot" />
-            <div>
-              <strong className="career-company">{item.company}</strong>
-              <span className="career-role">{item.role}</span>
-            </div>
-            <span className="career-period">{item.period}</span>
-          </div>
-        ))}
-      </div>
-    </RevealCard>
-  );
-}
-
-function TechnologyCard({ index, inView }: { index: number; inView: boolean }) {
-  return (
-    <RevealCard className="bento-card technology-card" index={index} inView={inView}>
-      <div className="technology-copy">
-        <span className="card-label">Technology</span>
-        <h3 className="card-title">A stack built for shipping.</h3>
-        <p className="card-description">
-          Tools I use across mobile, backend, platforms, data, and product delivery.
-        </p>
-      </div>
-
-      <div className="technology-marquee-wrapper">
-        <TechnologyRow technologies={TECH_ROW_ONE} direction="forward" />
-        <TechnologyRow technologies={TECH_ROW_TWO} direction="reverse" />
-      </div>
-    </RevealCard>
-  );
-}
-
-function TechnologyRow({
-  technologies,
-  direction,
-}: {
-  technologies: Technology[];
-  direction: "forward" | "reverse";
-}) {
-  return (
-    <div className="technology-row">
+      {/* layer 3: all readable content */}
       <div
-        className={[
-          "technology-track",
-          direction === "forward"
-            ? "technology-track-forward"
-            : "technology-track-reverse",
-        ].join(" ")}
+        className="ec-fg"
+        onMouseEnter={() => { isPausedRef.current = true; }}
+        onMouseLeave={() => { isPausedRef.current = false; }}
       >
-        <TechnologyGroup technologies={technologies} />
-        <TechnologyGroup technologies={technologies} hidden />
+        {/* story progress bars */}
+        <div className="ec-bars" aria-hidden="true">
+          {STORY_SLIDES.map((_, i) => (
+            <div key={i} className="ec-bar-bg">
+              <div
+                className="ec-bar-fill"
+                style={{
+                  width:
+                    i < activeSlide     ? "100%"
+                    : i === activeSlide ? `${progress}%`
+                    : "0%",
+                }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <p className="ec-sr" aria-live="polite" aria-atomic="true">
+          {`${activeSlide + 1} of ${STORY_SLIDES.length}: ${slide.company}, ${slide.role}, ${slide.period}. ${slide.tagline}`}
+        </p>
+
+        {/* animated slide */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeSlide}
+            className="ec-slide"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.34, ease: EASE }}
+            aria-hidden="true"
+          >
+            {/* company header */}
+            <div className="ec-slide-hdr">
+              <motion.div
+                className="ec-logo-circle"
+                style={{ background: slide.logoGradient }}
+                initial={{ scale: 0.72, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3, ease: EASE, delay: 0.05 }}
+              >
+                <span>{slide.initials}</span>
+              </motion.div>
+              <div className="ec-hdr-text">
+                <span className="ec-slide-co">{slide.company}</span>
+                <span className="ec-slide-per">{slide.period}</span>
+              </div>
+            </div>
+
+            {/* centred body: word + tagline + highlight badge */}
+            <div className="ec-body">
+              <h3 className="ec-impact">{slide.impactWord}</h3>
+              <p className="ec-tagline">{slide.tagline}</p>
+              <span className="ec-highlight">{slide.highlight}</span>
+            </div>
+
+            {/* CTA */}
+            <div className="ec-cta-row">
+              <span className="ec-cta">{slide.cta}</span>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+    </RevealCard>
+  );
+}
+
+/* ── Other cards (unchanged) ─────────────────────── */
+
+function ProjectCard({ index, inView }: { index: number; inView: boolean }) {
+  const delay = 0.07 + index * 0.07;
+  return (
+    <RevealCard className="pc" index={index} inView={inView}>
+      <div className="pc-img-wrap">
+        <Image
+          src={FEATURED_PROJECT.image}
+          alt={FEATURED_PROJECT.imageAlt}
+          className="pc-img"
+          fill
+          sizes="(max-width: 680px) 100vw, (max-width: 980px) 100vw, 58vw"
+        />
+      </div>
+      <div className="pc-body">
+        <span className="clabel">Featured Project</span>
+        <motion.h3
+          className="pc-title"
+          initial={{ opacity: 0, y: 7 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.48, ease: EASE, delay: delay + 0.1 }}
+        >
+          {FEATURED_PROJECT.title}
+        </motion.h3>
+        <p className="pc-desc">{FEATURED_PROJECT.description}</p>
+        <div className="pc-footer">
+          <div className="pc-tags">
+            {FEATURED_PROJECT.tags.map((tag) => (
+              <span key={tag} className="pc-tag">{tag}</span>
+            ))}
+          </div>
+          <span className="pc-arrow" aria-hidden="true">↗</span>
+        </div>
+      </div>
+    </RevealCard>
+  );
+}
+
+function TechCard({ index, inView }: { index: number; inView: boolean }) {
+  return (
+    <RevealCard className="tc" index={index} inView={inView}>
+      <div className="tc-copy">
+        <span className="clabel">Technology</span>
+        <h3 className="tc-title">A stack built for shipping.</h3>
+        <p className="tc-desc">Mobile, backend, platforms, data, and product delivery.</p>
+      </div>
+      <div className="tc-marquee">
+        <TechRow technologies={TECH_ROW_ONE} direction="fwd" />
+        <TechRow technologies={TECH_ROW_TWO} direction="rev" />
+      </div>
+    </RevealCard>
+  );
+}
+
+function TechRow({ technologies, direction }: { technologies: Technology[]; direction: "fwd" | "rev" }) {
+  return (
+    <div className="tc-row">
+      <div className={`tc-track tc-track-${direction}`}>
+        <TechGroup technologies={technologies} />
+        <TechGroup technologies={technologies} hidden />
       </div>
     </div>
   );
 }
 
-function TechnologyGroup({
-  technologies,
-  hidden = false,
-}: {
-  technologies: Technology[];
-  hidden?: boolean;
-}) {
+function TechGroup({ technologies, hidden = false }: { technologies: Technology[]; hidden?: boolean }) {
   return (
-    <div
-      className="technology-group"
-      aria-hidden={hidden ? true : undefined}
-    >
-      {technologies.map((technology) => (
+    <div className="tc-group" aria-hidden={hidden ? true : undefined}>
+      {technologies.map((tech) => (
         <div
-          key={`${technology.name}-${String(hidden)}`}
-          className="technology-item"
-          title={technology.name}
-          style={
-            {
-              "--tech-accent":      technology.accent,
-              "--tech-background":  technology.background,
-            } as CSSProperties
-          }
+          key={`${tech.name}-${String(hidden)}`}
+          className="tc-chip"
+          title={tech.name}
+          style={{ "--chip-accent": tech.accent, "--chip-bg": tech.background } as CSSProperties}
         >
-          <span className="technology-mark">{technology.shortName}</span>
-          <span className="technology-name">{technology.name}</span>
+          <span className="tc-mark">{tech.shortName}</span>
+          <span className="tc-name">{tech.name}</span>
         </div>
       ))}
     </div>
@@ -1324,34 +1566,26 @@ function TechnologyGroup({
 }
 
 function AchievementsCard({ index, inView }: { index: number; inView: boolean }) {
-  const cardDelay = 0.1 + index * 0.065;
-
+  const baseDelay = 0.07 + index * 0.07;
   return (
-    <RevealCard className="bento-card achievements-card" index={index} inView={inView}>
-      <div className="achievement-header">
-        <span className="card-label">Selected outcomes</span>
-        <h3 className="card-title" style={{ marginTop: 8 }}>
-          Work with visible impact.
-        </h3>
+    <RevealCard className="ac" index={index} inView={inView}>
+      <div className="ac-head">
+        <span className="clabel">Selected Outcomes</span>
+        <h3 className="ac-title">Work with visible impact.</h3>
       </div>
-
-      <div className="achievement-list">
-        {ACHIEVEMENTS.map((achievement, i) => (
+      <div className="ac-list">
+        {ACHIEVEMENTS.map((item, i) => (
           <motion.div
-            key={achievement.label}
-            className="achievement-item"
-            initial={{ opacity: 0, x: -8 }}
+            key={item.label}
+            className="ac-item"
+            initial={{ opacity: 0, x: -7 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{
-              duration: 0.5,
-              ease: EASE,
-              delay: cardDelay + 0.12 + i * 0.08,
-            }}
+            transition={{ duration: 0.44, ease: EASE, delay: baseDelay + 0.14 + i * 0.07 }}
           >
-            <span className="achievement-dot" />
+            <span className="ac-dot" />
             <div>
-              <strong>{achievement.label}</strong>
-              <p>{achievement.description}</p>
+              <strong>{item.label}</strong>
+              <p>{item.description}</p>
             </div>
           </motion.div>
         ))}
@@ -1360,112 +1594,36 @@ function AchievementsCard({ index, inView }: { index: number; inView: boolean })
   );
 }
 
-function CertificatesCard({ index, inView }: { index: number; inView: boolean }) {
-  return (
-    <RevealCard className="bento-card certificates-card" index={index} inView={inView}>
-      <span className="card-label">Certificates</span>
-      <h3 className="card-title" style={{ marginTop: 10 }}>
-        Continuous learning.
-      </h3>
-
-      <div className="certificate-list">
-        {CERTIFICATES.map((certificate) => (
-          <div key={certificate.title} className="certificate-item">
-            <span className="certificate-icon" aria-hidden="true">◇</span>
-            <div className="certificate-content">
-              <strong>{certificate.title}</strong>
-              <small>{certificate.issuer} · {certificate.year}</small>
-            </div>
-            {certificate.isMock && (
-              <span className="mock-badge" aria-label="Placeholder certificate">Mock</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </RevealCard>
-  );
-}
-
-function ProjectCard({ index, inView }: { index: number; inView: boolean }) {
-  const cardDelay = 0.1 + index * 0.065;
-
-  return (
-    <RevealCard className="bento-card project-card" index={index} inView={inView}>
-      <div className="project-image-wrapper">
-        <Image
-          src={FEATURED_PROJECT.image}
-          alt={FEATURED_PROJECT.imageAlt}
-          className="project-image"
-          fill
-          sizes="(max-width: 680px) 100vw, (max-width: 980px) 100vw, 58vw"
-        />
-      </div>
-
-      <div className="project-content">
-        <div className="project-label-row">
-          <span className="card-label">Featured project</span>
-        </div>
-
-        <motion.h3
-          className="project-title"
-          initial={{ opacity: 0, y: 8 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.55, ease: EASE, delay: cardDelay + 0.1 }}
-        >
-          {FEATURED_PROJECT.title}
-        </motion.h3>
-
-        <p className="project-description">{FEATURED_PROJECT.description}</p>
-
-        <div className="project-footer">
-          <div className="project-tags">
-            {FEATURED_PROJECT.tags.map((tag) => (
-              <span key={tag} className="project-tag">{tag}</span>
-            ))}
-          </div>
-          <span className="project-arrow" aria-hidden="true">↗</span>
-        </div>
-      </div>
-    </RevealCard>
-  );
-}
-
 function TestimonialCard({ index, inView }: { index: number; inView: boolean }) {
-  const cardDelay = 0.1 + index * 0.065;
-
+  const delay = 0.07 + index * 0.07;
   return (
-    <RevealCard className="bento-card testimonial-card" index={index} inView={inView}>
-      <span className="card-label">
-        What people say
+    <RevealCard className="tmc" index={index} inView={inView}>
+      <span className="clabel">
+        What People Say
         {TESTIMONIAL.isMock && (
-          <span className="testimonial-placeholder-note">Placeholder</span>
+          <span className="mock-pill" aria-label="Placeholder testimonial">Placeholder</span>
         )}
       </span>
-
       <motion.span
-        className="testimonial-mark"
+        className="tmc-quotemark"
         aria-hidden="true"
         initial={{ opacity: 0 }}
-        animate={inView ? { opacity: 0.55 } : {}}
-        transition={{ duration: 0.6, ease: EASE, delay: cardDelay + 0.08 }}
+        animate={inView ? { opacity: 0.48 } : {}}
+        transition={{ duration: 0.52, ease: EASE, delay: delay + 0.08 }}
       >
         &ldquo;
       </motion.span>
-
       <motion.blockquote
-        className="testimonial-quote"
-        initial={{ opacity: 0, y: 10 }}
+        className="tmc-quote"
+        initial={{ opacity: 0, y: 9 }}
         animate={inView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.65, ease: EASE, delay: cardDelay + 0.16 }}
+        transition={{ duration: 0.58, ease: EASE, delay: delay + 0.16 }}
       >
         {TESTIMONIAL.quote}
       </motion.blockquote>
-
-      <div className="testimonial-footer">
-        <span className="testimonial-avatar" aria-hidden="true">
-          {TESTIMONIAL.initials}
-        </span>
-        <div className="testimonial-person">
+      <div className="tmc-footer">
+        <span className="tmc-avatar" aria-hidden="true">{TESTIMONIAL.initials}</span>
+        <div className="tmc-person">
           <strong>{TESTIMONIAL.attribution}</strong>
           <small>{TESTIMONIAL.role}</small>
         </div>
@@ -1474,24 +1632,25 @@ function TestimonialCard({ index, inView }: { index: number; inView: boolean }) 
   );
 }
 
-function RevealCard({ children, className, index, inView, style }: RevealCardProps) {
+function CertificatesCard({ index, inView }: { index: number; inView: boolean }) {
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 26, scale: 0.987 }}
-      animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
-      transition={{
-        duration: 0.7,
-        ease: EASE,
-        delay: 0.1 + index * 0.065,
-      }}
-      whileHover={{
-        y: -4,
-        transition: { duration: 0.28, ease: EASE },
-      }}
-      className={className}
-      style={style}
-    >
-      {children}
-    </motion.article>
+    <RevealCard className="cc" index={index} inView={inView}>
+      <span className="clabel">Certificates</span>
+      <h3 className="cc-title">Continuous learning.</h3>
+      <div className="cc-list">
+        {CERTIFICATES.map((cert) => (
+          <div key={cert.title} className="cc-item">
+            <span className="cc-icon" aria-hidden="true">◇</span>
+            <div className="cc-text">
+              <strong>{cert.title}</strong>
+              <small>{cert.issuer} · {cert.year}</small>
+            </div>
+            {cert.isMock && (
+              <span className="mock-badge" aria-label="Placeholder certificate">Mock</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </RevealCard>
   );
 }
