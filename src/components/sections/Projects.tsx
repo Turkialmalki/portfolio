@@ -24,6 +24,7 @@ type RevealCardProps = {
 
 type StorySlide = {
   company: string;
+  year: string;
   initials: string;
   logoGradient: string;
   blobGradient: string;
@@ -31,9 +32,22 @@ type StorySlide = {
   impactWord: string;
   tagline: string;
   highlight: string;
-  role: string;
-  period: string;
   cta: string;
+  isStartup?: boolean;
+  isCTA?: boolean;
+};
+
+type SkillTile = {
+  name: string;
+  short: string;
+  accent: string;
+  bg: string;
+};
+
+type StartupMark = {
+  initials: string;
+  name: string;
+  color: string;
 };
 
 type Technology = {
@@ -74,122 +88,253 @@ type TestimonialData = {
 /* ── Constants ─────────────────────────────────── */
 
 const EASE: Bezier = [0.16, 1, 0.3, 1];
-
 const SLIDE_DURATION = 3800;
-const TICK_MS        = 40;
+const TICK_MS = 40;
+
+const STARTUP_MARKS: StartupMark[] = [
+  { initials: "TP", name: "Tuwaiq Pay", color: "#3b82f6" },
+  { initials: "MU", name: "Munaseb", color: "#14b8a6" },
+  { initials: "2", name: "Ithnain", color: "#8b5cf6" },
+  { initials: "T", name: "Tarqeem", color: "#f59e0b" },
+  { initials: "F", name: "Foodics", color: "#ef4444" },
+  { initials: "AP", name: "APATH Engineering", color: "#22c55e" },
+];
 
 const STORY_SLIDES: StorySlide[] = [
   {
-    company:      "Monsha'at",
-    initials:     "MN",
-    logoGradient: "linear-gradient(145deg, #064e2e, #22c55e)",
-    blobGradient: "linear-gradient(135deg, #6ee7b7 0%, #34d399 40%, #38bdf8 100%)",
-    bgTint:       "#edfaf5",
-    impactWord:   "BUILD",
-    tagline:      "Saudi Arabia's government platform for startups.",
-    highlight:    "Engineering Leader · 50+ programs supported",
-    role:         "Software Engineering Leader",
-    period:       "2024 — Now",
-    cta:          "Current Role",
+    company: "My Journey",
+    year: "2017 — Today",
+    initials: "TK",
+    logoGradient: "linear-gradient(145deg, #1e40af, #3b82f6)",
+    blobGradient:
+      "linear-gradient(135deg, #bfdbfe 0%, #93c5fd 40%, #a5b4fc 100%)",
+    bgTint: "#eff6ff",
+    impactWord: "BUILD",
+    tagline:
+      "From Android development to leading engineering teams across banking, fintech, startups, and government innovation.",
+    highlight: "9+ Years of Driven Impact",
+    cta: "9+ Years of Driven Impact",
   },
   {
-    company:      "Emkan",
-    initials:     "EK",
-    logoGradient: "linear-gradient(145deg, #7c2d12, #f97316)",
-    blobGradient: "linear-gradient(135deg, #fdba74 0%, #f43f5e 50%, #c026d3 100%)",
-    bgTint:       "#fff8f3",
-    impactWord:   "SCALE",
-    tagline:      "Fintech products reaching millions of users.",
-    highlight:    "Innovation Lab Lead · Mobile & platform teams",
-    role:         "Software Engineer III / Innovation Lab Lead",
-    period:       "2022 — 2024",
-    cta:          "Fintech",
-  },
-  {
-    company:      "Al Rajhi Bank",
-    initials:     "AR",
-    logoGradient: "linear-gradient(145deg, #78350f, #d97706)",
-    blobGradient: "linear-gradient(135deg, #fde68a 0%, #fb923c 45%, #ef4444 100%)",
-    bgTint:       "#fffbeb",
-    impactWord:   "SHIP",
-    tagline:      "Mobile banking for millions of Saudi customers.",
-    highlight:    "Senior Engineer · World's largest Islamic bank",
-    role:         "Senior Software Engineer",
-    period:       "2019 — 2022",
-    cta:          "Banking",
-  },
-  {
-    company:      "Saudi Aramco",
-    initials:     "SA",
+    company: "Saudi Aramco",
+    year: "2018",
+    initials: "SA",
     logoGradient: "linear-gradient(145deg, #1e3a8a, #60a5fa)",
-    blobGradient: "linear-gradient(135deg, #93c5fd 0%, #818cf8 50%, #c084fc 100%)",
-    bgTint:       "#eff6ff",
-    impactWord:   "GROW",
-    tagline:      "Enterprise foundations at the world's largest energy company.",
-    highlight:    "Intern · Where the journey began",
-    role:         "Engineering Intern",
-    period:       "2018",
-    cta:          "Foundation",
+    blobGradient:
+      "linear-gradient(135deg, #93c5fd 0%, #818cf8 50%, #c084fc 100%)",
+    bgTint: "#eff6ff",
+    impactWord: "GROW",
+    tagline: "Enterprise foundations at the world's largest energy company.",
+    highlight: "Intern · Where the journey began",
+    cta: "Foundation",
   },
+  {
+    company: "Al Rajhi Bank",
+    year: "2019 — 2022",
+    initials: "AR",
+    logoGradient: "linear-gradient(145deg, #78350f, #d97706)",
+    blobGradient:
+      "linear-gradient(135deg, #fde68a 0%, #fb923c 45%, #ef4444 100%)",
+    bgTint: "#fffbeb",
+    impactWord: "SCALE",
+    tagline:
+      "Built and maintained customer-facing mobile banking experiences with React Native.",
+    highlight: "Senior Software Engineer",
+    cta: "Senior Software Engineer",
+  },
+  {
+    company: "Emkan",
+    year: "2022 — 2024",
+    initials: "EM",
+    logoGradient: "linear-gradient(145deg, #7c2d12, #f97316)",
+    blobGradient:
+      "linear-gradient(135deg, #fdba74 0%, #f43f5e 50%, #c026d3 100%)",
+    bgTint: "#fff8f3",
+    impactWord: "LEAD",
+    tagline:
+      "Led fintech modernization, mobile product quality, and innovation lab initiatives.",
+    highlight: "Fintech Engineering",
+    cta: "Fintech Engineering",
+  },
+  {
+    company: "Monsha'at",
+    year: "2024 — Present",
+    initials: "MN",
+    logoGradient: "linear-gradient(145deg, #064e2e, #22c55e)",
+    blobGradient:
+      "linear-gradient(135deg, #6ee7b7 0%, #34d399 40%, #38bdf8 100%)",
+    bgTint: "#edfaf5",
+    impactWord: "IMPACT",
+    tagline:
+      "Leading engineering initiatives, internal systems, dashboards, and startup-support platforms.",
+    highlight: "Software Engineering Leader",
+    cta: "Software Engineering Leader",
+  },
+  {
+    company: "Startups & Ventures",
+    year: "Across the journey",
+    initials: "ST",
+    logoGradient: "linear-gradient(145deg, #4f46e5, #7c3aed)",
+    blobGradient:
+      "linear-gradient(135deg, #c4b5fd 0%, #a78bfa 40%, #818cf8 100%)",
+    bgTint: "#f5f3ff",
+    impactWord: "CREATE",
+    tagline:
+      "Worked with multiple startups and part-time ventures, bringing a founder mentality to product delivery.",
+    highlight: "Founder Mindset",
+    cta: "Founder Mindset",
+    isStartup: true,
+  },
+  {
+    company: "Open to Opportunities",
+    year: "Now",
+    initials: "→",
+    logoGradient: "linear-gradient(145deg, #1e293b, #334155)",
+    blobGradient:
+      "linear-gradient(135deg, #94a3b8 0%, #64748b 40%, #475569 100%)",
+    bgTint: "#f8fafc",
+    impactWord: "CONNECT",
+    tagline:
+      "Available for engineering leadership, innovation, frontend, mobile, and product-driven technology opportunities.",
+    highlight: "Let's Talk",
+    cta: "Let's Talk",
+    isCTA: true,
+  },
+];
+
+const SKILLS: SkillTile[] = [
+  { name: "TypeScript", short: "TS", accent: "#3178C6", bg: "#EAF3FC" },
+  { name: "JavaScript", short: "JS", accent: "#D4A800", bg: "#FEFCE8" },
+  { name: "Java", short: "Jv", accent: "#E76F00", bg: "#FFF1E5" },
+  { name: "Next.js", short: "Nx", accent: "#111111", bg: "#F0F0F0" },
+  { name: "React", short: "Re", accent: "#087EA4", bg: "#E8F7FB" },
+  { name: "React Native", short: "RN", accent: "#149ECA", bg: "#E6F8FD" },
+  { name: "Figma", short: "Fig", accent: "#A259FF", bg: "#F3EAFF" },
 ];
 
 const TECH_ROW_ONE: Technology[] = [
-  { name: "React Native", shortName: "RN", accent: "#149ECA", background: "#E6F8FD" },
-  { name: "TypeScript",   shortName: "TS", accent: "#3178C6", background: "#EAF3FC" },
-  { name: "Java",         shortName: "JV", accent: "#E76F00", background: "#FFF1E5" },
-  { name: "Spring",       shortName: "SP", accent: "#68BD45", background: "#EEF9E9" },
-  { name: "Node.js",      shortName: "ND", accent: "#43853D", background: "#EDF6EB" },
-  { name: "React",        shortName: "RE", accent: "#087EA4", background: "#E8F7FB" },
+  {
+    name: "React Native",
+    shortName: "RN",
+    accent: "#149ECA",
+    background: "#E6F8FD",
+  },
+  {
+    name: "TypeScript",
+    shortName: "TS",
+    accent: "#3178C6",
+    background: "#EAF3FC",
+  },
+  { name: "Java", shortName: "JV", accent: "#E76F00", background: "#FFF1E5" },
+  { name: "Spring", shortName: "SP", accent: "#68BD45", background: "#EEF9E9" },
+  {
+    name: "Node.js",
+    shortName: "ND",
+    accent: "#43853D",
+    background: "#EDF6EB",
+  },
+  { name: "React", shortName: "RE", accent: "#087EA4", background: "#E8F7FB" },
 ];
 
 const TECH_ROW_TWO: Technology[] = [
-  { name: "Next.js",          shortName: "NX", accent: "#111111", background: "#EBEBEB" },
-  { name: "JavaScript",       shortName: "JS", accent: "#7A6500", background: "#FFF7C2" },
-  { name: "Metabase",         shortName: "MB", accent: "#509EE3", background: "#EAF5FE" },
-  { name: "NoCoDB",           shortName: "NC", accent: "#7248E8", background: "#F0ECFF" },
-  { name: "Product Strategy", shortName: "PS", accent: "#D63B5A", background: "#FFF0F3" },
-  { name: "System Design",    shortName: "SD", accent: "#15966A", background: "#E8F8F0" },
+  {
+    name: "Next.js",
+    shortName: "NX",
+    accent: "#111111",
+    background: "#EBEBEB",
+  },
+  {
+    name: "JavaScript",
+    shortName: "JS",
+    accent: "#7A6500",
+    background: "#FFF7C2",
+  },
+  {
+    name: "Metabase",
+    shortName: "MB",
+    accent: "#509EE3",
+    background: "#EAF5FE",
+  },
+  { name: "NoCoDB", shortName: "NC", accent: "#7248E8", background: "#F0ECFF" },
+  {
+    name: "Product Strategy",
+    shortName: "PS",
+    accent: "#D63B5A",
+    background: "#FFF0F3",
+  },
+  {
+    name: "System Design",
+    shortName: "SD",
+    accent: "#15966A",
+    background: "#E8F8F0",
+  },
 ];
 
 const ACHIEVEMENTS: Achievement[] = [
   {
-    label:       "Innovation Center",
-    description: "Led the digital revamp of Monsha'at's Innovation Center website and experience.",
+    label: "Innovation Center",
+    description:
+      "Led the digital revamp of Monsha'at's Innovation Center website and experience.",
   },
   {
-    label:       "Internal Platforms",
-    description: "Architected scalable NoCoDB data platform and Metabase dashboards for real-time KPI visibility.",
+    label: "Internal Platforms",
+    description:
+      "Architected NoCoDB data platform and Metabase dashboards for real-time KPI visibility.",
   },
   {
-    label:       "Startup Enablement",
-    description: "Mentored startup teams and accelerated multiple MVP deliveries through the innovation lab.",
+    label: "Startup Enablement",
+    description:
+      "Mentored startup teams and accelerated multiple MVP deliveries through the innovation lab.",
   },
   {
-    label:       "Fintech Modernization",
-    description: "Led mobile banking product modernization and technical infrastructure at Al Rajhi Bank.",
+    label: "Fintech Modernization",
+    description:
+      "Led mobile banking product modernization and technical infrastructure at Al Rajhi Bank.",
   },
 ];
 
 const CERTIFICATES: Certificate[] = [
-  { title: "Digital Product Leadership",     issuer: "Sample Academy",   year: "2025", isMock: true },
-  { title: "Cloud Architecture Foundations", issuer: "Sample Institute", year: "2024", isMock: true },
-  { title: "Innovation Management",          issuer: "Sample Program",   year: "2023", isMock: true },
+  {
+    title: "Digital Product Leadership",
+    issuer: "Sample Academy",
+    year: "2025",
+    isMock: true,
+  },
+  {
+    title: "Cloud Architecture Foundations",
+    issuer: "Sample Institute",
+    year: "2024",
+    isMock: true,
+  },
+  {
+    title: "Innovation Management",
+    issuer: "Sample Program",
+    year: "2023",
+    isMock: true,
+  },
 ];
 
 const FEATURED_PROJECT: ProjectData = {
-  title:       "Monsha'at Innovation Center",
-  description: "Led the digital revamp of the Innovation Center and built scalable internal systems, dashboards, and data platforms supporting startups and innovation programs.",
-  tags:        ["Government Innovation", "Engineering Leadership", "Digital Transformation"],
-  image:       "/monshaat.jpg",
-  imageAlt:    "Monsha'at Innovation Center – digital platform and internal systems",
+  title: "Monsha'at Innovation Center",
+  description:
+    "Led the digital revamp of the Innovation Center and built scalable internal systems, dashboards, and data platforms supporting startups and innovation programs.",
+  tags: [
+    "Government Innovation",
+    "Engineering Leadership",
+    "Digital Transformation",
+  ],
+  image: "/monshaat.jpg",
+  imageAlt:
+    "Monsha'at Innovation Center – digital platform and internal systems",
 };
 
 const TESTIMONIAL: TestimonialData = {
-  quote:       "Turki brings structure to complex technical challenges and helps teams move from ideas to confident delivery.",
+  quote:
+    "Turki brings structure to complex technical challenges and helps teams move from ideas to confident delivery.",
   attribution: "Sample testimonial",
-  role:        "Replace with a verified colleague or client quote",
-  initials:    "ST",
-  isMock:      true,
+  role: "Replace with a verified colleague or client quote",
+  initials: "ST",
+  isMock: true,
 };
 
 /* ── Section ────────────────────────────────────── */
@@ -201,7 +346,6 @@ export default function Projects() {
   return (
     <section id="projects" ref={sectionRef} className="vs">
       <div className="vs-wrap">
-
         <motion.div
           className="vs-pill"
           initial={{ opacity: 0, y: 10 }}
@@ -226,14 +370,19 @@ export default function Projects() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.62, ease: EASE, delay: 0.1 }}
         >
-          Engineering leadership, product thinking, and innovation grounded in real delivery.
+          Backed by experience, driven by Impact.
         </motion.p>
 
         <div className="vs-grid">
-          <ExperienceCard   index={0} inView={inView} />
-
+          <ExperienceCard index={0} inView={inView} />
+          <ImpactCard index={1} inView={inView} />
+          <SkillsCard index={2} inView={inView} />
+          {/* <ProjectCard      index={3} inView={inView} /> */}
+          {/* <TechCard         index={4} inView={inView} />
+          <AchievementsCard index={5} inView={inView} />
+          <TestimonialCard  index={6} inView={inView} />
+          <CertificatesCard index={7} inView={inView} /> */}
         </div>
-
       </div>
 
       <style>{`
@@ -360,14 +509,14 @@ export default function Projects() {
           grid-row: 1 / span 2;
           width: 100%;
           aspect-ratio: 2 / 3;
-          min-height: 520px;
+          min-height: 600px;
           padding: 0;
           overflow: hidden;
           display: flex;
           flex-direction: column;
           background: #edfaf5;
           border: 1px solid rgba(100, 180, 140, 0.18);
-          border-radius: clamp(28px, 3.5vw, 48px);
+          border-radius: clamp(10px, 3.5vw, 16px);
           box-shadow:
             0 20px 60px rgba(15, 23, 42, 0.09),
             0 4px 14px rgba(15, 23, 42, 0.06);
@@ -379,14 +528,12 @@ export default function Projects() {
             0 6px 20px rgba(15, 23, 42, 0.07) !important;
         }
 
-        /* per-slide background tint — fades between companies */
         .ec-bg {
           position: absolute;
           inset: 0;
           z-index: 0;
         }
 
-        /* dark overlay — covers light tint in dark mode */
         .ec-dark-overlay {
           position: absolute;
           inset: 0;
@@ -402,7 +549,6 @@ export default function Projects() {
           opacity: 1;
         }
 
-        /* blob layer — always drifting */
         .ec-blob-layer {
           position: absolute;
           inset: 0;
@@ -448,7 +594,6 @@ export default function Projects() {
           75%      { transform: translate( 18px, -24px) scale(0.94) rotate( 6deg); }
         }
 
-        /* foreground content */
         .ec-fg {
           position: relative;
           z-index: 3;
@@ -458,7 +603,6 @@ export default function Projects() {
           padding: 24px 26px 0;
         }
 
-        /* story progress bars */
         .ec-bars {
           display: flex;
           gap: 5px;
@@ -480,7 +624,6 @@ export default function Projects() {
           transition: width 50ms linear;
         }
 
-        /* sr-only */
         .ec-sr {
           position: absolute;
           width: 1px;
@@ -493,7 +636,6 @@ export default function Projects() {
           border-width: 0;
         }
 
-        /* slide wrapper */
         .ec-slide {
           flex: 1;
           display: flex;
@@ -501,7 +643,6 @@ export default function Projects() {
           min-height: 0;
         }
 
-        /* header row: logo + stacked company/period */
         .ec-slide-hdr {
           display: flex;
           align-items: center;
@@ -560,7 +701,6 @@ export default function Projects() {
           line-height: 1.1;
         }
 
-        /* centred body */
         .ec-body {
           flex: 1;
           display: flex;
@@ -568,32 +708,31 @@ export default function Projects() {
           align-items: center;
           justify-content: center;
           text-align: center;
-          gap: 16px;
-          padding: 24px 16px 20px;
+          gap: 14px;
+          padding: 20px 16px 18px;
         }
 
-        /* massive impact word */
         .ec-impact {
           margin: 0;
-          font-size: clamp(80px, 19vw, 100px);
+          font-size: clamp(30px, 12.4vw, 30px);
           font-weight: 900;
-          line-height: 0.86;
+          line-height: 0.88;
           letter-spacing: -0.07em;
           color: #0f172a;
           text-transform: uppercase;
+          word-break: break-word;
+          overflow-wrap: break-word;
         }
 
-        /* one-line tagline */
         .ec-tagline {
           margin: 0;
-          font-size: 14px;
+          font-size: 13.5px;
           font-weight: 480;
           line-height: 1.5;
           color: rgba(15, 23, 42, 0.62);
-          max-width: 260px;
+          max-width: 250px;
         }
 
-        /* context badge below tagline */
         .ec-highlight {
           display: inline-flex;
           align-items: center;
@@ -611,7 +750,34 @@ export default function Projects() {
           max-width: 100%;
         }
 
-        /* CTA row */
+        /* startup marks cluster */
+        .ec-startup-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 52px);
+          grid-template-rows: repeat(2, 52px);
+          gap: 8px;
+          margin: 0 auto;
+        }
+
+        .ec-startup-mark {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 52px;
+          height: 52px;
+          border-radius: 14px;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+          cursor: default;
+        }
+
+        .ec-startup-mark span {
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+        }
+
         .ec-cta-row {
           padding: 0 26px 34px;
           display: flex;
@@ -634,9 +800,15 @@ export default function Projects() {
           text-transform: uppercase;
           box-shadow:
             0 4px 20px rgba(0, 0, 0, 0.1),
-            0 1px  4px rgba(0, 0, 0, 0.06);
+            0 1px 4px rgba(0, 0, 0, 0.06);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
+        }
+
+        .ec-cta--connect {
+          background: #1495ff;
+          color: #ffffff;
+          box-shadow: 0 8px 24px rgba(20, 149, 255, 0.36);
         }
 
         /* ── dark mode ── */
@@ -650,67 +822,240 @@ export default function Projects() {
         }
 
         .dark .ec-bar-bg,
-        [data-theme="dark"] .ec-bar-bg {
-          background: rgba(255, 255, 255, 0.16);
-        }
-
+        [data-theme="dark"] .ec-bar-bg { background: rgba(255,255,255,0.16); }
         .dark .ec-bar-fill,
-        [data-theme="dark"] .ec-bar-fill {
-          background: rgba(255, 255, 255, 0.8);
-        }
-
+        [data-theme="dark"] .ec-bar-fill { background: rgba(255,255,255,0.8); }
         .dark .ec-slide-co,
-        [data-theme="dark"] .ec-slide-co {
-          color: #dde4f0;
-        }
-
+        [data-theme="dark"] .ec-slide-co { color: #dde4f0; }
         .dark .ec-slide-per,
-        [data-theme="dark"] .ec-slide-per {
-          color: rgba(221, 228, 240, 0.4);
-        }
-
+        [data-theme="dark"] .ec-slide-per { color: rgba(221,228,240,0.4); }
         .dark .ec-impact,
-        [data-theme="dark"] .ec-impact {
-          color: #f1f5f9;
-        }
-
+        [data-theme="dark"] .ec-impact { color: #f1f5f9; }
         .dark .ec-tagline,
-        [data-theme="dark"] .ec-tagline {
-          color: rgba(226, 232, 240, 0.62);
-        }
-
+        [data-theme="dark"] .ec-tagline { color: rgba(226,232,240,0.62); }
         .dark .ec-highlight,
         [data-theme="dark"] .ec-highlight {
-          background: rgba(255, 255, 255, 0.07);
-          color: rgba(226, 232, 240, 0.46);
+          background: rgba(255,255,255,0.07);
+          color: rgba(226,232,240,0.46);
         }
-
         .dark .ec-cta,
         [data-theme="dark"] .ec-cta {
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(255,255,255,0.1);
           color: #f1f5f9;
           box-shadow:
-            0 4px 20px rgba(0, 0, 0, 0.28),
-            0 0 0 1px rgba(255, 255, 255, 0.09);
+            0 4px 20px rgba(0,0,0,0.28),
+            0 0 0 1px rgba(255,255,255,0.09);
         }
+        .dark .ec-cta--connect,
+        [data-theme="dark"] .ec-cta--connect {
+          background: #1495ff;
+          color: #ffffff;
+          box-shadow: 0 8px 24px rgba(20,149,255,0.4);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           Impact card (dark personal card)
+        ═══════════════════════════════════════════════════════ */
+
+        .ic {
+          grid-column: 5 / span 4;
+          grid-row: 1;
+          min-height: 500px;
+          background: #0d1120 !important;
+          border-color: rgba(255, 255, 255, 0.07) !important;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .ic:hover {
+          box-shadow:
+            0 18px 48px rgba(0, 0, 0, 0.36),
+            0 4px 14px rgba(0, 0, 0, 0.22) !important;
+        }
+
+        .ic-content {
+          flex: 1;
+          padding: 22px 22px 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          position: relative;
+          z-index: 2;
+        }
+
+        .ic-title {
+          margin: 0;
+          color: #f0f0ef;
+          font-size: clamp(15px, 1.6vw, 26px);
+          font-weight: 760;
+          line-height: 1.6;
+          letter-spacing: -0.048em;
+        }
+
+        .ic-desc {
+          margin: 0;
+          color: rgba(226, 232, 240, 0.52);
+          font-size: 11.5px;
+          line-height: 1.5;
+        }
+
+        .ic-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+          margin-top: 2px;
+        }
+
+        .ic-tag {
+          display: inline-flex;
+          align-items: center;
+          height: 24px;
+          padding: 0 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: rgba(226, 232, 240, 0.52);
+          font-size: 9.5px;
+          font-weight: 580;
+        }
+
+        .ic-photo-area {
+          position: relative;
+          height: 270px;
+          flex-shrink: 0;
+          overflow: hidden;
+        }
+
+        .ic-photo {
+          object-fit: cover;
+          object-position: center top;
+        }
+
+        .ic-photo-fade {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to bottom, #0d1120 0%, rgba(13, 17, 32, 0) 45%);
+          z-index: 1;
+          pointer-events: none;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           Skills card
+        ═══════════════════════════════════════════════════════ */
+
+        .sk {
+          grid-column: 9 / span 4;
+          grid-row: 1;
+          min-height: 400px;
+          display: flex;
+          flex-direction: column;
+          padding: 22px;
+          gap: 14px;
+        }
+
+        .sk-header {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+
+        .sk-title {
+          margin: 0;
+          color: var(--text-primary);
+          font-size: clamp(16px, 1.6vw, 20px);
+          font-weight: 740;
+          line-height: 1.02;
+          letter-spacing: -0.044em;
+          transition: color 350ms ease;
+        }
+
+        .sk-desc {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 10.5px;
+          line-height: 1.4;
+          transition: color 350ms ease;
+        }
+
+        .sk-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 7px;
+          flex: 1;
+          align-content: start;
+        }
+
+        .sk-tile {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          padding: 10px 6px;
+          border-radius: 14px;
+          background: var(--sk-bg, #f0f0f0);
+          border: 1px solid color-mix(in srgb, var(--sk-accent, #222) 14%, transparent);
+          cursor: default;
+          transition: transform 230ms ease, box-shadow 230ms ease;
+        }
+
+        .sk-tile:hover {
+          transform: translateY(-3px) scale(1.04);
+          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
+        }
+
+        .sk-mark {
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 9px;
+          background: var(--sk-accent, #222);
+          color: #ffffff;
+          font-size: 8.5px;
+          font-weight: 800;
+          flex-shrink: 0;
+        }
+
+        .sk-name {
+          font-size: 8px;
+          font-weight: 620;
+          color: #1a1a1a;
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
+          line-height: 1;
+        }
+
+        .dark .sk-tile,
+        [data-theme="dark"] .sk-tile {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .dark .sk-name,
+        [data-theme="dark"] .sk-name { color: rgba(226,232,240,0.72); }
 
         /* ─── Project card ─────────────────────────────────── */
 
         .pc {
           grid-column: 5 / span 8;
-          grid-row: 1 / span 2;
+          grid-row: 2;
           display: flex;
           flex-direction: column;
           padding: 0;
-          min-height: 436px;
+          min-height: 330px;
           cursor: default;
         }
 
         .pc-img-wrap {
           position: relative;
           width: 100%;
-          height: 230px;
-          flex: 0 0 230px;
+          height: 200px;
+          flex: 0 0 200px;
           overflow: hidden;
           border-radius: 22px 22px 0 0;
         }
@@ -724,9 +1069,7 @@ export default function Projects() {
           transition: transform 650ms ease;
         }
 
-        .pc:hover .pc-img {
-          transform: scale(1.04);
-        }
+        .pc:hover .pc-img { transform: scale(1.04); }
 
         .pc-body {
           flex: 1;
@@ -1212,38 +1555,27 @@ export default function Projects() {
         /* ─── Dark mode tweaks ─────────────────────────────── */
 
         .dark .bc,
-        [data-theme="dark"] .bc {
-          border-color: rgba(255, 255, 255, 0.07);
-        }
+        [data-theme="dark"] .bc { border-color: rgba(255,255,255,0.07); }
 
         .dark .cc-item,
-        [data-theme="dark"] .cc-item {
-          border-color: rgba(255, 255, 255, 0.07);
-        }
+        [data-theme="dark"] .cc-item { border-color: rgba(255,255,255,0.07); }
 
         .dark .tc-name,
-        [data-theme="dark"] .tc-name {
-          color: #1a1a1a;
-        }
+        [data-theme="dark"] .tc-name { color: #1a1a1a; }
 
         /* ─── Tablet ───────────────────────────────────────── */
 
         @media (max-width: 980px) {
           .vs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-          .ec, .pc, .tc { grid-column: 1 / -1; grid-row: auto; }
-
+          .ec  { grid-column: 1 / -1; grid-row: auto; max-width: 480px; margin-inline: auto; }
+          .ic  { grid-column: 1 / span 1; grid-row: auto; }
+          .sk  { grid-column: 2 / span 1; grid-row: auto; }
+          .pc  { grid-column: 1 / -1; grid-row: auto; min-height: 380px; }
+          .tc  { grid-column: 1 / -1; grid-row: auto; grid-template-columns: 195px minmax(0, 1fr); min-height: 200px; }
           .ac  { grid-column: 1 / span 1; grid-row: auto; min-height: 250px; }
-          .tmc { grid-column: 1 / -1;     grid-row: auto; }
+          .tmc { grid-column: 1 / -1; grid-row: auto; }
           .cc  { grid-column: 2 / span 1; grid-row: auto; min-height: 250px; }
-
-          .ec { max-width: 480px; margin-inline: auto; }
-          .pc { min-height: 420px; }
-
-          .tc {
-            grid-template-columns: 195px minmax(0, 1fr);
-            min-height: 200px;
-          }
         }
 
         /* ─── Mobile ───────────────────────────────────────── */
@@ -1255,7 +1587,7 @@ export default function Projects() {
 
           .vs-grid { grid-template-columns: 1fr; gap: 11px; }
 
-          .ec, .pc, .tc, .ac, .tmc, .cc {
+          .ec, .ic, .sk, .pc, .tc, .ac, .tmc, .cc {
             grid-column: auto; grid-row: auto; width: 100%;
           }
 
@@ -1272,8 +1604,13 @@ export default function Projects() {
           .ec-blob-1 { width: 230px; height: 200px; top: -65px; right: -60px; }
           .ec-blob-2 { width: 185px; height: 165px; bottom: -55px; left: -55px; }
 
-          .pc { min-height: 370px; }
-          .pc-img-wrap { height: 190px; flex: 0 0 190px; border-radius: 20px 20px 0 0; }
+          .ic { min-height: 260px; }
+          .ic-photo-area { height: 150px; }
+
+          .sk { min-height: 260px; }
+
+          .pc { min-height: 320px; }
+          .pc-img-wrap { height: 180px; flex: 0 0 180px; border-radius: 20px 20px 0 0; }
 
           .tc { grid-template-columns: 1fr; min-height: unset; padding: 19px 0 19px 19px; gap: 15px; }
           .tc-copy { padding-right: 19px; }
@@ -1287,9 +1624,8 @@ export default function Projects() {
 
         @media (max-width: 420px) {
           .ec { aspect-ratio: auto; height: 540px; }
-          .ec-impact { font-size: 68px; }
-          .ec-slide-sub { font-size: 13px; max-width: 240px; }
-          .ec-body { gap: 10px; padding: 20px 10px; }
+          .ec-impact { font-size: 64px; }
+          .ec-body { gap: 10px; padding: 18px 10px; }
           .ec-blob-1 { width: 200px; height: 180px; top: -60px; right: -55px; }
           .ec-blob-2 { width: 165px; height: 148px; bottom: -50px; left: -50px; }
         }
@@ -1300,10 +1636,10 @@ export default function Projects() {
           .vs-sub { font-size: 16px; }
           .ec { height: 500px; }
           .ec-fg { padding: 18px 18px 0; }
-          .ec-impact { font-size: 60px; }
+          .ec-impact { font-size: 58px; }
           .ec-cta-row { padding: 0 18px 26px; }
-          .pc { min-height: 345px; }
-          .pc-img-wrap { height: 170px; flex: 0 0 170px; }
+          .pc { min-height: 300px; }
+          .pc-img-wrap { height: 160px; flex: 0 0 160px; }
           .tc { padding-left: 17px; }
           .tc-copy { padding-right: 17px; }
         }
@@ -1314,7 +1650,8 @@ export default function Projects() {
           .tc-track                      { animation-play-state: paused !important; }
           .ec-blob-1, .ec-blob-2         { animation-play-state: paused !important; }
           .ec-bar-fill                   { transition: none !important; }
-          .bc, .tc-chip, .cc-item, .pc-img, .pc-arrow { transition: none !important; }
+          .bc, .tc-chip, .cc-item, .pc-img, .pc-arrow,
+          .sk-tile                       { transition: none !important; }
         }
 
       `}</style>
@@ -1324,7 +1661,13 @@ export default function Projects() {
 
 /* ── Sub-components ─────────────────────────────── */
 
-function RevealCard({ children, className, index, inView, style }: RevealCardProps) {
+function RevealCard({
+  children,
+  className,
+  index,
+  inView,
+  style,
+}: RevealCardProps) {
   return (
     <motion.article
       className={`bc ${className}`}
@@ -1339,12 +1682,36 @@ function RevealCard({ children, className, index, inView, style }: RevealCardPro
   );
 }
 
+/* ── StartupCluster ──────────────────────────────── */
+
+function StartupCluster() {
+  return (
+    <div className="ec-startup-grid" role="list" aria-label="Startup ventures">
+      {STARTUP_MARKS.map((mark, i) => (
+        <motion.div
+          key={mark.name}
+          role="listitem"
+          className="ec-startup-mark"
+          style={{ background: mark.color }}
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.36, ease: EASE, delay: 0.06 + i * 0.07 }}
+          title={mark.name}
+          aria-label={mark.name}
+        >
+          <span aria-hidden="true">{mark.initials}</span>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 /* ── ExperienceCard ──────────────────────────────── */
 
 function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
   const [activeSlide, setActiveSlide] = useState(0);
-  const [progress, setProgress]       = useState(0);
-  const tickRef     = useRef({ slide: 0, progress: 0 });
+  const [progress, setProgress] = useState(0);
+  const tickRef = useRef({ slide: 0, progress: 0 });
   const isPausedRef = useRef(false);
 
   useEffect(() => {
@@ -1357,7 +1724,8 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
       tickRef.current.progress += (TICK_MS / SLIDE_DURATION) * 100;
       if (tickRef.current.progress >= 100) {
         tickRef.current.progress = 0;
-        tickRef.current.slide = (tickRef.current.slide + 1) % STORY_SLIDES.length;
+        tickRef.current.slide =
+          (tickRef.current.slide + 1) % STORY_SLIDES.length;
         setActiveSlide(tickRef.current.slide);
         setProgress(0);
       } else {
@@ -1372,8 +1740,7 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
 
   return (
     <RevealCard className="ec" index={index} inView={inView}>
-
-      {/* layer 0: per-slide background tint, cross-fades on slide change */}
+      {/* layer 0: per-slide background tint */}
       <AnimatePresence mode="wait">
         <motion.div
           key={`bg-${activeSlide}`}
@@ -1387,10 +1754,10 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
         />
       </AnimatePresence>
 
-      {/* layer 1: dark mode overlay (covers light tint) */}
+      {/* layer 1: dark mode overlay */}
       <div className="ec-dark-overlay" aria-hidden="true" />
 
-      {/* layer 2: blobs — continuously animated, colors swap per slide */}
+      {/* layer 2: animated blobs */}
       <div className="ec-blob-layer" aria-hidden="true">
         <AnimatePresence mode="wait">
           <motion.div
@@ -1401,19 +1768,29 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
             transition={{ duration: 0.7, ease: "easeInOut" }}
             style={{ position: "absolute", inset: 0 }}
           >
-            <div className="ec-blob-1" style={{ background: slide.blobGradient }} />
-            <div className="ec-blob-2" style={{ background: slide.blobGradient }} />
+            <div
+              className="ec-blob-1"
+              style={{ background: slide.blobGradient }}
+            />
+            <div
+              className="ec-blob-2"
+              style={{ background: slide.blobGradient }}
+            />
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* layer 3: all readable content */}
+      {/* layer 3: content */}
       <div
         className="ec-fg"
-        onMouseEnter={() => { isPausedRef.current = true; }}
-        onMouseLeave={() => { isPausedRef.current = false; }}
+        onMouseEnter={() => {
+          isPausedRef.current = true;
+        }}
+        onMouseLeave={() => {
+          isPausedRef.current = false;
+        }}
       >
-        {/* story progress bars */}
+        {/* progress bars */}
         <div className="ec-bars" aria-hidden="true">
           {STORY_SLIDES.map((_, i) => (
             <div key={i} className="ec-bar-bg">
@@ -1421,9 +1798,11 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
                 className="ec-bar-fill"
                 style={{
                   width:
-                    i < activeSlide     ? "100%"
-                    : i === activeSlide ? `${progress}%`
-                    : "0%",
+                    i < activeSlide
+                      ? "100%"
+                      : i === activeSlide
+                        ? `${progress}%`
+                        : "0%",
                 }}
               />
             </div>
@@ -1431,10 +1810,10 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
         </div>
 
         <p className="ec-sr" aria-live="polite" aria-atomic="true">
-          {`${activeSlide + 1} of ${STORY_SLIDES.length}: ${slide.company}, ${slide.role}, ${slide.period}. ${slide.tagline}`}
+          {`${activeSlide + 1} of ${STORY_SLIDES.length}: ${slide.company}, ${slide.year}. ${slide.tagline}`}
         </p>
 
-        {/* animated slide */}
+        {/* animated slide content */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSlide}
@@ -1458,30 +1837,121 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
               </motion.div>
               <div className="ec-hdr-text">
                 <span className="ec-slide-co">{slide.company}</span>
-                <span className="ec-slide-per">{slide.period}</span>
+                <span className="ec-slide-per">{slide.year}</span>
               </div>
             </div>
 
-            {/* centred body: word + tagline + highlight badge */}
+            {/* body */}
             <div className="ec-body">
               <h3 className="ec-impact">{slide.impactWord}</h3>
-              <p className="ec-tagline">{slide.tagline}</p>
-              <span className="ec-highlight">{slide.highlight}</span>
+              {slide.isStartup ? (
+                <StartupCluster />
+              ) : (
+                <>
+                  <p className="ec-tagline">{slide.tagline}</p>
+                  <span className="ec-highlight">{slide.highlight}</span>
+                </>
+              )}
             </div>
 
             {/* CTA */}
             <div className="ec-cta-row">
-              <span className="ec-cta">{slide.cta}</span>
+              <span
+                className={`ec-cta${slide.isCTA ? " ec-cta--connect" : ""}`}
+              >
+                {slide.cta}
+              </span>
             </div>
           </motion.div>
         </AnimatePresence>
       </div>
-
     </RevealCard>
   );
 }
 
-/* ── Other cards (unchanged) ─────────────────────── */
+/* ── ImpactCard ──────────────────────────────────── */
+
+function ImpactCard({ index, inView }: { index: number; inView: boolean }) {
+  return (
+    <RevealCard className="ic" index={index} inView={inView}>
+      <div className="ic-content">
+ 
+        <motion.h3
+          className="ic-title"
+          initial={{ opacity: 0, y: 8 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.52, ease: EASE, delay: 0.14 }}
+        >
+          20+ Workshops
+          <br />
+          1,000+ Consultation Hours
+          
+        </motion.h3>
+        <p className="ic-desc">
+          Across banking, fintech, startups, and government innovation, help building
+          products that move from idea to execution.
+        </p>
+        <div className="ic-tags">
+          <span className="ic-tag">Engineering Leadership</span>
+          <span className="ic-tag">Product Builder</span>
+          <span className="ic-tag">Innovation Mindset</span>
+        </div>
+      </div>
+      <div className="ic-photo-area">
+        <Image
+          src="/turki.jpg"
+          alt="Turki Almalki"
+          fill
+          className="ic-photo"
+          sizes="(max-width: 680px) 100vw, 25vw"
+        />
+        <div className="ic-photo-fade" aria-hidden="true" />
+      </div>
+    </RevealCard>
+  );
+}
+
+/* ── SkillsCard ──────────────────────────────────── */
+
+function SkillsCard({ index, inView }: { index: number; inView: boolean }) {
+  return (
+    <RevealCard className="sk" index={index} inView={inView}>
+      <div className="sk-header">
+        <span className="clabel">Tech Stack</span>
+        <h3 className="sk-title">
+          My Skills<br />
+         
+        </h3>
+        <p className="sk-desc">
+          Product Innovation, MVP, fintech, and product experiences.
+        </p>
+      </div>
+      <div className="sk-grid">
+        {SKILLS.map((skill, i) => (
+          <motion.div
+            key={skill.name}
+            className="sk-tile"
+            style={
+              {
+                "--sk-accent": skill.accent,
+                "--sk-bg": skill.bg,
+              } as CSSProperties
+            }
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={inView ? { opacity: 1, scale: 1, y: 0 } : {}}
+            transition={{ duration: 0.42, ease: EASE, delay: 0.12 + i * 0.06 }}
+            title={skill.name}
+          >
+            <span className="sk-mark">{skill.short}</span>
+            <span className="sk-name">{skill.name}</span>
+          </motion.div>
+        ))}
+      </div>
+    </RevealCard>
+  );
+}
+
+/* ── ProjectCard ─────────────────────────────────── */
 
 function ProjectCard({ index, inView }: { index: number; inView: boolean }) {
   const delay = 0.07 + index * 0.07;
@@ -1510,15 +1980,21 @@ function ProjectCard({ index, inView }: { index: number; inView: boolean }) {
         <div className="pc-footer">
           <div className="pc-tags">
             {FEATURED_PROJECT.tags.map((tag) => (
-              <span key={tag} className="pc-tag">{tag}</span>
+              <span key={tag} className="pc-tag">
+                {tag}
+              </span>
             ))}
           </div>
-          <span className="pc-arrow" aria-hidden="true">↗</span>
+          <span className="pc-arrow" aria-hidden="true">
+            ↗
+          </span>
         </div>
       </div>
     </RevealCard>
   );
 }
+
+/* ── TechCard ────────────────────────────────────── */
 
 function TechCard({ index, inView }: { index: number; inView: boolean }) {
   return (
@@ -1526,7 +2002,9 @@ function TechCard({ index, inView }: { index: number; inView: boolean }) {
       <div className="tc-copy">
         <span className="clabel">Technology</span>
         <h3 className="tc-title">A stack built for shipping.</h3>
-        <p className="tc-desc">Mobile, backend, platforms, data, and product delivery.</p>
+        <p className="tc-desc">
+          Mobile, backend, platforms, data, and product delivery.
+        </p>
       </div>
       <div className="tc-marquee">
         <TechRow technologies={TECH_ROW_ONE} direction="fwd" />
@@ -1536,7 +2014,13 @@ function TechCard({ index, inView }: { index: number; inView: boolean }) {
   );
 }
 
-function TechRow({ technologies, direction }: { technologies: Technology[]; direction: "fwd" | "rev" }) {
+function TechRow({
+  technologies,
+  direction,
+}: {
+  technologies: Technology[];
+  direction: "fwd" | "rev";
+}) {
   return (
     <div className="tc-row">
       <div className={`tc-track tc-track-${direction}`}>
@@ -1547,7 +2031,13 @@ function TechRow({ technologies, direction }: { technologies: Technology[]; dire
   );
 }
 
-function TechGroup({ technologies, hidden = false }: { technologies: Technology[]; hidden?: boolean }) {
+function TechGroup({
+  technologies,
+  hidden = false,
+}: {
+  technologies: Technology[];
+  hidden?: boolean;
+}) {
   return (
     <div className="tc-group" aria-hidden={hidden ? true : undefined}>
       {technologies.map((tech) => (
@@ -1555,7 +2045,12 @@ function TechGroup({ technologies, hidden = false }: { technologies: Technology[
           key={`${tech.name}-${String(hidden)}`}
           className="tc-chip"
           title={tech.name}
-          style={{ "--chip-accent": tech.accent, "--chip-bg": tech.background } as CSSProperties}
+          style={
+            {
+              "--chip-accent": tech.accent,
+              "--chip-bg": tech.background,
+            } as CSSProperties
+          }
         >
           <span className="tc-mark">{tech.shortName}</span>
           <span className="tc-name">{tech.name}</span>
@@ -1565,7 +2060,15 @@ function TechGroup({ technologies, hidden = false }: { technologies: Technology[
   );
 }
 
-function AchievementsCard({ index, inView }: { index: number; inView: boolean }) {
+/* ── AchievementsCard ────────────────────────────── */
+
+function AchievementsCard({
+  index,
+  inView,
+}: {
+  index: number;
+  inView: boolean;
+}) {
   const baseDelay = 0.07 + index * 0.07;
   return (
     <RevealCard className="ac" index={index} inView={inView}>
@@ -1580,7 +2083,11 @@ function AchievementsCard({ index, inView }: { index: number; inView: boolean })
             className="ac-item"
             initial={{ opacity: 0, x: -7 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.44, ease: EASE, delay: baseDelay + 0.14 + i * 0.07 }}
+            transition={{
+              duration: 0.44,
+              ease: EASE,
+              delay: baseDelay + 0.14 + i * 0.07,
+            }}
           >
             <span className="ac-dot" />
             <div>
@@ -1594,14 +2101,24 @@ function AchievementsCard({ index, inView }: { index: number; inView: boolean })
   );
 }
 
-function TestimonialCard({ index, inView }: { index: number; inView: boolean }) {
+/* ── TestimonialCard ─────────────────────────────── */
+
+function TestimonialCard({
+  index,
+  inView,
+}: {
+  index: number;
+  inView: boolean;
+}) {
   const delay = 0.07 + index * 0.07;
   return (
     <RevealCard className="tmc" index={index} inView={inView}>
       <span className="clabel">
         What People Say
         {TESTIMONIAL.isMock && (
-          <span className="mock-pill" aria-label="Placeholder testimonial">Placeholder</span>
+          <span className="mock-pill" aria-label="Placeholder testimonial">
+            Placeholder
+          </span>
         )}
       </span>
       <motion.span
@@ -1622,7 +2139,9 @@ function TestimonialCard({ index, inView }: { index: number; inView: boolean }) 
         {TESTIMONIAL.quote}
       </motion.blockquote>
       <div className="tmc-footer">
-        <span className="tmc-avatar" aria-hidden="true">{TESTIMONIAL.initials}</span>
+        <span className="tmc-avatar" aria-hidden="true">
+          {TESTIMONIAL.initials}
+        </span>
         <div className="tmc-person">
           <strong>{TESTIMONIAL.attribution}</strong>
           <small>{TESTIMONIAL.role}</small>
@@ -1632,7 +2151,15 @@ function TestimonialCard({ index, inView }: { index: number; inView: boolean }) 
   );
 }
 
-function CertificatesCard({ index, inView }: { index: number; inView: boolean }) {
+/* ── CertificatesCard ────────────────────────────── */
+
+function CertificatesCard({
+  index,
+  inView,
+}: {
+  index: number;
+  inView: boolean;
+}) {
   return (
     <RevealCard className="cc" index={index} inView={inView}>
       <span className="clabel">Certificates</span>
@@ -1640,13 +2167,19 @@ function CertificatesCard({ index, inView }: { index: number; inView: boolean })
       <div className="cc-list">
         {CERTIFICATES.map((cert) => (
           <div key={cert.title} className="cc-item">
-            <span className="cc-icon" aria-hidden="true">◇</span>
+            <span className="cc-icon" aria-hidden="true">
+              ◇
+            </span>
             <div className="cc-text">
               <strong>{cert.title}</strong>
-              <small>{cert.issuer} · {cert.year}</small>
+              <small>
+                {cert.issuer} · {cert.year}
+              </small>
             </div>
             {cert.isMock && (
-              <span className="mock-badge" aria-label="Placeholder certificate">Mock</span>
+              <span className="mock-badge" aria-label="Placeholder certificate">
+                Mock
+              </span>
             )}
           </div>
         ))}
