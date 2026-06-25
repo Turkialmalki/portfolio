@@ -1579,85 +1579,138 @@ export default function Projects() {
         .dark .tc-name,
         [data-theme="dark"] .tc-name { color: #1a1a1a; }
 
-        /* ─── Tablet ───────────────────────────────────────── */
+        /* ─── Tablet 980px ─────────────────────────────────── */
 
         @media (max-width: 980px) {
           .vs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-          .ec  { grid-column: 1 / -1; grid-row: auto; max-width: 480px; margin-inline: auto; }
-          .ic  { grid-column: 1 / span 1; grid-row: auto; }
-          .sk  { grid-column: 2 / span 1; grid-row: auto; }
-          .pc  { grid-column: 1 / -1; grid-row: auto; min-height: 380px; }
-          .tc  { grid-column: 1 / -1; grid-row: auto; grid-template-columns: 195px minmax(0, 1fr); min-height: 200px; }
-          .ac  { grid-column: 1 / span 1; grid-row: auto; min-height: 250px; }
+          .ec  { grid-column: 1 / -1; grid-row: auto; max-width: 520px; margin-inline: auto; }
+          .ic  { grid-column: 1 / span 1; grid-row: auto; min-height: 320px; }
+          .sk  { grid-column: 2 / span 1; grid-row: auto; min-height: 320px; }
+          .pc  { grid-column: 1 / -1; grid-row: auto; min-height: 400px; }
+          .tc  { grid-column: 1 / -1; grid-row: auto; grid-template-columns: 200px minmax(0, 1fr); min-height: 200px; }
+          .ac  { grid-column: 1 / span 1; grid-row: auto; min-height: 260px; }
           .tmc { grid-column: 1 / -1; grid-row: auto; }
-          .cc  { grid-column: 2 / span 1; grid-row: auto; min-height: 250px; }
+          .cc  { grid-column: 2 / span 1; grid-row: auto; min-height: 260px; }
         }
 
-        /* ─── Mobile ───────────────────────────────────────── */
+        /* ─── Mobile 680px ──────────────────────────────────── */
 
         @media (max-width: 680px) {
-          .vs { padding: 76px 14px 118px; }
-          .vs-h2 { font-size: clamp(36px, 10.5vw, 50px); }
-          .vs-sub { font-size: clamp(16px, 5vw, 20px); margin-bottom: 40px; }
+          .vs { padding: 72px 16px 120px; }
+          .vs-h2 { font-size: clamp(38px, 10.5vw, 52px); }
+          .vs-sub { font-size: clamp(16px, 4.5vw, 19px); margin-bottom: 36px; }
 
-          .vs-grid { grid-template-columns: 1fr; gap: 11px; }
+          .vs-grid { grid-template-columns: 1fr; gap: 12px; }
 
           .ec, .ic, .sk, .pc, .tc, .ac, .tmc, .cc {
             grid-column: auto; grid-row: auto; width: 100%;
           }
 
-          .bc { border-radius: 20px; }
+          .bc { border-radius: 22px; }
 
+          /* Story card */
           .ec {
             max-width: 100%;
-            aspect-ratio: 3 / 4;
-            min-height: 460px;
-            border-radius: 32px;
+            min-height: 520px;
+            aspect-ratio: auto;
+            height: 540px;
+            border-radius: 34px;
           }
-
-          .ec-fg { padding: 20px 22px 0; }
+          .ec-fg { padding: 22px 24px 0; }
           .ec-blob-1 { width: 230px; height: 200px; top: -65px; right: -60px; }
           .ec-blob-2 { width: 185px; height: 165px; bottom: -55px; left: -55px; }
+          .ec-body { padding: 18px 18px 14px; gap: 12px; }
+          .ec-cta-row { padding: 0 24px 28px; }
+          .ec-cta { height: 50px; font-size: 10.5px; letter-spacing: 0.13em; }
 
-          .ic { min-height: 260px; }
-          .ic-photo-area { height: 150px; }
+          /* Impact card */
+          .ic { min-height: 360px; background: #0d1120; }
+          .ic-content { padding: 22px 22px 16px; gap: 10px; }
+          .ic-title { font-size: clamp(22px, 6.5vw, 28px); line-height: 1.0; }
+          .ic-desc { font-size: 12px; line-height: 1.55; }
+          .ic-photo-area { height: 190px; }
 
-          .sk { min-height: 260px; }
+          /* Skills card */
+          .sk { min-height: auto; padding: 20px 18px 18px; gap: 12px; }
+          .sk-title { font-size: clamp(18px, 5.5vw, 24px); }
+          .sk-grid { gap: 6px; }
+          .sk-tile { padding: 9px 5px 9px; gap: 5px; border-radius: 12px; }
+          .sk-mark { width: 30px; height: 30px; border-radius: 8px; font-size: 8px; }
+          .sk-name { font-size: 7.5px; }
 
-          .pc { min-height: 320px; }
-          .pc-img-wrap { height: 180px; flex: 0 0 180px; border-radius: 20px 20px 0 0; }
+          /* Project card */
+          .pc { min-height: auto; }
+          .pc-img-wrap { height: 210px; flex: 0 0 210px; border-radius: 22px 22px 0 0; }
+          .pc-body { padding: 16px 20px 18px; gap: 7px; }
+          .pc-title { font-size: clamp(16px, 4.5vw, 20px); }
+          .pc-desc { font-size: 12px; line-height: 1.5; }
 
-          .tc { grid-template-columns: 1fr; min-height: unset; padding: 19px 0 19px 19px; gap: 15px; }
-          .tc-copy { padding-right: 19px; }
-          .tc-title { max-width: unset; }
-          .tc-desc  { max-width: unset; }
+          /* Tech marquee card */
+          .tc {
+            grid-template-columns: 1fr;
+            min-height: unset;
+            padding: 20px 0 20px 20px;
+            gap: 14px;
+          }
+          .tc-copy { padding-right: 20px; }
+          .tc-title { max-width: unset; font-size: clamp(18px, 5vw, 22px); }
+          .tc-desc  { max-width: unset; font-size: 12px; }
 
-          .ac  { min-height: unset; }
-          .tmc { padding: 20px; }
-          .cc  { min-height: unset; }
+          /* Achievements card */
+          .ac { min-height: unset; padding: 20px; }
+          .ac-title { font-size: clamp(16px, 5vw, 20px); }
+
+          /* Testimonial */
+          .tmc { padding: 22px; }
+          .tmc-quote { font-size: clamp(15px, 4.5vw, 19px); line-height: 1.35; }
+
+          /* Certificates */
+          .cc { min-height: unset; }
         }
 
-        @media (max-width: 420px) {
-          .ec { aspect-ratio: auto; height: 540px; }
-          .ec-impact { font-size: 64px; }
-          .ec-body { gap: 10px; padding: 18px 10px; }
+        /* ─── Mobile 430px ──────────────────────────────────── */
+
+        @media (max-width: 430px) {
+          .ec { height: 520px; }
+          .ec-impact { font-size: 66px; }
           .ec-blob-1 { width: 200px; height: 180px; top: -60px; right: -55px; }
           .ec-blob-2 { width: 165px; height: 148px; bottom: -50px; left: -50px; }
+          .ic { min-height: 340px; }
+          .ic-photo-area { height: 170px; }
+          .sk-grid { gap: 5px; }
         }
 
+        /* ─── Mobile 390px ──────────────────────────────────── */
+
         @media (max-width: 390px) {
-          .vs { padding-inline: 12px; }
+          .vs { padding-inline: 14px; }
           .vs-h2  { font-size: 36px; }
-          .vs-sub { font-size: 16px; }
+          .vs-sub { font-size: 15.5px; }
           .ec { height: 500px; }
-          .ec-fg { padding: 18px 18px 0; }
+          .ec-fg { padding: 20px 20px 0; }
           .ec-impact { font-size: 58px; }
-          .ec-cta-row { padding: 0 18px 26px; }
-          .pc { min-height: 300px; }
-          .pc-img-wrap { height: 160px; flex: 0 0 160px; }
-          .tc { padding-left: 17px; }
-          .tc-copy { padding-right: 17px; }
+          .ec-cta-row { padding: 0 20px 24px; }
+          .ec-cta { height: 46px; }
+          .ic { min-height: 320px; }
+          .ic-photo-area { height: 155px; }
+          .ic-content { padding: 20px 18px 14px; }
+          .sk { padding: 18px 16px 16px; }
+          .sk-tile { padding: 8px 4px; }
+          .sk-mark { width: 27px; height: 27px; }
+          .pc-img-wrap { height: 185px; flex: 0 0 185px; }
+          .tc { padding-left: 16px; }
+          .tc-copy { padding-right: 16px; }
+        }
+
+        /* ─── Mobile 360px ──────────────────────────────────── */
+
+        @media (max-width: 360px) {
+          .vs { padding-inline: 12px; }
+          .ec { height: 480px; }
+          .ec-impact { font-size: 54px; }
+          .ic-photo-area { height: 145px; }
+          .pc-img-wrap { height: 170px; flex: 0 0 170px; }
         }
 
         /* ─── Reduced motion ───────────────────────────────── */
@@ -1854,7 +1907,7 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
             <div className="ec-slide-hdr">
               <motion.div
                 className="ec-logo-circle"
-                style={{ background: slide.logoGradient }}
+                // style={{ background: slide.logoGradient }}
                 initial={{ scale: 0.72, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.3, ease: EASE, delay: 0.05 }}
@@ -1885,7 +1938,9 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
               ) : (
                 <>
                   <p className="ec-tagline">{slide.tagline}</p>
-                  <span className="ec-highlight">{slide.highlight}</span>
+                  {!slide.isCTA && (
+                    <span className="ec-highlight">{slide.highlight}</span>
+                  )}
                 </>
               )}
             </div>
