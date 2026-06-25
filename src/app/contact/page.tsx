@@ -28,13 +28,13 @@ const CONTACT_ACTIONS = [
   {
     icon: LuPhone,
     label: "Call",
-    href: "tel:+966",
+    href: "tel:+966550866000",
     external: false,
   },
   {
     icon: LuCalendarDays,
     label: "Book",
-    href: "https://calendly.com",
+    href: "https://calendly.com/turkialmalki202200/30min",
     external: true,
   },
 ] as const;
@@ -235,7 +235,7 @@ export default function ContactPage() {
                       id="message"
                       name="message"
                       className="cp-textarea"
-                      placeholder="Your message..."
+                      placeholder=""
                       value={form.message}
                       onChange={handleChange}
                       required

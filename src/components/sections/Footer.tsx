@@ -104,9 +104,7 @@ export default function Footer() {
               conversation.
             </motion.p>
 
-            <motion.a
-              href="mailto:turkialmalki202200@gmail.com"
-              onClick={() => trackEvent("contact_click", { location: "footer" })}
+            <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{
@@ -121,11 +119,16 @@ export default function Footer() {
               whileTap={{
                 scale: 0.98,
               }}
-              className="contact-button"
             >
-              Get in Touch
-              <span aria-hidden="true">→</span>
-            </motion.a>
+              <Link
+                href="/contact"
+                onClick={() => trackEvent("contact_click", { location: "footer" })}
+                className="contact-button"
+              >
+                Get in Touch
+                <span aria-hidden="true">→</span>
+              </Link>
+            </motion.div>
           </div>
 
           <motion.div
