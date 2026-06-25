@@ -184,7 +184,7 @@ export default function ContactPage() {
                         name="name"
                         type="text"
                         className="cp-input"
-                        placeholder="Jane Smith"
+                        placeholder=""
                         value={form.name}
                         onChange={handleChange}
                         required
@@ -200,7 +200,7 @@ export default function ContactPage() {
                         name="email"
                         type="email"
                         className="cp-input"
-                        placeholder="jane@gmail.com"
+                        placeholder=""
                         value={form.email}
                         onChange={handleChange}
                         required
@@ -219,7 +219,7 @@ export default function ContactPage() {
                       name="business"
                       type="text"
                       className="cp-input"
-                      placeholder="Apple"
+                      placeholder=""
                       value={form.business}
                       onChange={handleChange}
                       autoComplete="organization"

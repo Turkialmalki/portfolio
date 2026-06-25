@@ -1255,10 +1255,6 @@ function HeroPortrait() {
         <span className="hero-location-dot" />
 
         <div>
-          <p className="hero-badge-title">
-            Turki Almalki
-          </p>
-
           <p className="hero-badge-description">
             Riyadh, Saudi Arabia
           </p>
