@@ -4,9 +4,11 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { FiSun, FiMoon } from "react-icons/fi";
+import { useRouter } from "next/navigation";
 
 export default function TopBar() {
   const [dark, setDark] = useState(false);
+  const router = useRouter();
 
   // Sync state with any persisted preference on mount
   useEffect(() => {
@@ -105,9 +107,7 @@ export default function TopBar() {
             whileHover={{ scale: 1.04, filter: "brightness(1.15)" }}
             whileTap={{ scale: 0.96 }}
             transition={{ type: "spring", stiffness: 400, damping: 22 }}
-            onClick={() =>
-              document.querySelector("footer")?.scrollIntoView({ behavior: "smooth" })
-            }
+            onClick={() => router.push("/contact")}
             style={{
               background: "var(--text-primary)",
               color: "var(--bg-primary)",

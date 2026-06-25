@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LuHouse, LuBriefcase, LuUserRound, LuNewspaper } from "react-icons/lu";
+import { LuHouse, LuBriefcase, LuUserRound, LuNewspaper, LuMail } from "react-icons/lu";
 
 const NAV_ITEMS = [
-  { Icon: LuHouse, label: "Home", href: "/" },
+  { Icon: LuHouse,     label: "Home",      href: "/" },
   { Icon: LuBriefcase, label: "Portfolio", href: "/projects" },
-  { Icon: LuUserRound, label: "About", href: "/about" },
-  { Icon: LuNewspaper, label: "Blog", href: "/blog" },
+  { Icon: LuUserRound, label: "About",     href: "/about" },
+  { Icon: LuNewspaper, label: "Blog",      href: "/blog" },
+  { Icon: LuMail,      label: "Contact",   href: "/contact" },
 ];
 
 export default function Navbar() {
