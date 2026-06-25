@@ -26,6 +26,7 @@ type StorySlide = {
   company: string;
   year: string;
   initials: string;
+  logoImage?: string;
   logoGradient: string;
   blobGradient: string;
   bgTint: string;
@@ -48,6 +49,7 @@ type StartupMark = {
   initials: string;
   name: string;
   color: string;
+  logoImage?: string;
 };
 
 type Technology = {
@@ -92,11 +94,11 @@ const SLIDE_DURATION = 3800;
 const TICK_MS = 40;
 
 const STARTUP_MARKS: StartupMark[] = [
-  { initials: "TP", name: "Tuwaiq Pay", color: "#3b82f6" },
-  { initials: "MU", name: "Munaseb", color: "#14b8a6" },
-  { initials: "2", name: "Ithnain", color: "#8b5cf6" },
-  { initials: "T", name: "Tarqeem", color: "#f59e0b" },
-  { initials: "F", name: "Foodics", color: "#ef4444" },
+  { initials: "TP", name: "Tuwaiq Pay",       color: "#3b82f6" },
+  { initials: "MU", name: "Munaseb",           color: "#14b8a6", logoImage: "/munasiblogo.jpeg" },
+  { initials: "2",  name: "Ithnain",           color: "#8b5cf6", logoImage: "/ithninlogo.jpeg" },
+  { initials: "T",  name: "Tarqeem",           color: "#f59e0b" },
+  { initials: "F",  name: "Foodics",           color: "#ef4444" },
   { initials: "AP", name: "APATH Engineering", color: "#22c55e" },
 ];
 
@@ -119,6 +121,7 @@ const STORY_SLIDES: StorySlide[] = [
     company: "Saudi Aramco",
     year: "2018",
     initials: "SA",
+    logoImage: "/aramco.jpeg",
     logoGradient: "linear-gradient(145deg, #1e3a8a, #60a5fa)",
     blobGradient:
       "linear-gradient(135deg, #93c5fd 0%, #818cf8 50%, #c084fc 100%)",
@@ -132,6 +135,7 @@ const STORY_SLIDES: StorySlide[] = [
     company: "Al Rajhi Bank",
     year: "2019 — 2022",
     initials: "AR",
+    logoImage: "/alrajhilogo.png",
     logoGradient: "linear-gradient(145deg, #78350f, #d97706)",
     blobGradient:
       "linear-gradient(135deg, #fde68a 0%, #fb923c 45%, #ef4444 100%)",
@@ -146,6 +150,7 @@ const STORY_SLIDES: StorySlide[] = [
     company: "Emkan",
     year: "2022 — 2024",
     initials: "EM",
+    logoImage: "/emkanlogo.png",
     logoGradient: "linear-gradient(145deg, #7c2d12, #f97316)",
     blobGradient:
       "linear-gradient(135deg, #fdba74 0%, #f43f5e 50%, #c026d3 100%)",
@@ -659,6 +664,7 @@ export default function Projects() {
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+          overflow: hidden;
           box-shadow:
             0 4px 12px rgba(0, 0, 0, 0.22),
             0 1px 0   rgba(255, 255, 255, 0.26) inset;
@@ -670,6 +676,16 @@ export default function Projects() {
           color: #fff;
           letter-spacing: -0.02em;
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+        }
+
+        .ec-logo-img {
+          object-fit: contain;
+          border-radius: 0;
+        }
+
+        .ec-startup-logo {
+          object-fit: contain;
+          border-radius: 4px;
         }
 
         .ec-hdr-text {
@@ -1699,7 +1715,17 @@ function StartupCluster() {
           title={mark.name}
           aria-label={mark.name}
         >
-          <span aria-hidden="true">{mark.initials}</span>
+          {mark.logoImage ? (
+            <Image
+              src={mark.logoImage}
+              alt={mark.name}
+              width={36}
+              height={36}
+              className="ec-startup-logo"
+            />
+          ) : (
+            <span aria-hidden="true">{mark.initials}</span>
+          )}
         </motion.div>
       ))}
     </div>
@@ -1833,7 +1859,17 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.3, ease: EASE, delay: 0.05 }}
               >
-                <span>{slide.initials}</span>
+                {slide.logoImage ? (
+                  <Image
+                    src={slide.logoImage}
+                    alt={slide.company}
+                    width={30}
+                    height={30}
+                    className="ec-logo-img"
+                  />
+                ) : (
+                  <span>{slide.initials}</span>
+                )}
               </motion.div>
               <div className="ec-hdr-text">
                 <span className="ec-slide-co">{slide.company}</span>
