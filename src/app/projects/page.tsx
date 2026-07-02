@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, useInView } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/sections/Footer";
-import { PROJECTS } from "@/data/projects";
+import { PROJECTS, type ProjectData } from "@/data/projects";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
-const INITIAL_DESKTOP = 4;
-const INITIAL_MOBILE = 3;
+const INITIAL_COUNT = 4;
+
+function industryKey(project: ProjectData) {
+  return project.industry.split("/")[0].trim();
+}
 
 export default function ProjectsPage() {
   useEffect(() => {
@@ -22,1063 +25,688 @@ export default function ProjectsPage() {
     <>
       <TopBar />
       <Navbar />
-      <main
-        style={{
-          backgroundColor: "var(--bg-primary)",
-          transition: "background-color 0.35s ease",
-          minHeight: "100vh",
-        }}
-      >
+      <main className="pf-page">
         <PageHero />
         <ProjectsList />
       </main>
       <Footer />
+
+      <style>{`
+        /* ── Page shell ─────────────────────────────────── */
+
+        .pf-page {
+          min-height: 100vh;
+          background: var(--bg-primary);
+          transition: background-color 0.45s ease;
+        }
+
+        /* ── Hero ───────────────────────────────────────── */
+
+        .pf-hero {
+          padding:
+            clamp(96px, 10vw, 150px)
+            clamp(20px, 5vw, 40px)
+            clamp(36px, 4vw, 56px);
+          max-width: 980px;
+          margin: 0 auto;
+          text-align: center;
+        }
+
+        .pf-pill {
+          display: inline-flex;
+          align-items: center;
+          height: 36px;
+          padding: 0 16px;
+          border-radius: 999px;
+          background: var(--bg-pill);
+          color: var(--text-secondary);
+          font-size: 13.5px;
+          font-weight: 500;
+          margin-bottom: 26px;
+          transition: background-color 0.45s ease, color 0.45s ease;
+        }
+
+        .pf-heading {
+          margin: 0;
+          font-size: clamp(46px, 7vw, 88px);
+          font-weight: 800;
+          letter-spacing: -0.055em;
+          line-height: 0.96;
+          color: var(--text-primary);
+          transition: color 0.45s ease;
+        }
+
+        .pf-sub {
+          margin: 22px auto 0;
+          font-size: clamp(16px, 1.5vw, 20px);
+          line-height: 1.55;
+          color: var(--text-secondary);
+          max-width: 640px;
+          transition: color 0.45s ease;
+        }
+
+        /* ── Filters ────────────────────────────────────── */
+
+        .pf-filters {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 10px;
+          padding: clamp(8px, 1vw, 16px) clamp(20px, 5vw, 40px) clamp(40px, 4.5vw, 60px);
+        }
+
+        .pf-filter {
+          height: 42px;
+          padding: 0 20px;
+          border-radius: 999px;
+          border: 1px solid var(--border-subtle);
+          background: var(--bg-primary);
+          color: var(--text-secondary);
+          font-size: 14px;
+          font-weight: 600;
+          font-family: inherit;
+          letter-spacing: -0.01em;
+          cursor: pointer;
+          transition:
+            background-color 260ms ease,
+            color 260ms ease,
+            border-color 260ms ease,
+            transform 260ms ease;
+        }
+
+        .pf-filter:hover {
+          transform: translateY(-2px);
+          color: var(--text-primary);
+        }
+
+        .pf-filter-active {
+          background: var(--text-primary);
+          border-color: var(--text-primary);
+          color: var(--bg-primary);
+        }
+
+        .pf-filter-active:hover {
+          color: var(--bg-primary);
+        }
+
+        /* ── List ───────────────────────────────────────── */
+
+        .pf-list {
+          max-width: 1180px;
+          margin: 0 auto;
+          padding: 0 clamp(16px, 4vw, 40px) clamp(80px, 10vw, 140px);
+          display: flex;
+          flex-direction: column;
+          gap: clamp(24px, 3vw, 40px);
+        }
+
+        /* ── Card ───────────────────────────────────────── */
+
+        .pf-card {
+          display: grid;
+          grid-template-columns: 1.04fr 0.96fr;
+          gap: clamp(20px, 2.4vw, 32px);
+          padding: clamp(14px, 1.6vw, 22px);
+          border-radius: 34px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-subtle);
+          overflow: hidden;
+          text-decoration: none;
+          cursor: pointer;
+          transition:
+            background-color 0.45s ease,
+            border-color 0.45s ease,
+            box-shadow 420ms ease,
+            transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .pf-card:hover {
+          transform: translateY(-6px);
+          box-shadow: var(--shadow-card);
+        }
+
+        .pf-card-rev .pf-media { order: 2; }
+        .pf-card-rev .pf-info { order: 1; }
+
+        /* ── Media side ─────────────────────────────────── */
+
+        .pf-media {
+          position: relative;
+          min-height: 380px;
+          border-radius: 24px;
+          overflow: hidden;
+          background: var(--bg-card-muted);
+          transition: background-color 0.45s ease;
+        }
+
+        .pf-media-img {
+          position: absolute;
+          inset: 0;
+          transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .pf-card:hover .pf-media-img {
+          transform: scale(1.035);
+        }
+
+        .pf-media-visual {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: clamp(24px, 3vw, 44px);
+        }
+
+        .pf-media-glow {
+          position: absolute;
+          top: 6%;
+          right: 6%;
+          width: 55%;
+          padding-bottom: 55%;
+          border-radius: 50%;
+          filter: blur(80px);
+          opacity: 0.6;
+          pointer-events: none;
+          transition: opacity 500ms ease;
+        }
+
+        .pf-card:hover .pf-media-glow { opacity: 0.9; }
+
+        .pf-arrow-badge {
+          position: absolute;
+          right: 16px;
+          bottom: 16px;
+          z-index: 5;
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          color: var(--bg-primary);
+          background: var(--text-primary);
+          box-shadow: 0 14px 32px rgba(0, 0, 0, 0.2);
+          font-size: 24px;
+          font-weight: 300;
+          line-height: 1;
+          opacity: 0;
+          transform: translateY(12px) scale(0.8) rotate(-45deg);
+          transition:
+            opacity 260ms ease,
+            transform 380ms cubic-bezier(0.16, 1, 0.3, 1),
+            background-color 0.45s ease,
+            color 0.45s ease;
+        }
+
+        .pf-card:hover .pf-arrow-badge {
+          opacity: 1;
+          transform: translateY(0) scale(1) rotate(-45deg);
+        }
+
+        /* ── Info side ──────────────────────────────────── */
+
+        .pf-info {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: clamp(18px, 2.4vw, 32px) clamp(10px, 1.4vw, 20px) clamp(12px, 1.4vw, 18px);
+        }
+
+        .pf-meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+
+        .pf-chips {
+          display: flex;
+          gap: 7px;
+          flex-wrap: wrap;
+        }
+
+        .pf-chip {
+          display: inline-flex;
+          align-items: center;
+          min-height: 30px;
+          padding: 5px 13px;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.01em;
+          line-height: 1.2;
+        }
+
+        .pf-chip-plain {
+          color: var(--chip-text);
+          background: var(--chip-bg);
+          transition: color 0.45s ease, background-color 0.45s ease;
+        }
+
+        .pf-number {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text-muted);
+          letter-spacing: 0.08em;
+          font-variant-numeric: tabular-nums;
+          transition: color 0.45s ease;
+          flex-shrink: 0;
+        }
+
+        .pf-title {
+          margin: 0 0 12px;
+          font-size: clamp(26px, 2.8vw, 40px);
+          font-weight: 800;
+          color: var(--text-primary);
+          letter-spacing: -0.045em;
+          line-height: 1.05;
+          text-wrap: balance;
+          transition: color 0.45s ease;
+        }
+
+        .pf-desc {
+          margin: 0;
+          font-size: clamp(14px, 1.1vw, 16px);
+          color: var(--text-secondary);
+          line-height: 1.6;
+          max-width: 420px;
+          transition: color 0.45s ease;
+        }
+
+        .pf-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+          margin-top: 18px;
+        }
+
+        .pf-tag {
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--text-muted);
+          transition: color 0.45s ease;
+        }
+
+        .pf-tag::before {
+          content: "#";
+          opacity: 0.6;
+        }
+
+        /* ── Outcome stats ──────────────────────────────── */
+
+        .pf-stats {
+          display: flex;
+          gap: clamp(24px, 3vw, 44px);
+          margin-top: 26px;
+          padding-top: 22px;
+          border-top: 1px solid var(--border-color);
+          transition: border-color 0.45s ease;
+        }
+
+        .pf-stat-value {
+          font-size: clamp(22px, 2.2vw, 30px);
+          font-weight: 800;
+          letter-spacing: -0.04em;
+          line-height: 1;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .pf-stat-label {
+          margin-top: 6px;
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--text-secondary);
+          transition: color 0.45s ease;
+        }
+
+        /* ── Card footer ────────────────────────────────── */
+
+        .pf-foot {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: 24px;
+        }
+
+        .pf-cta {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          color: var(--text-secondary);
+          transition: color 300ms ease;
+        }
+
+        .pf-cta-arrow {
+          display: inline-block;
+          transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .pf-card:hover .pf-cta {
+          color: var(--text-primary);
+        }
+
+        .pf-card:hover .pf-cta-arrow {
+          transform: translateX(4px);
+        }
+
+        .pf-year {
+          font-size: 12.5px;
+          font-weight: 600;
+          color: var(--text-muted);
+          letter-spacing: 0.03em;
+          transition: color 0.45s ease;
+        }
+
+        /* ── Load more / empty ──────────────────────────── */
+
+        .pf-more {
+          display: flex;
+          justify-content: center;
+          margin-top: clamp(16px, 2vw, 28px);
+        }
+
+        .pf-more-btn {
+          min-height: 50px;
+          padding: 14px 38px;
+          border-radius: 999px;
+          border: 1px solid var(--border-subtle);
+          background: var(--bg-card);
+          color: var(--text-primary);
+          font-size: 14.5px;
+          font-weight: 600;
+          font-family: inherit;
+          letter-spacing: -0.01em;
+          cursor: pointer;
+          transition:
+            background-color 260ms ease,
+            color 260ms ease,
+            transform 260ms ease,
+            box-shadow 260ms ease;
+        }
+
+        .pf-more-btn:hover {
+          background: var(--text-primary);
+          color: var(--bg-primary);
+          transform: translateY(-2px);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+        }
+
+        /* ── Tablet / Mobile ────────────────────────────── */
+
+        @media (max-width: 900px) {
+          .pf-card,
+          .pf-card-rev {
+            grid-template-columns: 1fr;
+            gap: 0;
+          }
+
+          .pf-card-rev .pf-media { order: 0; }
+          .pf-card-rev .pf-info { order: 1; }
+
+          .pf-media {
+            min-height: 0;
+            aspect-ratio: 16 / 11;
+          }
+
+          .pf-arrow-badge {
+            opacity: 1;
+            transform: translateY(0) scale(1) rotate(-45deg);
+          }
+
+          .pf-info {
+            padding: 24px 12px 14px;
+          }
+
+          .pf-desc { max-width: none; }
+        }
+
+        @media (max-width: 640px) {
+          .pf-card { border-radius: 28px; padding: 12px; }
+          .pf-media { border-radius: 20px; aspect-ratio: 16 / 12; }
+
+          .pf-filters { gap: 8px; }
+          .pf-filter { height: 40px; padding: 0 16px; font-size: 13.5px; }
+
+          .pf-stats { gap: 24px; margin-top: 22px; }
+
+          .pf-meta {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 16px;
+          }
+
+          .pf-foot { margin-top: 20px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .pf-card,
+          .pf-media-img,
+          .pf-arrow-badge,
+          .pf-cta-arrow,
+          .pf-filter,
+          .pf-more-btn {
+            transition: none !important;
+          }
+        }
+      `}</style>
     </>
   );
 }
 
 function PageHero() {
   return (
-    <section
-      style={{
-        paddingTop: "clamp(82px, 8vw, 110px)",
-        paddingBottom: "clamp(48px, 5vw, 64px)",
-        paddingLeft: 24,
-        paddingRight: 24,
-        maxWidth: 980,
-        margin: "0 auto",
-        textAlign: "center",
-      }}
-    >
-      <motion.div
+    <section className="pf-hero">
+      <motion.span
+        className="pf-pill"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: EASE }}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "8px 18px",
-          borderRadius: 999,
-          background: "var(--bg-surface)",
-          color: "var(--text-secondary)",
-          fontSize: 14,
-          fontWeight: 500,
-          marginBottom: 28,
-        }}
       >
         Portfolio
-      </motion.div>
+      </motion.span>
 
       <motion.h1
+        className="pf-heading"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: EASE, delay: 0.05 }}
-        style={{
-          fontSize: "clamp(44px, 5.8vw, 76px)",
-          fontWeight: 800,
-          letterSpacing: "-0.055em",
-          lineHeight: 0.96,
-          color: "var(--text-primary)",
-          margin: 0,
-        }}
       >
         Crafted Experiences
       </motion.h1>
 
       <motion.p
+        className="pf-sub"
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: EASE, delay: 0.12 }}
-        style={{
-          fontSize: "clamp(17px, 1.35vw, 21px)",
-          lineHeight: 1.55,
-          color: "var(--text-secondary)",
-          maxWidth: 620,
-          margin: "22px auto 0",
-        }}
       >
-        A collection of design solutions crafted with purpose, creativity, and
-        attention to detail.
+        Engineering initiatives and digital products delivered with purpose —
+        across banking, fintech, government, and innovation ecosystems.
       </motion.p>
     </section>
   );
 }
 
 function ProjectsList() {
+  const [filter, setFilter] = useState("All");
   const [showAll, setShowAll] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+  const filters = useMemo(() => {
+    const keys = Array.from(new Set(PROJECTS.map(industryKey)));
+    return ["All", ...keys];
   }, []);
 
-  const initialCount = isMobile ? INITIAL_MOBILE : INITIAL_DESKTOP;
-  const visibleProjects = showAll ? PROJECTS : PROJECTS.slice(0, initialCount);
-  const hasMore = PROJECTS.length > initialCount;
+  const filtered = useMemo(
+    () =>
+      filter === "All"
+        ? PROJECTS
+        : PROJECTS.filter((p) => industryKey(p) === filter),
+    [filter]
+  );
+
+  const visible = showAll ? filtered : filtered.slice(0, INITIAL_COUNT);
+  const hasMore = filtered.length > INITIAL_COUNT;
 
   return (
-    <section
-      style={{
-        paddingBottom: "clamp(80px, 10vw, 140px)",
-        paddingLeft: 24,
-        paddingRight: 24,
-        maxWidth: 1080,
-        margin: "0 auto",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "clamp(28px, 3vw, 40px)",
-        }}
+    <>
+      <motion.div
+        className="pf-filters"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.65, ease: EASE, delay: 0.2 }}
       >
-        {visibleProjects.map((project, i) => (
-          <FeaturedCard key={project.slug} project={project} />
+        {filters.map((f) => (
+          <button
+            key={f}
+            type="button"
+            className={f === filter ? "pf-filter pf-filter-active" : "pf-filter"}
+            onClick={() => {
+              setFilter(f);
+              setShowAll(false);
+            }}
+          >
+            {f}
+          </button>
         ))}
-      </div>
+      </motion.div>
 
-      {hasMore && (
-        <div
-          style={{ display: "flex", justifyContent: "center", marginTop: 56 }}
-        >
-          <LoadMoreButton
-            showAll={showAll}
-            onToggle={() => setShowAll((p) => !p)}
-          />
-        </div>
-      )}
-    </section>
+      <section className="pf-list">
+        <AnimatePresence mode="popLayout">
+          {visible.map((project, i) => (
+            <ProjectCard key={project.slug} project={project} index={i} />
+          ))}
+        </AnimatePresence>
+
+        {hasMore && (
+          <div className="pf-more">
+            <button
+              type="button"
+              className="pf-more-btn"
+              onClick={() => setShowAll((p) => !p)}
+            >
+              {showAll ? "Show Less" : "Load More"}
+            </button>
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 
-function LoadMoreButton({
-  showAll,
-  onToggle,
-}: {
-  showAll: boolean;
-  onToggle: () => void;
-}) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      onClick={onToggle}
-      style={{
-        fontSize: 14,
-        fontWeight: 600,
-        color: hov ? "var(--bg-primary)" : "var(--text-primary)",
-        background: hov ? "var(--text-primary)" : "var(--bg-surface)",
-        border: "1px solid var(--border-color)",
-        borderRadius: 100,
-        padding: "13px 40px",
-        cursor: "pointer",
-        letterSpacing: "-0.01em",
-        outline: "none",
-        transition: "all 0.25s ease",
-      }}
-    >
-      {showAll ? "Show Less" : "Load More"}
-    </button>
-  );
-}
-
-/* ─── Featured card (index 0) — full width, horizontal layout ─────────────── */
-function FeaturedCard({ project }: { project: (typeof PROJECTS)[number] }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
-  const [hovered, setHovered] = useState(false);
+function ProjectCard({ project, index }: { project: ProjectData; index: number }) {
+  const stats = project.outcomes.slice(0, 2);
 
   return (
     <motion.div
-      ref={ref}
+      layout
       initial={{ opacity: 0, y: 40 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.8, ease: EASE }}
+      whileInView={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.7, ease: EASE }}
     >
       <Link
         href={`/projects/${project.slug}`}
-        style={{ textDecoration: "none", display: "block" }}
+        className={index % 2 === 1 ? "pf-card pf-card-rev" : "pf-card"}
       >
-        <motion.div
-          onHoverStart={() => setHovered(true)}
-          onHoverEnd={() => setHovered(false)}
-          animate={{
-            y: hovered ? -6 : 0,
-            boxShadow: hovered
-              ? "0 32px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.1)"
-              : "0 2px 12px rgba(0,0,0,0.06)",
-          }}
-          transition={{ duration: 0.45, ease: EASE }}
-          style={{
-            borderRadius: 28,
-            overflow: "hidden",
-            cursor: "pointer",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            minHeight: 360,
-            background: "var(--bg-card)",
-            border: "none",
-            boxShadow: "none",
-            transition: "background-color 0.35s ease",
-          }}
-          className="featured-card"
-        >
-          {/* Visual side */}
-          <div
-            style={{
-              position: "relative",
-              overflow: "hidden",
-              background: "var(--bg-card-muted)",
-              display: "flex",
-              transition: "background-color 0.35s ease",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 32,
-              margin: 24,
-              borderRadius: 24,
-            }}
-          >
-            <div
-              style={{
-                // position: "absolute",
-                // top: "5%",
-                // right: "5%",
-                // width: "55%",
-                // paddingBottom: "55%",
-                // borderRadius: "50%",
-                // background: project.highlightColor,
-                // filter: "blur(80px)",
-                // opacity: hovered ? 0.9 : 0.6,
-                // transition: "opacity 0.5s ease",
-                // pointerEvents: "none",
-              }}
-            />
-
-            <motion.div
-              animate={{ scale: hovered ? 1.03 : 1 }}
-              transition={{ duration: 0.6, ease: EASE }}
-              style={{
-                position: "relative",
-                zIndex: 1,
-                width: "100%",
-                maxWidth: 520,
-              }}
-            >
-              {project.image ? (
-                <div
-                  style={{
-                    borderRadius: 16,
-                    overflow: "hidden",
-                    boxShadow: "0 24px 64px rgba(0,0,0,0.45)",
-                    aspectRatio: "16/10",
-                    position: "relative",
-                  }}
-                >
-                  <Image
-                    src={project.image}
-                    alt={project.title}
-                    fill
-                    style={{ objectFit: "cover" }}
-                    sizes="(max-width: 768px) 100vw, 65vw"
-                    priority
-                  />
-                </div>
-              ) : (
-                <CardVisual accent={project.accent} visual={project.visual} />
-              )}
-            </motion.div>
-
-            <div
-              style={{
-                position: "absolute",
-                bottom: 20,
-                left: 20,
-                fontSize: 11,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.35)",
-                letterSpacing: "0.08em",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 100,
-                padding: "4px 12px",
-              }}
-            >
-              {/* {project.year} */}
+        {/* Media */}
+        <div className="pf-media">
+          {project.image ? (
+            <div className="pf-media-img">
+              <Image
+                src={project.image}
+                alt={project.title}
+                fill
+                style={{ objectFit: "cover" }}
+                sizes="(max-width: 900px) 100vw, 50vw"
+                preload={index === 0}
+              />
             </div>
-          </div>
-
-          {/* Info side */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              padding: "clamp(28px, 4vw, 52px)",
-              backgroundColor: "var(--bg-surface)",
-              transition: "background-color 0.45s ease",
-            }}
-          >
-            <div>
+          ) : (
+            <div
+              className="pf-media-visual"
+              style={{ background: project.cardBg }}
+            >
               <div
-                style={{
-                  display: "flex",
-                  gap: 6,
-                  flexWrap: "wrap",
-                  marginBottom: 24,
-                }}
-              >
+                className="pf-media-glow"
+                style={{ background: project.highlightColor }}
+              />
+              <div style={{ position: "relative", zIndex: 1, width: "82%", maxWidth: 440 }}>
+                <CardVisual accent={project.accent} />
+              </div>
+            </div>
+          )}
+          <span className="pf-arrow-badge" aria-hidden>
+            →
+          </span>
+        </div>
+
+        {/* Info */}
+        <div className="pf-info">
+          <div>
+            <div className="pf-meta">
+              <div className="pf-chips">
                 <span
+                  className="pf-chip"
                   style={{
-                    fontSize: 11,
-                    fontWeight: 600,
                     color: project.accent,
-                    background: `${project.accent}15`,
-                    border: `1px solid ${project.accent}28`,
-                    borderRadius: 100,
-                    padding: "4px 12px",
-                    letterSpacing: "0.01em",
+                    background: `${project.accent}16`,
+                    border: `1px solid ${project.accent}2c`,
                   }}
                 >
                   {project.category}
                 </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: "var(--text-secondary)",
-                    background: "var(--bg-primary)",
-                    border: "1px solid var(--border-color)",
-                    borderRadius: 100,
-                    padding: "4px 12px",
-                    transition: "all 0.45s ease",
-                  }}
-                >
-                  {project.industry}
+                <span className="pf-chip pf-chip-plain">{project.industry}</span>
+              </div>
+              <span className="pf-number">{project.number}</span>
+            </div>
+
+            <h2 className="pf-title">{project.title}</h2>
+            <p className="pf-desc">{project.subtitle}</p>
+
+            <div className="pf-tags">
+              {project.tags.slice(0, 4).map((tag) => (
+                <span key={tag} className="pf-tag">
+                  {tag}
                 </span>
-              </div>
-
-              <h2
-                style={{
-                  fontSize: "clamp(24px, 3vw, 42px)",
-                  fontWeight: 800,
-                  color: "var(--text-primary)",
-                  letterSpacing: "-0.038em",
-                  lineHeight: 1.1,
-                  marginBottom: 14,
-                  transition: "color 0.45s ease",
-                }}
-              >
-                {project.title}
-              </h2>
-
-              <p
-                style={{
-                  fontSize: "clamp(13px, 1.05vw, 15px)",
-                  color: "var(--text-secondary)",
-                  lineHeight: 1.72,
-                  transition: "color 0.45s ease",
-                }}
-              >
-                {project.subtitle}
-              </p>
+              ))}
             </div>
 
-            <div>
-              <div
-                style={{
-                  height: 1,
-                  background: "var(--border-color)",
-                  margin: "24px 0",
-                  transition: "background 0.45s ease",
-                }}
-              />
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: hovered ? project.accent : "var(--text-secondary)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    transition: "color 0.3s ease",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  <span>View Project</span>
-                  <motion.span
-                    animate={{ x: hovered ? 4 : 0 }}
-                    transition={{ duration: 0.3, ease: EASE }}
-                  >
-                    →
-                  </motion.span>
+            <div className="pf-stats">
+              {stats.map((s) => (
+                <div key={s.metric}>
+                  <p className="pf-stat-value" style={{ color: project.accent }}>
+                    {s.value}
+                  </p>
+                  <p className="pf-stat-label">{s.metric}</p>
                 </div>
-
-                <motion.div
-                  animate={{
-                    background: hovered ? project.accent : "var(--bg-primary)",
-                    borderColor: hovered
-                      ? project.accent
-                      : "var(--border-color)",
-                  }}
-                  transition={{ duration: 0.3 }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: "50%",
-                    border: "1.5px solid",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <motion.span
-                    animate={{
-                      color: hovered ? "#fff" : "var(--text-secondary)",
-                    }}
-                    transition={{ duration: 0.3 }}
-                    style={{ fontSize: 15, lineHeight: 1 }}
-                  >
-                    ↗
-                  </motion.span>
-                </motion.div>
-              </div>
+              ))}
             </div>
           </div>
-        </motion.div>
+
+          <div className="pf-foot">
+            <span className="pf-cta">
+              View Case Study
+              <span className="pf-cta-arrow">→</span>
+            </span>
+            <span className="pf-year">{project.year}</span>
+          </div>
+        </div>
       </Link>
     </motion.div>
   );
 }
 
-/* ─── Standard project card — portrait, image top ─────────────────────────── */
-function ProjectCard({
-  project,
-  index,
-}: {
-  project: (typeof PROJECTS)[number];
-  index: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-50px" });
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.75, ease: EASE, delay: (index % 2) * 0.08 }}
-    >
-      <Link
-        href={`/projects/${project.slug}`}
-        style={{ textDecoration: "none", display: "block" }}
-      >
-        <motion.div
-          onHoverStart={() => setHovered(true)}
-          onHoverEnd={() => setHovered(false)}
-          animate={{
-            y: hovered ? -6 : 0,
-            boxShadow: hovered
-              ? "0 28px 70px rgba(0,0,0,0.15), 0 8px 20px rgba(0,0,0,0.08)"
-              : "0 2px 10px rgba(0,0,0,0.05)",
-          }}
-          transition={{ duration: 0.45, ease: EASE }}
-          style={{
-            borderRadius: 28,
-            overflow: "hidden",
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-color)",
-            cursor: "pointer",
-            transition: "background 0.45s ease, border-color 0.45s ease",
-          }}
-        >
-          {/* Image / Visual */}
-          <div
-            style={{
-              position: "relative",
-              overflow: "hidden",
-              aspectRatio: "16/10",
-            }}
-          >
-            {project.image ? (
-              <motion.div
-                animate={{ scale: hovered ? 1.04 : 1 }}
-                transition={{ duration: 0.6, ease: EASE }}
-                style={{ position: "absolute", inset: 0 }}
-              >
-                <Image
-                  src={project.image}
-                  alt={project.title}
-                  fill
-                  style={{ objectFit: "cover" }}
-                  sizes="(max-width: 640px) 100vw, (max-width: 1320px) 50vw, 660px"
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                animate={{ scale: hovered ? 1.04 : 1 }}
-                transition={{ duration: 0.6, ease: EASE }}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: project.cardBg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "5%",
-                    right: "5%",
-                    width: "60%",
-                    paddingBottom: "60%",
-                    borderRadius: "50%",
-                    background: project.highlightColor,
-                    filter: "blur(80px)",
-                    opacity: 0.65,
-                    pointerEvents: "none",
-                  }}
-                />
-                <div
-                  style={{
-                    position: "relative",
-                    zIndex: 1,
-                    width: "72%",
-                    maxWidth: 360,
-                  }}
-                >
-                  <CardVisual accent={project.accent} visual={project.visual} />
-                </div>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Info */}
-          <div
-            style={{
-              padding: "clamp(20px, 2.5vw, 28px)",
-              borderTop: "1px solid var(--border-color)",
-              transition: "border-color 0.45s ease",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                gap: 6,
-                flexWrap: "wrap",
-                marginBottom: 14,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: project.accent,
-                  background: `${project.accent}15`,
-                  border: `1px solid ${project.accent}28`,
-                  borderRadius: 100,
-                  padding: "4px 12px",
-                  letterSpacing: "0.01em",
-                }}
-              >
-                {project.category}
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 500,
-                  color: "var(--text-secondary)",
-                  background: "var(--bg-primary)",
-                  border: "1px solid var(--border-color)",
-                  borderRadius: 100,
-                  padding: "4px 12px",
-                  transition: "all 0.45s ease",
-                }}
-              >
-                {project.industry}
-              </span>
-            </div>
-
-            <h2
-              style={{
-                fontSize: "clamp(20px, 2.2vw, 28px)",
-                fontWeight: 800,
-                color: "var(--text-primary)",
-                letterSpacing: "-0.032em",
-                lineHeight: 1.12,
-                marginBottom: 8,
-                transition: "color 0.45s ease",
-              }}
-            >
-              {project.title}
-            </h2>
-
-            <p
-              style={
-                {
-                  fontSize: 14,
-                  color: "var(--text-secondary)",
-                  lineHeight: 1.65,
-                  marginBottom: 20,
-                  overflow: "hidden",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  transition: "color 0.45s ease",
-                } as React.CSSProperties
-              }
-            >
-              {project.subtitle}
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: hovered ? project.accent : "var(--text-secondary)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  transition: "color 0.3s ease",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                <span>View Case Study</span>
-                <motion.span
-                  animate={{ x: hovered ? 4 : 0 }}
-                  transition={{ duration: 0.3, ease: EASE }}
-                >
-                  →
-                </motion.span>
-              </div>
-
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  letterSpacing: "0.02em",
-                  transition: "color 0.45s ease",
-                }}
-              >
-                {project.year}
-              </span>
-            </div>
-          </div>
-        </motion.div>
-      </Link>
-    </motion.div>
-  );
-}
-
-/* ─── SVG visuals for cards without images ────────────────────────────────── */
-function CardVisual({ accent, visual }: { accent: string; visual: string }) {
-  const s = {
-    display: "block",
-    width: "100%",
-    borderRadius: 14,
-    overflow: "hidden" as const,
-    boxShadow: "0 16px 48px rgba(0,0,0,0.38)",
-  };
-
-  if (visual === "dashboard") {
-    return (
-      <svg viewBox="0 0 460 280" fill="none" style={s}>
-        <rect
-          width="460"
-          height="280"
-          rx="14"
-          fill="white"
-          fillOpacity="0.07"
-        />
-        <rect width="460" height="36" rx="14" fill={`${accent}18`} />
-        <rect y="22" width="460" height="14" fill={`${accent}18`} />
-        {[14, 26, 38].map((x, i) => (
-          <circle
-            key={i}
-            cx={x}
-            cy="16"
-            r="4.5"
-            fill={["#FF5F57", "#FFBD2E", "#28CA41"][i]}
-          />
-        ))}
-        <rect
-          x="82"
-          y="8"
-          width="180"
-          height="16"
-          rx="8"
-          fill="white"
-          fillOpacity="0.07"
-        />
-        <rect x="94" y="13" width="80" height="6" rx="3" fill={`${accent}40`} />
-        <rect y="36" width="76" height="244" fill={`${accent}08`} />
-        {[0, 1, 2, 3, 4].map((i) => (
-          <rect
-            key={i}
-            x="12"
-            y={56 + i * 34}
-            width="52"
-            height="20"
-            rx="10"
-            fill={i === 0 ? `${accent}30` : `${accent}10`}
-          />
-        ))}
-        {[0, 1, 2].map((i) => (
-          <g key={i}>
-            <rect
-              x={90 + i * 118}
-              y={48}
-              width={106}
-              height={58}
-              rx={14}
-              fill={i === 0 ? `${accent}22` : `${accent}0A`}
-            />
-            <rect
-              x={102 + i * 118}
-              y={60}
-              width={50}
-              height={7}
-              rx={3.5}
-              fill={`${accent}40`}
-            />
-            <rect
-              x={102 + i * 118}
-              y={72}
-              width={70}
-              height={16}
-              rx={6}
-              fill={`${accent}${i === 0 ? "60" : "25"}`}
-            />
-            <rect
-              x={102 + i * 118}
-              y={92}
-              width={36}
-              height={5}
-              rx={2.5}
-              fill={`${accent}20`}
-            />
-          </g>
-        ))}
-        <rect
-          x="90"
-          y="120"
-          width="244"
-          height="140"
-          rx="14"
-          fill={`${accent}06`}
-        />
-        <line
-          x1="90"
-          y1="236"
-          x2="334"
-          y2="236"
-          stroke={`${accent}20`}
-          strokeWidth="1"
-        />
-        {[0.3, 0.6, 0.45, 0.85, 0.65, 0.92, 0.72, 0.98].map((h, i) => (
-          <rect
-            key={i}
-            x={104 + i * 28}
-            y={236 - Math.round(96 * h)}
-            width={18}
-            height={Math.round(96 * h)}
-            rx={5}
-            fill={accent}
-            fillOpacity={i === 7 ? 0.9 : 0.22 + i * 0.04}
-          />
-        ))}
-        <polyline
-          points="113,196 141,172 169,184 197,144 225,158 253,136 281,150 309,124"
-          stroke={accent}
-          strokeWidth="2.5"
-          fill="none"
-          strokeOpacity="0.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle cx="309" cy="124" r="5.5" fill={accent} fillOpacity="0.9" />
-        <rect
-          x="346"
-          y="48"
-          width="102"
-          height="212"
-          rx="14"
-          fill={`${accent}06`}
-        />
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <g key={i}>
-            <circle
-              cx="364"
-              cy={68 + i * 32}
-              r="9"
-              fill={`${accent}${i === 0 ? "32" : "12"}`}
-            />
-            <rect
-              x="378"
-              y={61 + i * 32}
-              width={i === 0 ? 62 : 46}
-              height="8"
-              rx="4"
-              fill={`${accent}${i === 0 ? "28" : "10"}`}
-            />
-            <rect
-              x="378"
-              y={73 + i * 32}
-              width="38"
-              height="5"
-              rx="2.5"
-              fill={`${accent}10`}
-            />
-          </g>
-        ))}
-      </svg>
-    );
-  }
-
-  if (visual === "mobile") {
-    return (
-      <svg viewBox="0 0 380 260" fill="none" style={s}>
-        <rect
-          x="105"
-          y="0"
-          width="145"
-          height="260"
-          rx="28"
-          fill="white"
-          fillOpacity="0.09"
-          stroke={`${accent}25`}
-          strokeWidth="1.5"
-        />
-        <rect
-          x="105"
-          y="0"
-          width="145"
-          height="48"
-          rx="28"
-          fill={`${accent}25`}
-        />
-        <rect x="105" y="30" width="145" height="18" fill={`${accent}25`} />
-        <rect
-          x="148"
-          y="10"
-          width="65"
-          height="15"
-          rx="7.5"
-          fill={`${accent}50`}
-        />
-        <rect
-          x="120"
-          y="62"
-          width="115"
-          height="92"
-          rx="18"
-          fill={`${accent}22`}
-        />
-        <circle cx="178" cy="108" r="28" fill={`${accent}32`} />
-        <circle cx="178" cy="108" r="18" fill={accent} fillOpacity="0.78" />
-        <polygon points="174,101 174,115 187,108" fill="white" opacity="0.95" />
-        <rect
-          x="120"
-          y="168"
-          width="80"
-          height="11"
-          rx="5.5"
-          fill={`${accent}38`}
-        />
-        <rect
-          x="120"
-          y="183"
-          width="106"
-          height="8"
-          rx="4"
-          fill={`${accent}20`}
-        />
-        <rect
-          x="120"
-          y="195"
-          width="88"
-          height="8"
-          rx="4"
-          fill={`${accent}14`}
-        />
-        <rect
-          x="120"
-          y="212"
-          width="115"
-          height="32"
-          rx="16"
-          fill={accent}
-          fillOpacity="0.9"
-        />
-        <rect
-          x="148"
-          y="223"
-          width="60"
-          height="10"
-          rx="5"
-          fill="white"
-          opacity="0.78"
-        />
-        <rect
-          x="0"
-          y="32"
-          width="92"
-          height="60"
-          rx="18"
-          fill="white"
-          fillOpacity="0.1"
-          stroke={`${accent}20`}
-          strokeWidth="1"
-        />
-        <rect x="12" y="44" width="36" height="8" rx="4" fill={`${accent}30`} />
-        <rect
-          x="12"
-          y="57"
-          width="58"
-          height="14"
-          rx="6"
-          fill={`${accent}22`}
-        />
-        <rect
-          x="290"
-          y="158"
-          width="88"
-          height="72"
-          rx="18"
-          fill="white"
-          fillOpacity="0.1"
-          stroke={`${accent}20`}
-          strokeWidth="1"
-        />
-        <circle cx="308" cy="177" r="10" fill={`${accent}30`} />
-        <circle cx="308" cy="177" r="5" fill={accent} fillOpacity="0.65" />
-        <rect
-          x="324"
-          y="171"
-          width="44"
-          height="8"
-          rx="4"
-          fill={`${accent}25`}
-        />
-      </svg>
-    );
-  }
-
-  if (visual === "enterprise") {
-    return (
-      <svg viewBox="0 0 460 280" fill="none" style={s}>
-        <rect
-          width="460"
-          height="280"
-          rx="14"
-          fill="white"
-          fillOpacity="0.07"
-        />
-        <rect width="460" height="36" rx="14" fill={`${accent}16`} />
-        <rect y="22" width="460" height="14" fill={`${accent}16`} />
-        <rect
-          x="16"
-          y="11"
-          width="88"
-          height="14"
-          rx="7"
-          fill={`${accent}35`}
-        />
-        <ellipse
-          cx="230"
-          cy="155"
-          rx="56"
-          ry="42"
-          fill={`${accent}18`}
-          stroke={accent}
-          strokeWidth="1.5"
-          strokeOpacity="0.45"
-        />
-        <ellipse cx="230" cy="155" rx="32" ry="25" fill={`${accent}30`} />
-        <text
-          x="230"
-          y="160"
-          textAnchor="middle"
-          fontSize="13"
-          fontWeight="700"
-          fill={accent}
-          fillOpacity="0.88"
-        >
-          CX
-        </text>
-        {[
-          { cx: 72, cy: 105, label: "Sales" },
-          { cx: 72, cy: 195, label: "Service" },
-          { cx: 388, cy: 105, label: "Commerce" },
-          { cx: 388, cy: 195, label: "Marketing" },
-          { cx: 230, cy: 56, label: "Data" },
-        ].map(({ cx, cy, label }, i) => (
-          <g key={i}>
-            <line
-              x1={cx}
-              y1={cy}
-              x2={230}
-              y2={155}
-              stroke={accent}
-              strokeWidth="1"
-              strokeOpacity="0.28"
-              strokeDasharray="4 3"
-            />
-            <rect
-              x={cx - 32}
-              y={cy - 17}
-              width={64}
-              height={34}
-              rx={11}
-              fill={`${accent}16`}
-              stroke={accent}
-              strokeWidth="1"
-              strokeOpacity="0.32"
-            />
-            <text
-              x={cx}
-              y={cy + 5}
-              textAnchor="middle"
-              fontSize="10.5"
-              fontWeight="600"
-              fill={accent}
-              fillOpacity="0.8"
-            >
-              {label}
-            </text>
-          </g>
-        ))}
-      </svg>
-    );
-  }
-
-  // network / fintech fallback
+/* ── SVG visual for projects without an image ───────────── */
+function CardVisual({ accent }: { accent: string }) {
   const nodes: [number, number][] = [
     [230, 80],
     [110, 148],
@@ -1098,7 +726,17 @@ function CardVisual({ accent, visual }: { accent: string; visual: string }) {
     [4, 5],
   ];
   return (
-    <svg viewBox="0 0 460 280" fill="none" style={s}>
+    <svg
+      viewBox="0 0 460 280"
+      fill="none"
+      style={{
+        display: "block",
+        width: "100%",
+        borderRadius: 14,
+        overflow: "hidden",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.38)",
+      }}
+    >
       <rect width="460" height="280" rx="14" fill="white" fillOpacity="0.07" />
       <rect width="460" height="36" rx="14" fill={`${accent}12`} />
       <rect y="22" width="460" height="14" fill={`${accent}12`} />

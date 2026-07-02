@@ -495,7 +495,11 @@ export default function FeaturedWork() {
                     slideRefs.current[index] =
                       element;
                   }}
-                  className="project-slide"
+                  className={
+                    index === virtualIndex
+                      ? "project-slide"
+                      : "project-slide project-slide-inactive"
+                  }
                   aria-hidden={
                     index !== virtualIndex
                   }
@@ -546,6 +550,15 @@ export default function FeaturedWork() {
             onClick={() => showProject(index)}
           />
         ))}
+
+        <span
+          className="carousel-counter"
+          aria-hidden="true"
+        >
+          {String(activeProjectIndex + 1).padStart(2, "0")}
+          {" / "}
+          {String(PROJECTS.length).padStart(2, "0")}
+        </span>
       </div>
 
       <div className="featured-cta">
@@ -729,6 +742,20 @@ export default function FeaturedWork() {
 
           min-width: 0;
           height: auto;
+
+          transition:
+            transform 700ms
+              cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 700ms ease;
+        }
+
+        /*
+         * Neighboring cards recede so the active project
+         * carries the visual focus.
+         */
+        .project-slide-inactive {
+          transform: scale(0.94);
+          opacity: 0.45;
         }
 
         .project-slide > a {
@@ -982,6 +1009,55 @@ export default function FeaturedWork() {
           transition: color 350ms ease;
         }
 
+        .project-foot {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+
+          gap: 12px;
+          margin-top: 24px;
+        }
+
+        .project-cta {
+          display: inline-flex;
+          align-items: center;
+
+          gap: 7px;
+          padding-bottom: 8px;
+
+          color:
+            var(--text-secondary, #666666);
+
+          font-size: 13.5px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          white-space: nowrap;
+
+          transition: color 300ms ease;
+        }
+
+        .project-cta-arrow {
+          display: inline-block;
+
+          transition:
+            transform 300ms
+            cubic-bezier(
+              0.16,
+              1,
+              0.3,
+              1
+            );
+        }
+
+        .project-card:hover .project-cta {
+          color:
+            var(--accent, #1495ff);
+        }
+
+        .project-card:hover .project-cta-arrow {
+          transform: translateX(4px);
+        }
+
         .project-tags {
           display: flex;
           flex-wrap: wrap;
@@ -990,7 +1066,6 @@ export default function FeaturedWork() {
           align-items: center;
 
           gap: 8px;
-          margin-top: 24px;
         }
 
         .project-chip {
@@ -1021,6 +1096,14 @@ export default function FeaturedWork() {
           transition:
             color 350ms ease,
             background-color 350ms ease;
+        }
+
+        .project-chip-accent {
+          color:
+            var(--accent, #1495ff);
+
+          background:
+            rgba(20, 149, 255, 0.12);
         }
 
         /*
@@ -1149,6 +1232,22 @@ export default function FeaturedWork() {
 
           background:
             var(--accent, #1495ff);
+        }
+
+        .carousel-counter {
+          margin-left: 10px;
+
+          color:
+            var(--text-muted, #888888);
+
+          font-size: 12.5px;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+
+          font-variant-numeric:
+            tabular-nums;
+
+          transition: color 350ms ease;
         }
 
         .featured-cta {
@@ -1330,6 +1429,13 @@ export default function FeaturedWork() {
             height: auto;
             min-height: 0;
 
+            /*
+             * The homepage marquee styles a global
+             * .project-card with a fixed aspect ratio.
+             * The carousel card must grow with its text.
+             */
+            aspect-ratio: auto;
+
             display: flex;
             flex-direction: column;
 
@@ -1392,20 +1498,28 @@ export default function FeaturedWork() {
 
           /*
            * Mobile tags appear above the heading.
+           * The textual call to action is hidden because
+           * the circular arrow stays visible on the image.
            */
-          .project-tags {
+          .project-foot {
             order: -1;
-
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-
-            gap: 8px;
 
             margin:
               0
               0
               21px;
+          }
+
+          .project-cta {
+            display: none;
+          }
+
+          .project-tags {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+
+            gap: 8px;
           }
 
           .project-chip {
@@ -1596,6 +1710,8 @@ export default function FeaturedWork() {
         ) {
           .carousel-track,
           .carousel-viewport,
+          .project-slide,
+          .project-cta-arrow,
           .project-card,
           .project-image,
           .project-open-arrow,
@@ -1674,14 +1790,26 @@ function ProjectCard({
             </p>
           </div>
 
-          <div className="project-tags">
-            <span className="project-chip">
-              {project.industry}
+          <div className="project-foot">
+            <span className="project-cta">
+              View Case Study
+              <span
+                className="project-cta-arrow"
+                aria-hidden="true"
+              >
+                →
+              </span>
             </span>
 
-            <span className="project-chip">
-              {project.category}
-            </span>
+            <div className="project-tags">
+              <span className="project-chip project-chip-accent">
+                {project.industry}
+              </span>
+
+              <span className="project-chip">
+                {project.category}
+              </span>
+            </div>
           </div>
         </div>
       </motion.article>
