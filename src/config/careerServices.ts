@@ -50,7 +50,28 @@ export const SERVICE_IDS: ServiceId[] = [
 /** The Lemon Squeezy store the checkout lives on — preconnected before any tap. */
 export const LEMON_STORE_ORIGIN = "https://tryproduct-ai.lemonsqueezy.com";
 
+/**
+ * The ONLY shape of checkout URL this site is allowed to produce.
+ *
+ * `/checkout/buy/<product-uuid>` is a permanent, per-product link. It is a
+ * plain URL: it can sit in an `href` in the server-rendered HTML, it survives
+ * View Source, it works with JavaScript disabled, and it cannot go stale the
+ * way a `/checkout/cart/...` link can — those are generated, shared session
+ * carts and are never stored anywhere in this codebase.
+ *
+ * Nothing appends query parameters to these. No `embed=1`, no overlay, no
+ * custom fields: the product itself now records which service was bought, so
+ * the URL a customer navigates to is byte-for-byte the string below.
+ */
 const buy = (id: string) => `${LEMON_STORE_ORIGIN}/checkout/buy/${id}`;
+
+/**
+ * The one origin a purchase actually touches. Preconnected in the page head so
+ * the TLS handshake is already done when the visitor taps — which is the only
+ * "optimisation" the checkout path has, and it happens before the click rather
+ * than during it.
+ */
+export const CHECKOUT_ORIGINS = [LEMON_STORE_ORIGIN];
 
 /**
  * THE table. Every price and every product link on the site comes from here.

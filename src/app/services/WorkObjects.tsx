@@ -259,8 +259,21 @@ export function WorkObjectStyles() {
       .ds-head:lang(ar) { font-family: var(--font-thmanyah), sans-serif; line-height: 1.6; }
 
       /* ══ executive dashboard ══ */
+      /* The three channels a parent assembles this card with. Registering
+         them does two things a plain custom property cannot:
+
+         · THEY INHERIT FROM A PARENT. They used to be re-declared on .db
+           itself, which shadowed whatever the scene set on the wrapper above
+           — so the assembly silently never ran. An initial-value carries the
+           same "fully built" default without standing in the way.
+         · THEY CAN BE TRANSITIONED. An unregistered custom property is an
+           untyped token and CSS will only ever flip it. Typed as <number>,
+           it interpolates, which is what lets the phone play the KPI → charts
+           → ring sequence with three CSS transitions and no JavaScript. */
+      @property --kpi { syntax: "<number>"; inherits: true; initial-value: 1; }
+      @property --bars { syntax: "<number>"; inherits: true; initial-value: 1; }
+      @property --ring { syntax: "<number>"; inherits: true; initial-value: 1; }
       .db {
-        --kpi: 1; --bars: 1; --ring: 1;
         width: 100%; container-type: inline-size; padding: 3.4cqw; border-radius: 1.4cqw;
         background: linear-gradient(168deg, #12141b 0%, #0b0d12 62%);
         border: 1px solid rgba(255,255,255,0.09); color: #e9ecf2; font-size: 2.15cqw; text-align: start;

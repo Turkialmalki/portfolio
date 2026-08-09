@@ -35,7 +35,7 @@ const COPY = {
     en: "Scroll to explore",
   },
   swipe: {
-    ar: "اسحب للأسفل لاكتشاف الخدمات",
+    ar: "مرّر لاكتشاف الخدمات",
     en: "Swipe to explore",
   },
 };

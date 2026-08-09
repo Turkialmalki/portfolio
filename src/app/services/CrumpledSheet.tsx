@@ -244,6 +244,24 @@ function CrumpleCanvas(props: Props) {
     const ctx = cvs.getContext("2d", { alpha: true, desynchronized: true });
     if (!ctx) return;
 
+    /* ── BACKING STORE SIZE ──
+       The bake is 560 × 706 and the sheet renders at roughly 180–340 CSS px
+       on a phone, so the native bake is already comfortably over 1× and there
+       is nothing to gain by asking for more. What matters is the ceiling: a
+       DPR-3 device would otherwise be handed a canvas three times the linear
+       size of the thing on screen — nine times the pixels to clear and
+       redraw, every frame, for detail no one can see. Capped at 2, and never
+       above the bake's own resolution, because upscaling a 560px source into
+       a larger surface is pure cost for no extra information. */
+    const dpr = Math.min(typeof devicePixelRatio === "number" ? devicePixelRatio : 1, 2);
+    const cssW = cvs.clientWidth || M_W / dpr;
+    const W = Math.min(M_W, Math.round(cssW * dpr));
+    const H = Math.round((W / M_W) * M_H);
+    if (cvs.width !== W || cvs.height !== H) {
+      cvs.width = W;
+      cvs.height = H;
+    }
+
     /* Decoded once, held as plain Images. 12 frames × ~8 KB is a smaller
        download than a single one of the desktop frames, and the whole set is
        resident before the first swipe finishes. */
@@ -266,13 +284,13 @@ function CrumpleCanvas(props: Props) {
       lastFrac = q;
       if (!ready[lo]) return;
 
-      ctx.clearRect(0, 0, M_W, M_H);
-      ctx.drawImage(imgs[lo], 0, 0, M_W, M_H);
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(imgs[lo], 0, 0, W, H);
       /* At most one more. Two source images, one destination surface — after
          this call there is still exactly one live layer on the page. */
       if (q > 0 && ready[lo + 1]) {
         ctx.globalAlpha = q;
-        ctx.drawImage(imgs[lo + 1], 0, 0, M_W, M_H);
+        ctx.drawImage(imgs[lo + 1], 0, 0, W, H);
         ctx.globalAlpha = 1;
       }
     };
@@ -290,12 +308,26 @@ function CrumpleCanvas(props: Props) {
       draw(v);
     };
 
+    /* ── PREDECODE ──
+       `load` only means the bytes arrived. The first `drawImage` of an
+       undecoded WebP decodes it synchronously, on the main thread, in the
+       middle of a scroll — which is a stall precisely where it is least
+       affordable. `decode()` moves that work off the critical path and
+       resolves only once the bitmap is genuinely ready to paint, so a frame
+       is marked ready when it can actually be drawn for free.
+
+       Frame 0 leads and is fetched at high priority: it is what the visitor
+       sees before they have scrolled at all, so it must never be missing. The
+       next few follow it so the opening swipe has somewhere to go, and the
+       tail arrives while the headline is being read.
+
+       Only the current language's set is ever requested — an English reader
+       must never pull the Arabic bake, and vice versa. */
     for (let i = 0; i < CRUMPLE_FRAMES_M; i++) {
       const img = new Image();
       img.decoding = "async";
-      // the opening frames are the hero; the tail can arrive at its leisure
       if (i < 4) img.fetchPriority = "high";
-      img.onload = () => {
+      const settle = () => {
         if (!live) return;
         ready[i] = true;
         // whatever is on screen may now be drawable — force the next paint
@@ -305,6 +337,13 @@ function CrumpleCanvas(props: Props) {
         }
       };
       img.src = srcOf(lang, i, true);
+      // decode() rejects on a broken image; onload is the honest fallback for
+      // a browser that resolves it differently, and a frame that never
+      // arrives simply holds the previous one rather than blanking the sheet.
+      img.decode().then(settle, () => {
+        if (img.complete && img.naturalWidth) settle();
+        else img.onload = settle;
+      });
       imgs.push(img);
     }
 

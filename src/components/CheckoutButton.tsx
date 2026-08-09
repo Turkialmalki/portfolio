@@ -1,108 +1,69 @@
-"use client";
-
-import { useCallback, useEffect, useRef } from "react";
 import { LuArrowUpRight } from "react-icons/lu";
-import { checkoutUrl, refreshLemonButtons, startCheckout, thaw } from "@/lib/checkout";
-import type { Lang } from "@/data/careerServices";
+import type { ServiceId } from "@/config/careerServices";
 
 /* ═══════════════════════════════════════════════════════════════════════
-   THE ONLY BUY BUTTON ON THE SITE.
+   THE ONLY BUY BUTTON ON THE SITE — and it is just a link.
 
-   Three things it guarantees, in priority order:
+   Note what is NOT in this file: no "use client", no state, no ref, no
+   effect, no click handler. It is a server component that renders an <a> with
+   a real, absolute Lemon Squeezy product URL in its href. That URL is in the
+   first byte of HTML, it is in View Source, and it is what the browser
+   navigates to.
 
-   1. IT IS A LINK. `href` is the real hosted checkout, so the button works
-      with the SDK broken, the SDK blocked, or JavaScript off entirely. The
-      click handler is an enhancement layered on top of a working <a>.
+   WHY THIS IS THE WHOLE DESIGN
+   ────────────────────────────
+   A purchase is the one interaction on this site that must not be able to
+   fail. Every mechanism that used to sit between the tap and the checkout —
+   an overlay SDK, a readiness state machine, a grace-period race against a
+   CDN, a pending label, a page freeze — was a mechanism that could hang. On a
+   phone, on a slow connection, the failure mode of all of them looks
+   identical and looks like nothing happening: tap, spinner, stay.
 
-   2. IT REACTS IN THE SAME FRAME. The pending state is applied by writing one
-      attribute on the element inside the handler — before React is asked to do
-      anything, before the checkout call, before analytics. Both labels are
-      already in the DOM, so the swap is a style recalculation on one element:
-      there is no render, no layout of new nodes, and nothing to wait for. A
-      tap can therefore never look ignored, even if the main thread is busy.
+   So none of them exist. The browser's own navigation is the mechanism:
 
-   3. IT NEVER DOUBLE-FIRES. Once pending, further taps are dropped until the
-      page either leaves or the overlay is dismissed.
+   · The href needs no React, no hydration, no effect, no media query and no
+     third-party script to become correct. If every script on the page fails,
+     checkout still works.
+   · No preventDefault. No promise before navigation. Nothing is awaited.
+   · Same tab. A purchase is the destination, not a detour.
+   · Feedback is `:active { transform: scale(.975) }` — a compositor-only
+     style the browser applies on touch-down, before any JavaScript runs and
+     regardless of how busy the main thread is.
+   · Analytics is a single delegated listener elsewhere on the page
+     (`CheckoutAnalytics`), not a handler on this element. It cannot delay a
+     navigation it is not on the path of.
+
+   Modifier-clicks, middle-clicks, "open in new tab" and "copy link address"
+   all behave correctly for free, because there is nothing overriding them.
+
+   `data-service` is how the delegated listener knows what was bought. It is
+   the only attribute here that exists for anything other than the visitor.
    ═══════════════════════════════════════════════════════════════════════ */
-
-const OPENING = {
-  ar: "جاري فتح الدفع…",
-  en: "Opening checkout…",
-};
 
 export default function CheckoutButton({
   serviceId,
   href,
   label,
-  lang,
   className = "",
   size = "md",
   showArrow = true,
 }: {
-  serviceId: string;
-  /** The service's base checkout URL, straight from the config. */
+  serviceId: ServiceId;
+  /** The service's exact `/checkout/buy/...` URL, straight from the config. */
   href: string;
   label: string;
-  lang: Lang;
   className?: string;
   size?: "md" | "lg";
   showArrow?: boolean;
 }) {
-  const ref = useRef<HTMLAnchorElement>(null);
-  const pending = useRef(false);
-
-  const clear = useCallback(() => {
-    pending.current = false;
-    ref.current?.removeAttribute("data-pending");
-  }, []);
-
-  /* Coming back from the hosted checkout — via the back button, or out of the
-     bfcache — must not find the button still saying "Opening checkout…". */
-  useEffect(() => {
-    const onShow = () => {
-      clear();
-      thaw();
-    };
-    window.addEventListener("pageshow", onShow);
-    return () => window.removeEventListener("pageshow", onShow);
-  }, [clear]);
-
-  // A CTA that mounts after Lemon.js executed is invisible to its own binder.
-  useEffect(() => {
-    refreshLemonButtons();
-  }, []);
-
-  const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Let modifier-clicks and middle-clicks behave like the link they are.
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    e.preventDefault();
-    if (pending.current) return;
-    pending.current = true;
-    // ── frame 0: the visitor sees the button change. Nothing precedes this.
-    e.currentTarget.setAttribute("data-pending", "");
-    startCheckout(href, serviceId, (route) => {
-      // The overlay leaves the visitor on this page, so give the button back.
-      if (route === "overlay") clear();
-    });
-  };
-
   return (
     <a
-      ref={ref}
-      /* Also the no-JS destination, so it must be the hosted (non-embed) URL. */
-      href={checkoutUrl(href, serviceId, false)}
-      onClick={onClick}
+      href={href}
       className={`ck cta${size === "lg" ? " cta-big" : ""} ${className}`}
       data-service={serviceId}
     >
-      <span className="ck-idle">
-        {label}
-        {showArrow && <LuArrowUpRight size={size === "lg" ? 16 : 15} className="cta-i" />}
-      </span>
-      <span className="ck-busy" aria-hidden>
-        <i className="ck-spin" />
-        {OPENING[lang]}
-      </span>
+      {label}
+      {showArrow && <LuArrowUpRight size={size === "lg" ? 16 : 15} className="cta-i" />}
     </a>
   );
 }
@@ -111,12 +72,10 @@ export default function CheckoutButton({
 export function CheckoutButtonStyles() {
   return (
     <style>{`
-      /* ── the pill, defined once for the whole site ──
-         Both builds of /services and every plain-button CTA share it, so it
-         cannot live inside either build's own style block. */
+      /* ── the pill, defined once for the whole site ── */
       .cta {
-        display: inline-flex; align-items: center; gap: 8px; min-height: 52px;
-        padding: 14px 30px; border: none; border-radius: 999px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        min-height: 52px; padding: 14px 30px; border: none; border-radius: 999px;
         background: var(--text-primary); color: var(--bg-primary);
         font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
         text-decoration: none;
@@ -134,43 +93,17 @@ export function CheckoutButtonStyles() {
         .cta-big { padding: 15px 24px; font-size: 15px; }
       }
 
-      .ck {
-        position: relative; isolation: isolate;
-        /* kills the tap delay and the grey flash — both read as "nothing happened" */
-        touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-        user-select: none;
-      }
-      /* type selector included so this always beats .cta:hover, whatever order
-         the two style blocks end up in */
+      /* ── the buy link ──
+         touch-action kills the 300ms tap delay; the transparent tap highlight
+         removes the grey flash that reads as "something went wrong". The
+         :active transform is the ONLY feedback, and the compositor applies it
+         on touch-down without waiting for script. */
+      .ck { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+      /* type selector so this always beats .cta:hover, whatever order the two
+         style blocks end up in */
       a.ck:active { transform: scale(0.975); }
-      .ck-idle, .ck-busy { display: inline-flex; align-items: center; gap: 8px; }
-      .ck-busy { display: none; }
-      .ck[data-pending] { pointer-events: none; opacity: 0.92; }
-      .ck[data-pending] .ck-idle { display: none; }
-      .ck[data-pending] .ck-busy { display: inline-flex; }
-      .ck-spin {
-        width: 13px; height: 13px; flex: none; border-radius: 50%;
-        border: 2px solid currentColor; border-top-color: transparent;
-        animation: ck-spin 620ms linear infinite;
-      }
-      @keyframes ck-spin { to { transform: rotate(360deg); } }
-      /* ── the page holds still behind a checkout ──
-         Scroll is locked by the overlay, so nothing scroll-driven can run
-         anyway; this stops the things that run on their own clock. Components
-         that need to do more (release a canvas, drop an observer) subscribe to
-         the freeze events in lib/checkout instead. */
-      .checkout-open *,
-      .checkout-open *::before,
-      .checkout-open *::after {
-        animation-play-state: paused !important;
-      }
-      /* …except the one thing that is ABOUT the checkout */
-      .checkout-open .ck-spin { animation-play-state: running !important; }
 
-      @media (prefers-reduced-motion: reduce) {
-        a.ck:active { transform: none; }
-        .ck-spin { animation-duration: 1600ms; }
-      }
+      @media (prefers-reduced-motion: reduce) { a.ck:active { transform: none; } }
     `}</style>
   );
 }
