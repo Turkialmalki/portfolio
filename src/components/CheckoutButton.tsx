@@ -2,13 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { LuArrowUpRight } from "react-icons/lu";
-import {
-  isPlaceholderCheckout,
-  checkoutUrl,
-  refreshLemonButtons,
-  startCheckout,
-  thaw,
-} from "@/lib/checkout";
+import { checkoutUrl, refreshLemonButtons, startCheckout, thaw } from "@/lib/checkout";
 import type { Lang } from "@/data/careerServices";
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -56,11 +50,6 @@ export default function CheckoutButton({
 }) {
   const ref = useRef<HTMLAnchorElement>(null);
   const pending = useRef(false);
-  /* Development only. `NODE_ENV` is a build-time constant, so a production
-     bundle contains neither the badge nor the branch that renders it — and
-     because it is the same constant on both sides, there is nothing here for
-     hydration to disagree about. */
-  const placeholder = process.env.NODE_ENV !== "production" && isPlaceholderCheckout(serviceId);
 
   const clear = useCallback(() => {
     pending.current = false;
@@ -114,7 +103,6 @@ export default function CheckoutButton({
         <i className="ck-spin" />
         {OPENING[lang]}
       </span>
-      {placeholder && <b className="ck-ph">placeholder cart</b>}
     </a>
   );
 }
@@ -166,12 +154,6 @@ export function CheckoutButtonStyles() {
         animation: ck-spin 620ms linear infinite;
       }
       @keyframes ck-spin { to { transform: rotate(360deg); } }
-      /* development only — never rendered in a production build */
-      .ck-ph {
-        position: absolute; top: -9px; inset-inline-end: 8px; z-index: 2;
-        padding: 2px 7px; border-radius: 999px; background: #b4530a; color: #fff;
-        font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
-      }
       /* ── the page holds still behind a checkout ──
          Scroll is locked by the overlay, so nothing scroll-driven can run
          anyway; this stops the things that run on their own clock. Components

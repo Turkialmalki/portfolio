@@ -19,11 +19,7 @@
  * and the checkout.
  */
 
-import {
-  CHECKOUT_IS_PLACEHOLDER,
-  LEMON_STORE_ORIGIN,
-  type ServiceId,
-} from "@/config/careerServices";
+import { ANALYTICS_ID, LEMON_STORE_ORIGIN, type ServiceId } from "@/config/careerServices";
 import { trackEvent } from "@/lib/analytics";
 
 type LemonEvent = { event?: string };
@@ -182,10 +178,6 @@ export function isCoarsePointer() {
   );
 }
 
-export function isPlaceholderCheckout(serviceId: string) {
-  return CHECKOUT_IS_PLACEHOLDER[serviceId as ServiceId] ?? false;
-}
-
 /**
  * The page stays frozen until the overlay goes away — and `Checkout.Closed` is
  * the SDK's word for that, which means a page whose event name changes, or
@@ -238,6 +230,10 @@ export function startCheckout(
     // A blocked or slow dataLayer push can never delay a purchase.
     setTimeout(() => {
       trackEvent(`${serviceId}_click`, { service: serviceId });
+      // The named-per-service event a report is actually built on:
+      // `resume_review_checkout_started`, `linkedin_checkout_started`, …
+      const stem = ANALYTICS_ID[serviceId as ServiceId];
+      if (stem) trackEvent(`${stem}_checkout_started`, { service: serviceId, route });
       trackEvent("checkout_started", { service: serviceId, route });
     }, 0);
     onSettled?.(route);

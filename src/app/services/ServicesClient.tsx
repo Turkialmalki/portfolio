@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from "react";
 import Script from "next/script";
-import Link from "next/link";
 import Image from "next/image";
 import {
   motion,
@@ -50,10 +49,18 @@ import { RestoringPaper } from "./PaperPhysics";
 import { CrumpledSheet } from "./CrumpledSheet";
 import { PriceRail } from "./PriceRail";
 import MobileServices from "./MobileServices";
+import ScrollHint from "./ScrollHint";
+import TalkSection from "./TalkSection";
+import ComingSoon from "./ComingSoon";
 import { useScrub } from "./scrub";
 import CheckoutButton, { CheckoutButtonStyles } from "@/components/CheckoutButton";
 import { CHECKOUT_ORIGINS, LEMON_SCRIPT_SRC, onLemonError, onLemonLoaded } from "@/lib/checkout";
-import { CAREER_SERVICES, COMPLETE_BUNDLE, formatPrice } from "@/data/careerServices";
+import {
+  CAREER_SERVICES,
+  COMPLETE_BUNDLE,
+  formatPrice,
+  type CareerService,
+} from "@/data/careerServices";
 import type { Price } from "@/config/careerServices";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import { trackEvent } from "@/lib/analytics";
@@ -119,9 +126,7 @@ const COPY = {
     bundleSep: "بدل",
     finalH: "من الفوضى\nإلى الوضوح.",
     finalSub: "اختر اللي تحتاجه، وأنا أكمل الباقي.",
-    talk: "كلّمني أول",
     from: "يبدأ من",
-    scrollHint: "مرّر",
   },
   en: {
     chaosH: "Your career\ndeserves better.",
@@ -155,9 +160,7 @@ const COPY = {
     bundleSep: "instead of",
     finalH: "Chaos,\nresolved.",
     finalSub: "Pick what you need. I'll take it from there.",
-    talk: "Talk to me first",
     from: "From",
-    scrollHint: "Scroll",
   },
 };
 type Copy = (typeof COPY)["en"];
@@ -341,29 +344,34 @@ function Money({ price, lang, className = "" }: { price: Price; lang: Lang; clas
   return <span className={`money ${className}`}>{formatPrice(price, lang)}</span>;
 }
 
+/**
+ * A service's action, decided by the service — not by the scene.
+ *
+ * A live service gets the buy button and its price. A coming-soon one gets the
+ * badge and the interest link, and there is no branch in any scene that could
+ * hand it a checkout URL by mistake: the URL is read from the service here,
+ * and a coming-soon service does not have one.
+ */
 function Cta({
-  id,
-  href,
-  label,
-  price,
+  s,
   lang,
   t,
   tone = "solid",
 }: {
-  id: string;
-  href: string;
-  label: string;
-  price?: Price;
+  s: CareerService;
   lang: Lang;
   t: Copy;
   tone?: "solid" | "big";
 }) {
+  if (s.status !== "live" || !s.checkoutUrl) {
+    return <ComingSoon serviceId={s.id} label={s.cta[lang]} lang={lang} />;
+  }
   return (
     <span className={`ctaw${tone === "big" ? " ctaw-big" : ""}`}>
-      <CheckoutButton serviceId={id} href={href} label={label} lang={lang} />
-      {price && (
+      <CheckoutButton serviceId={s.id} href={s.checkoutUrl} label={s.cta[lang]} lang={lang} />
+      {s.price && (
         <span className="cta-p">
-          {t.from} <Money price={price} lang={lang} />
+          {t.from} <Money price={s.price} lang={lang} />
         </span>
       )}
     </span>
@@ -590,8 +598,13 @@ function DesktopFilm() {
         <SceneWork t={t} lang={lang} mobile={mobile} lite={lite} reduced={reduced} />
         <SceneData t={t} lang={lang} mobile={mobile} reduced={reduced} />
         <SceneBundle t={t} lang={lang} mobile={mobile} reduced={reduced} />
+        {/* Everyone the price list did not fit, caught before they leave. */}
+        <TalkSection lang={lang} />
         <FinalWord t={t} lang={lang} />
       </main>
+      {/* First-load guidance only. It removes itself on the first wheel,
+          drag or 40px of scroll and does not come back. */}
+      <ScrollHint lang={lang} variant="scroll" />
       {/* Desktop only. On a phone the price is printed in each panel instead —
           a fixed readout that re-renders as you scroll is exactly the kind of
           permanent, low-value motion the phone build exists to delete. */}
@@ -718,7 +731,6 @@ function SceneRestore({
     { ease: EASE },
   );
 
-  const hintO = useScrub(p, [0, 0.05], [1, 0]);
   /* The red pen only exists once the page can be read at all — while the CV is
      still a ball there is nothing to annotate. */
   const marksO = useScrub(
@@ -799,14 +811,8 @@ function SceneRestore({
             <Chapter index={s.index} name={s.name[lang]} />
             <h2 className="big">{s.headline[lang]}</h2>
             <p className="lede">{s.outcome[lang]}</p>
-            <Cta id={s.id} href={s.checkoutUrl} label={s.cta[lang]} price={s.price} lang={lang} t={t} />
+            <Cta s={s} lang={lang} t={t} />
           </motion.div>
-
-          {!reduced && (
-            <motion.span className="hint" style={{ opacity: hintO }}>
-              {t.scrollHint}
-            </motion.span>
-          )}
         </div>
       </div>
 
@@ -953,7 +959,7 @@ function SceneRewrite({
             </div>
 
             <motion.span style={{ opacity: ctaO }}>
-              <Cta id={s.id} href={s.checkoutUrl} label={s.cta[lang]} price={s.price} lang={lang} t={t} />
+              <Cta s={s} lang={lang} t={t} />
             </motion.span>
           </div>
         </div>
@@ -1030,7 +1036,7 @@ function SceneSpeaking({ t, lang, reduced }: { t: Copy; lang: Lang; reduced: boo
           <h2 className="mega mega-2 sp-h">{s.headline[lang]}</h2>
           <p className="sp-kicker">{t.speakKicker}</p>
           <motion.span style={{ opacity: ctaO }}>
-            <Cta id={s.id} href={s.checkoutUrl} label={s.cta[lang]} price={s.price} lang={lang} t={t} />
+            <Cta s={s} lang={lang} t={t} />
           </motion.span>
         </motion.div>
       </div>
@@ -1119,7 +1125,7 @@ function SceneLinkedIn({ t, lang, reduced }: { t: Copy; lang: Lang; reduced: boo
               </motion.span>
             </div>
             <motion.span style={{ opacity: ctaO }}>
-              <Cta id={s.id} href={s.checkoutUrl} label={s.cta[lang]} price={s.price} lang={lang} t={t} />
+              <Cta s={s} lang={lang} t={t} />
             </motion.span>
           </div>
         </div>
@@ -1339,7 +1345,7 @@ function SceneWork({
           <motion.div className="wk-copy" style={{ opacity: copyO, y: copyY }}>
             <Chapter index={s.index} name={s.name[lang]} />
             <h2 className="big">{s.headline[lang]}</h2>
-            <Cta id={s.id} href={s.checkoutUrl} label={s.cta[lang]} price={s.price} lang={lang} t={t} />
+            <Cta s={s} lang={lang} t={t} />
           </motion.div>
         </div>
       </div>
@@ -1504,7 +1510,7 @@ function SceneData({
             <h2 className="big">{s.headline[lang]}</h2>
             <p className="lede">{s.outcome[lang]}</p>
             <div className="db-acts">
-              <Cta id={s.id} href={s.checkoutUrl} label={s.cta[lang]} price={s.price} lang={lang} t={t} />
+              <Cta s={s} lang={lang} t={t} />
               <a
                 className="ghost"
                 href={DASHBOARD_URL}
@@ -1705,13 +1711,8 @@ function FinalWord({ t, lang }: { t: Copy; lang: Lang }) {
         >
           {CAREER_SERVICES[0].name[lang]} <LuArrowRight size={15} className="cta-i" />
         </button>
-        <Link
-          href="/contact"
-          className="fin-ghost"
-          onClick={() => trackEvent("consultation_click", { location: "final_cta" })}
-        >
-          {t.talk}
-        </Link>
+        {/* No second "talk to me" here: the consultation section directly
+            above this one is that offer, made properly. */}
       </div>
       <style>{`
         .fin { width: min(880px, calc(100% - 48px)); margin: 0 auto; padding-block: clamp(100px, 14vw, 190px); text-align: center; }
@@ -1768,8 +1769,6 @@ function PageStyles() {
       .svc-copy { display: flex; flex-direction: column; align-items: flex-start; gap: clamp(18px, 2.2vw, 28px); }
       .svc-copy-start { position: absolute; z-index: 42; inset-inline-start: max(24px, calc((100vw - 1300px) / 2)); top: 50%; translate: 0 -50%; width: min(500px, 44vw); }
       .svc-copy-low { position: absolute; z-index: 42; inset-inline: 0; margin-inline: auto; bottom: clamp(52px, 8vh, 92px); width: min(560px, calc(100% - 40px)); align-items: center; text-align: center; }
-
-      .hint { position: absolute; bottom: 26px; inset-inline-start: 28px; z-index: 38; font-size: 10.5px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-muted, #a0a0a0); }
 
       /* prices */
       .money { font-variant-numeric: tabular-nums; }
@@ -1879,8 +1878,7 @@ function PageStyles() {
       [dir="rtl"] .wk-kick,
       [dir="rtl"] .db-tag,
       [dir="rtl"] .bd-name,
-      [dir="rtl"] .sp-kicker,
-      [dir="rtl"] .hint { line-height: 1.7; }
+      [dir="rtl"] .sp-kicker { line-height: 1.7; }
       /* "01 · مراجعة السيرة" — the divider rule belongs on the start side of
          the number in both directions, which padding-inline-end already
          gives us; the number itself just needs isolating from the name. */

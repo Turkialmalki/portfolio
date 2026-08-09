@@ -9,13 +9,21 @@ import {
   type ReactNode,
 } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { LuArrowRight } from "react-icons/lu";
 import CheckoutButton from "@/components/CheckoutButton";
 import { CVSheet, LinkedInCard, type Lang } from "./CareerObjects";
 import { DashboardCard, WindowCard } from "./WorkObjects";
 import { CRUMPLE_FRAMES_M } from "./CrumpledSheet";
-import { CAREER_SERVICES, COMPLETE_BUNDLE, formatPrice } from "@/data/careerServices";
+import ScrollHint from "./ScrollHint";
+import TalkSection from "./TalkSection";
+import ComingSoon from "./ComingSoon";
+import {
+  CAREER_SERVICES,
+  COMPLETE_BUNDLE,
+  formatPrice,
+  priceLabel,
+  type CareerService,
+} from "@/data/careerServices";
 import { onFreezeChange } from "@/lib/checkout";
 import { trackEvent } from "@/lib/analytics";
 
@@ -67,7 +75,6 @@ const COPY = {
   ar: {
     heroH: "خبرتك تستاهل\nظهور أوضح.",
     heroSub: "كل شيء عن مسيرتك موجود، لكنه ما يشتغل مع بعض.",
-    scrollHint: "مرّر",
     dock: ["مراجعة", "كتابة", "إلقاء", "لينكدإن", "بناء", "بيانات"],
     before: "قبل",
     after: "بعد",
@@ -81,12 +88,10 @@ const COPY = {
     bundleSep: "بدل",
     finalH: "من الفوضى\nإلى الوضوح.",
     finalSub: "اختر اللي تحتاجه، وأنا أكمل الباقي.",
-    talk: "كلّمني أول",
   },
   en: {
     heroH: "Your career\ndeserves better.",
     heroSub: "Everything about your career is here. None of it is working together.",
-    scrollHint: "Scroll",
     dock: ["Review", "CV", "Speak", "LinkedIn", "Build", "Data"],
     before: "Before",
     after: "After",
@@ -101,7 +106,6 @@ const COPY = {
     bundleSep: "instead of",
     finalH: "Chaos,\nresolved.",
     finalSub: "Pick what you need. I'll take it from there.",
-    talk: "Talk to me first",
   },
 };
 type Copy = (typeof COPY)["en"];
@@ -371,7 +375,6 @@ function MobileHero({ lang, c, reduced }: { lang: Lang; c: Copy; reduced: boolea
           <div ref={headRef} className="mh-head">
             <h1 className="mh-h1">{c.heroH}</h1>
             <p className="mh-sub">{c.heroSub}</p>
-            <span className="mh-hint">{c.scrollHint}</span>
           </div>
 
           <div ref={paperRef} className="mh-paper">
@@ -391,13 +394,17 @@ function MobileHero({ lang, c, reduced }: { lang: Lang; c: Copy; reduced: boolea
                 being on screen and being under the navigation. */}
             <ServiceHead index={s.index} name={s.name[lang]} />
             <h2 className="mp-h">{s.headline[lang]}</h2>
-            <PriceLine priceText={formatPrice(s.price, lang)} note={s.delivery[lang]} />
-            <CheckoutButton
-              serviceId={s.id}
-              href={s.checkoutUrl}
-              label={s.cta[lang]}
-              lang={lang}
-            />
+            <PriceLine priceText={priceLabel(s.price, lang)} note={s.delivery[lang]} />
+            {/* 01 is live and has been since this page existed; the guard is
+                here so the hero cannot outlive that fact silently. */}
+            {s.checkoutUrl && (
+              <CheckoutButton
+                serviceId={s.id}
+                href={s.checkoutUrl}
+                label={s.cta[lang]}
+                lang={lang}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -480,29 +487,14 @@ function PriceLine({ priceText, note }: { priceText: string; note?: string }) {
  * timer, and is never touched again for the life of the page.
  */
 function ProductPanel({
-  id,
-  index,
-  name,
-  headline,
-  outcome,
-  delivery,
-  priceText,
-  cta,
-  href,
+  s,
   lang,
   visual,
   tall = false,
   fade = false,
 }: {
-  id: string;
-  index: string;
-  name: string;
-  headline: string;
-  outcome: string;
-  delivery: string;
-  priceText: string;
-  cta: string;
-  href: string;
+  /** The service itself — the panel reads its own price, URL and status. */
+  s: CareerService;
   lang: Lang;
   /** Rendered only while the panel is the current or an adjacent chapter. */
   visual: (near: boolean) => ReactNode;
@@ -518,21 +510,32 @@ function ProductPanel({
   useEffect(() => {
     if (seen && !tracked.current) {
       tracked.current = true;
-      trackEvent("service_card_view", { service: id });
+      trackEvent("service_card_view", { service: s.id });
     }
-  }, [seen, id]);
+  }, [seen, s.id]);
 
   return (
-    <section ref={ref} id={id} className={`mp${seen ? " is-in" : ""}`}>
+    <section ref={ref} id={s.id} className={`mp${seen ? " is-in" : ""}`}>
       <div className={`mp-vis${tall ? " mp-vis-tall" : ""}${fade ? " mv-fade" : ""}`}>
         {visual(near)}
       </div>
       <div className="mp-body">
-        <ServiceHead index={index} name={name} />
-        <h2 className="mp-h">{headline}</h2>
-        <p className="mp-o">{outcome}</p>
-        <PriceLine priceText={priceText} note={delivery} />
-        <CheckoutButton serviceId={id} href={href} label={cta} lang={lang} />
+        <ServiceHead index={s.index} name={s.name[lang]} />
+        {/* A panel headline is one line of a phone screen; the film's line
+            breaks are not its line breaks. */}
+        <h2 className="mp-h">{s.headline[lang].replace("\n", " ")}</h2>
+        <p className="mp-o">{s.outcome[lang]}</p>
+        {/* The panel does not decide whether a service can be bought — the
+            service does, and a coming-soon one has no price and no URL to
+            render even if this were wrong. */}
+        {s.status === "live" && s.checkoutUrl ? (
+          <>
+            <PriceLine priceText={priceLabel(s.price, lang)} note={s.delivery[lang]} />
+            <CheckoutButton serviceId={s.id} href={s.checkoutUrl} label={s.cta[lang]} lang={lang} />
+          </>
+        ) : (
+          <ComingSoon serviceId={s.id} label={s.cta[lang]} lang={lang} />
+        )}
       </div>
     </section>
   );
@@ -626,29 +629,13 @@ export default function MobileServices({ lang }: { lang: Lang }) {
       <MobileHero lang={lang} c={c} reduced={reduced} />
 
       <ProductPanel
-        id={writing.id}
-        index={writing.index}
-        name={writing.name[lang]}
-        headline={writing.headline[lang]}
-        outcome={writing.outcome[lang]}
-        delivery={writing.delivery[lang]}
-        priceText={formatPrice(writing.price, lang)}
-        cta={writing.cta[lang]}
-        href={writing.checkoutUrl}
+        s={writing}
         lang={lang}
         visual={() => <BeforeAfter c={c} />}
       />
 
       <ProductPanel
-        id={speaking.id}
-        index={speaking.index}
-        name={speaking.name[lang]}
-        headline={speaking.headline[lang]}
-        outcome={speaking.outcome[lang]}
-        delivery={speaking.delivery[lang]}
-        priceText={formatPrice(speaking.price, lang)}
-        cta={speaking.cta[lang]}
-        href={speaking.checkoutUrl}
+        s={speaking}
         lang={lang}
         visual={(near) =>
           near ? (
@@ -666,15 +653,7 @@ export default function MobileServices({ lang }: { lang: Lang }) {
       />
 
       <ProductPanel
-        id={linkedin.id}
-        index={linkedin.index}
-        name={linkedin.name[lang]}
-        headline={linkedin.headline[lang].replace("\n", " ")}
-        outcome={linkedin.outcome[lang]}
-        delivery={linkedin.delivery[lang]}
-        priceText={formatPrice(linkedin.price, lang)}
-        cta={linkedin.cta[lang]}
-        href={linkedin.checkoutUrl}
+        s={linkedin}
         lang={lang}
         fade
         visual={(near) =>
@@ -691,15 +670,7 @@ export default function MobileServices({ lang }: { lang: Lang }) {
       />
 
       <ProductPanel
-        id={build.id}
-        index={build.index}
-        name={build.name[lang]}
-        headline={build.headline[lang]}
-        outcome={build.outcome[lang]}
-        delivery={build.delivery[lang]}
-        priceText={formatPrice(build.price, lang)}
-        cta={build.cta[lang]}
-        href={build.checkoutUrl}
+        s={build}
         lang={lang}
         fade
         visual={(near) =>
@@ -723,15 +694,7 @@ export default function MobileServices({ lang }: { lang: Lang }) {
       />
 
       <ProductPanel
-        id={data.id}
-        index={data.index}
-        name={data.name[lang]}
-        headline={data.headline[lang]}
-        outcome={data.outcome[lang]}
-        delivery={data.delivery[lang]}
-        priceText={formatPrice(data.price, lang)}
-        cta={data.cta[lang]}
-        href={data.checkoutUrl}
+        s={data}
         lang={lang}
         fade
         visual={(near) =>
@@ -793,6 +756,9 @@ export default function MobileServices({ lang }: { lang: Lang }) {
         </div>
       </section>
 
+      {/* Everyone the price list did not fit, caught before they leave. */}
+      <TalkSection lang={lang} />
+
       <section className="mv-fin">
         <h2 className="mv-fin-h">{c.finalH}</h2>
         <p className="mp-o">{c.finalSub}</p>
@@ -809,17 +775,15 @@ export default function MobileServices({ lang }: { lang: Lang }) {
             {review.name[lang]}
             <LuArrowRight size={15} className="cta-i" />
           </button>
-          <Link
-            href="/contact"
-            className="mv-fin-g"
-            onClick={() => trackEvent("consultation_click", { location: "final_cta" })}
-          >
-            {c.talk}
-          </Link>
+          {/* No second "talk to me" here: the consultation section directly
+              above this one is that offer, made properly. */}
         </div>
       </section>
 
       <ServiceDock c={c} lang={lang} />
+      {/* First-load guidance only. It removes itself on the first drag or
+          40px of scroll and does not come back. */}
+      <ScrollHint lang={lang} variant="swipe" />
       <MobileStyles />
     </main>
   );
@@ -877,7 +841,6 @@ function MobileStyles() {
       }
       .mh-h1 { margin: 0; font-size: clamp(34px, 10.5vw, 58px); font-weight: 900; letter-spacing: -0.04em; line-height: 0.98; white-space: pre-line; }
       .mh-sub { max-width: 26ch; margin: 16px auto 0; font-size: 14.5px; line-height: 1.55; color: var(--text-secondary); }
-      .mh-hint { display: block; margin-top: 26px; font-size: 10px; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-muted, #a0a0a0); }
 
       .mh-paper {
         position: absolute; z-index: 3; left: 50%; top: 50%;
@@ -1065,8 +1028,7 @@ function MobileStyles() {
       [dir="rtl"] .mp-o { line-height: 1.85; max-width: 32ch; }
       [dir="rtl"] .mp-k,
       [dir="rtl"] .mv-kick,
-      [dir="rtl"] .ba2-k,
-      [dir="rtl"] .mh-hint { line-height: 1.7; }
+      [dir="rtl"] .ba2-k { line-height: 1.7; }
       [dir="rtl"] .mp-k i { unicode-bidi: isolate; }
       [dir="rtl"] .mp-price b { unicode-bidi: isolate; line-height: 1.4; }
       [dir="rtl"] .mp-price em { line-height: 1.7; }

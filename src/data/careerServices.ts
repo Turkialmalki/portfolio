@@ -1,8 +1,7 @@
 import {
-  CHECKOUT_URLS,
   INDIVIDUAL_TOTAL,
   INTAKE_URLS,
-  PRICING,
+  SERVICES,
   type Price,
   type ServiceId,
 } from "@/config/careerServices";
@@ -21,8 +20,10 @@ export type CareerService = {
   outcome: Bi;
   delivery: Bi;
   cta: Bi;
-  price: Price;
-  checkoutUrl: string;
+  /** `null` on a coming-soon service — see the config header. */
+  price: Price | null;
+  checkoutUrl: string | null;
+  status: "live" | "coming-soon";
   intakeUrl: string;
 };
 
@@ -43,8 +44,7 @@ export const CAREER_SERVICES: CareerService[] = [
     },
     delivery: { ar: "خلال 48 ساعة", en: "48 hours" },
     cta: { ar: "راجع سيرتي", en: "Review my CV" },
-    price: PRICING.resumeReview,
-    checkoutUrl: CHECKOUT_URLS.resumeReview,
+    ...SERVICES.resumeReview,
     intakeUrl: INTAKE_URLS.resumeReview,
   },
   {
@@ -58,23 +58,23 @@ export const CAREER_SERVICES: CareerService[] = [
     },
     delivery: { ar: "3–4 أيام عمل", en: "3–4 business days" },
     cta: { ar: "اكتب سيرتي", en: "Rewrite my CV" },
-    price: PRICING.resumeWriting,
-    checkoutUrl: CHECKOUT_URLS.resumeWriting,
+    ...SERVICES.resumeWriting,
     intakeUrl: INTAKE_URLS.resumeWriting,
   },
   {
     id: "publicSpeaking",
     index: "03",
-    name: { ar: "العرض والإلقاء", en: "Public Speaking" },
+    name: { ar: "الإلقاء والعروض", en: "Public Speaking" },
     headline: { ar: "اعرض بطريقة يتذكرونها.", en: "Speak so people remember." },
     outcome: {
-      ar: "تدريب على بناء العرض، والحضور، وإيقاع الإلقاء.",
-      en: "Presentation and delivery coaching: structure, presence, pacing.",
+      ar: "خدمة لمساعدتك على تقديم أفكارك وعروضك بشكل أوضح وأكثر تأثيرًا.",
+      en: "Presentation and speaking support designed to help you communicate with more confidence and impact.",
     },
     delivery: { ar: "جلسة 90 دقيقة", en: "90-minute session" },
-    cta: { ar: "درّبني على العرض", en: "Improve my presentation" },
-    price: PRICING.publicSpeaking,
-    checkoutUrl: CHECKOUT_URLS.publicSpeaking,
+    /* Not a buy label: this service is not for sale yet, so its action is the
+       quiet interest link the coming-soon state renders instead. */
+    cta: { ar: "مهتم بالخدمة؟ تواصل معي", en: "Interested? Contact me" },
+    ...SERVICES.publicSpeaking,
     intakeUrl: INTAKE_URLS.publicSpeaking,
   },
   {
@@ -88,8 +88,7 @@ export const CAREER_SERVICES: CareerService[] = [
     },
     delivery: { ar: "3 أيام عمل", en: "3 business days" },
     cta: { ar: "حسّن ملفي", en: "Optimize my LinkedIn" },
-    price: PRICING.linkedinOptimization,
-    checkoutUrl: CHECKOUT_URLS.linkedinOptimization,
+    ...SERVICES.linkedinOptimization,
     intakeUrl: INTAKE_URLS.linkedinOptimization,
   },
   {
@@ -105,8 +104,7 @@ export const CAREER_SERVICES: CareerService[] = [
     },
     delivery: { ar: "5–7 أيام عمل", en: "5–7 business days" },
     cta: { ar: "ابدأ المشروع", en: "Build my MVP / Portfolio" },
-    price: PRICING.mvpPortfolio,
-    checkoutUrl: CHECKOUT_URLS.mvpPortfolio,
+    ...SERVICES.mvpPortfolio,
     intakeUrl: INTAKE_URLS.mvpPortfolio,
   },
   {
@@ -120,8 +118,7 @@ export const CAREER_SERVICES: CareerService[] = [
     },
     delivery: { ar: "5–7 أيام عمل", en: "5–7 business days" },
     cta: { ar: "ابدأ لوحتي", en: "Build my dashboard" },
-    price: PRICING.dashboardReporting,
-    checkoutUrl: CHECKOUT_URLS.dashboardReporting,
+    ...SERVICES.dashboardReporting,
     intakeUrl: INTAKE_URLS.dashboardReporting,
   },
 ];
@@ -136,9 +133,8 @@ export const COMPLETE_BUNDLE = {
     en: "CV, LinkedIn, speaking, product and reporting — one professional story.",
   },
   cta: { ar: "خذ الباقة كاملة", en: "Get the complete package" },
-  price: PRICING.completeBundle,
+  ...SERVICES.completeBundle,
   individualTotal: INDIVIDUAL_TOTAL,
-  checkoutUrl: CHECKOUT_URLS.completeBundle,
   intakeUrl: INTAKE_URLS.completeBundle,
 };
 
@@ -163,3 +159,33 @@ export function formatPrice(price: Price, lang: Lang) {
     ? `${price.sar.toLocaleString("en-US")} ريال`
     : `$${price.usd.toLocaleString("en-US")}`;
 }
+
+/** COMING SOON, wherever a price would otherwise be. */
+export const COMING_SOON: Bi = { ar: "قريبًا", en: "Coming Soon" };
+
+/**
+ * What goes in a price slot — a figure, or the availability if there is no
+ * figure to print. Every readout that can face a coming-soon service (the
+ * price rail, the phone panels) goes through this, so none of them can fall
+ * back to a stale number.
+ */
+export function priceLabel(price: Price | null, lang: Lang) {
+  return price ? formatPrice(price, lang) : COMING_SOON[lang];
+}
+
+/**
+ * THE SAFETY NET.
+ *
+ * Not every visitor knows which service they need, and some need something
+ * that is not on this page at all. This section is the alternative to leaving.
+ */
+export const TALK = {
+  eyebrow: { ar: "غير متأكد من الخدمة المناسبة؟", en: "Not sure what you need?" },
+  headline: { ar: "خلّنا نتكلم عن احتياجك.", en: "Let's talk about what you need." },
+  body: {
+    ar: "شاركني وش تحتاج، وأساعدك في اختيار الخدمة المناسبة أو تحديد الحل الأنسب لك.",
+    en: "Tell me what you're trying to achieve and I'll help you choose the right service — or suggest a custom approach.",
+  },
+  meeting: { ar: "احجز اجتماعًا معي", en: "Book a meeting" },
+  contact: { ar: "تواصل معي", en: "Contact me" },
+} satisfies Record<string, Bi>;

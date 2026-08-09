@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, useSpring, useTransform } from "framer-motion";
-import { PRICE_RAIL, formatPrice, type Lang } from "@/data/careerServices";
+import { COMING_SOON, PRICE_RAIL, formatPrice, type Lang } from "@/data/careerServices";
 
 /* ═══════════════════════════════════════════════════════════════════════
    PRICE RAIL — a scroll-linked instrument, not a cart.
@@ -114,9 +114,20 @@ export function PriceRail({
         </span>
         <span className="rail-win rail-win-price">
           <motion.span className="rail-stack" style={{ y: priceY }}>
+            {/* A service with no price prints its availability instead —
+                never a stale figure, and never another service's. */}
             {PRICE_RAIL.map((s) => (
               <span key={s.index} className="rail-cell rail-price">
-                {formatPrice(s.price, lang)}
+                {s.price ? (
+                  formatPrice(s.price, lang)
+                ) : (
+                  /* Inside the cell, never instead of it: the cell's height is
+                     1.35em of the PRICE size, and the window rolls by a
+                     percentage of the stack. A smaller font on the cell itself
+                     would shorten that one row and throw every step after it
+                     out of register. */
+                  <i className="rail-soon">{COMING_SOON[lang]}</i>
+                )}
               </span>
             ))}
           </motion.span>
@@ -155,6 +166,15 @@ export function PriceRail({
           height: 1.35em; font-size: 1em; font-weight: 900; letter-spacing: -0.03em;
           text-transform: none; color: var(--text-primary, #0d0e12);
         }
+        /* "COMING SOON" is a label, not a figure: it takes the label's size
+           and weight so the rail never reads as a price it is not. */
+        /* Two classes deep so it outranks the .rail-cell i rule, which would
+           otherwise dim it to 0.55 along with the chapter numbers. */
+        .rail-price .rail-soon {
+          font-size: 0.46em; font-style: normal; font-weight: 800; opacity: 1;
+          letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted, #8b8b8b);
+        }
+        [dir="rtl"] .rail-price .rail-soon { font-size: 0.56em; letter-spacing: 0; }
         .rail-prog { display: block; width: 88px; height: 1px; background: currentColor; opacity: 0.18; }
         .rail-prog i { display: block; height: 100%; background: currentColor; opacity: 1; transform-origin: left center; }
         [dir="rtl"] .rail-prog i { transform-origin: right center; }
