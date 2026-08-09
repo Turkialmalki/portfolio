@@ -1,17 +1,26 @@
 /**
  * Checkout (Lemon Squeezy) and intake (Tally) URLs for the career-services
- * offering on /services. These are PLACEHOLDERS — swap each constant for the
- * real Lemon Squeezy checkout link / Tally form URL once they exist. Every
- * service has its own dedicated checkout and intake link; never point two
- * services at the same URL.
+ * offering on /services.
+ *
+ * Checkout: every service currently points at ONE shared Lemon Squeezy cart —
+ * a deliberate interim setup until per-service products exist. Because they
+ * share a link, the buyer's chosen service is not encoded in the checkout;
+ * the `service` property on the analytics events is the only signal of which
+ * one they clicked. Give each service its own link when the products are set
+ * up, then this comment can go away.
+ *
+ * Intake: still PLACEHOLDERS — swap each for the real Tally form URL.
  */
 
+const SHARED_CHECKOUT_URL =
+  "https://tryproduct-ai.lemonsqueezy.com/checkout/cart/7c8db786-6f5e-486a-8731-383355308aea";
+
 export const CHECKOUT_URLS = {
-  cvReview: "https://checkout.lemonsqueezy.com/buy/REPLACE_CV_REVIEW_CHECKOUT_URL",
-  cvRewrite: "https://checkout.lemonsqueezy.com/buy/REPLACE_CV_REWRITE_CHECKOUT_URL",
-  linkedin: "https://checkout.lemonsqueezy.com/buy/REPLACE_LINKEDIN_CHECKOUT_URL",
-  portfolio: "https://checkout.lemonsqueezy.com/buy/REPLACE_PORTFOLIO_CHECKOUT_URL",
-  careerUpgrade: "https://checkout.lemonsqueezy.com/buy/REPLACE_CAREER_UPGRADE_CHECKOUT_URL",
+  cvReview: SHARED_CHECKOUT_URL,
+  cvRewrite: SHARED_CHECKOUT_URL,
+  linkedin: SHARED_CHECKOUT_URL,
+  portfolio: SHARED_CHECKOUT_URL,
+  careerUpgrade: SHARED_CHECKOUT_URL,
 } as const;
 
 export const INTAKE_URLS = {

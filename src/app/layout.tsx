@@ -60,7 +60,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: LANG_INIT }} />
       </head>
-      <body className={`antialiased overflow-x-hidden ${thmanyah.variable}`}>
+      <body className={`antialiased ${thmanyah.variable}`}>
         {/* GTM noscript — must be first child of body */}
         {GTM_ID && (
           <noscript>

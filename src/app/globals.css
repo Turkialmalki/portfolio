@@ -187,7 +187,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  /* `clip` — not `hidden` — so body never becomes a scroll container.
+     `hidden` here silently breaks every `position: sticky` on the site. */
+  overflow-x: clip;
   transition: background-color 0.35s ease, color 0.35s ease;
 }
 
