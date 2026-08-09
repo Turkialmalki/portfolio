@@ -151,15 +151,27 @@ export function RestoringPaper({
     [0.96, 0.985, 1.022, 0.998, 1],
   );
   const settleY = useTransform(p, [at(0.82), at(0.91), at(0.97), at(1)], [0, -3.5, 1.6, 0]);
-  // Focus: the print keeps sharpening after the paper is flat, so the words
-  // become progressively easier to read right to the end.
+  /* Focus: the print keeps sharpening after the paper is flat, so the words
+     become progressively easier to read right to the end.
+
+     Not on a phone. A blur is a per-pixel pass over the whole sheet, re-run at
+     every scroll position, and it is buying a subtlety nobody can see at 390px
+     — the geometry alone already says "this is being restored". `simple` keeps
+     the paper sharp throughout instead. */
   const blurPx = useScrub(p, [at(0), at(0.35), at(0.7), at(0.9)], [1, 0.7, 0.3, 0]);
-  const outerFilter = useTransform(blurPx, (v) => (v < 0.03 ? "none" : `blur(${v.toFixed(2)}px)`));
+  const blurFilter = useTransform(blurPx, (v) => (v < 0.03 ? "none" : `blur(${v.toFixed(2)}px)`));
+  const outerFilter = simple ? "none" : blurFilter;
 
   /* Two tight shadows thrown in disagreeing directions — the sheet is not
      lying on the surface, it is buckled off it — resolving into one wide,
      centred, premium shadow. */
-  const shadowT = useScrub(p, [at(0), at(0.55), at(1)], [0, 0.5, 1]);
+  /* On a phone this is quantised to three states and CSS-transitioned between
+     them (see .pp-simple below): a three-layer box-shadow is a paint, and
+     re-laying it out at every scroll position is the kind of work that shows
+     up as a long frame while the finger is still moving. Three prebaked steps,
+     crossfaded by the compositor, are indistinguishable at this size. */
+  const shadowRaw = useScrub(p, [at(0), at(0.55), at(1)], [0, 0.5, 1]);
+  const shadowT = useTransform(shadowRaw, (v) => (simple ? Math.round(v * 2) / 2 : v));
   const boxShadow = useTransform(shadowT, (k) => {
     const hard = 1 - k;
     return (
@@ -257,7 +269,11 @@ export function RestoringPaper({
         </svg>
       )}
 
-      <motion.div ref={sheetRef} className="pp-sheet" style={{ boxShadow }}>
+      <motion.div
+        ref={sheetRef}
+        className={`pp-sheet${simple ? " pp-simple" : ""}`}
+        style={{ boxShadow }}
+      >
         {/* the restored document establishes the sheet's size … */}
         <div className="pp-base">{strong}</div>
         {/* … and the abandoned one sits on top of it until it is rewritten */}
@@ -265,18 +281,29 @@ export function RestoringPaper({
           {weak}
         </motion.div>
 
-        {/* photographic grain, if the optional texture is present */}
-        <motion.span
-          className="pp-tex"
-          aria-hidden
-          style={{ opacity: simple ? 0 : textureO, backgroundImage: `url(${CRUMPLE_TEXTURE})` }}
-        />
+        {/* photographic grain, if the optional texture is present. Not built at
+            all in simple mode: a multiply layer still costs a blend pass when
+            its opacity happens to be zero. */}
+        {!simple && (
+          <motion.span
+            className="pp-tex"
+            aria-hidden
+            style={{ opacity: textureO, backgroundImage: `url(${CRUMPLE_TEXTURE})` }}
+          />
+        )}
         {/* three major creases: the shadow in the valley and the light on the
-            ridge, as two passes, because a crease is both */}
+            ridge, as two passes, because a crease is both. These are the whole
+            wrinkle story in simple mode — baked gradients fading out on
+            opacity, which is what "creases leaving" costs when it is not being
+            recomputed by a filter graph. */}
         <motion.span className="pp-crease" aria-hidden style={{ opacity: creaseO }} />
         <motion.span className="pp-crease-hi" aria-hidden style={{ opacity: creaseO }} />
-        {/* real paper grain — never fully gone, paper is not glass */}
-        <motion.span className="pp-grain" aria-hidden style={{ opacity: grainO }} />
+        {/* Real paper grain — never fully gone, paper is not glass. Except on a
+            phone, where it is: a tiled turbulence bitmap multiplied over the
+            sheet is a rasterisation and a blend pass to deliver texture at a
+            scale no thumb-held screen resolves. The creases below carry the
+            surface on their own. */}
+        {!simple && <motion.span className="pp-grain" aria-hidden style={{ opacity: grainO }} />}
         {/* the bent corners — the tell that a hand did this */}
         <motion.span className="pp-fold" aria-hidden style={{ opacity: foldO }} />
         <motion.span className="pp-fold pp-fold-b" aria-hidden style={{ opacity: foldO }} />
@@ -287,6 +314,10 @@ export function RestoringPaper({
         .pp { position: relative; width: 100%; transform-style: preserve-3d; perspective: 1400px; container-type: inline-size; }
         .pp-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
         .pp-sheet { position: relative; width: 100%; border-radius: 3px; will-change: filter; isolation: isolate; }
+        /* No filter graph runs here, so promoting for one is a wasted layer.
+           The shadow arrives in three steps (see shadowT) and this is what
+           makes the steps invisible. */
+        .pp-simple { will-change: auto; transition: box-shadow 340ms cubic-bezier(0.4, 0, 0.2, 1); }
         .pp-base { position: relative; container-type: inline-size; }
         .pp-over { position: absolute; inset: 0; z-index: 2; container-type: inline-size; }
         .pp-tex {

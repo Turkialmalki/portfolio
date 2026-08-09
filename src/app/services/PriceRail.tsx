@@ -28,7 +28,16 @@ export const RAIL_SECTIONS = [
   "completeBundle",
 ];
 
-export function PriceRail({ lang, hidden = false }: { lang: Lang; hidden?: boolean }) {
+export function PriceRail({
+  lang,
+  hidden = false,
+  lite = false,
+}: {
+  lang: Lang;
+  hidden?: boolean;
+  /** step the readout with a CSS transition instead of two live springs */
+  lite?: boolean;
+}) {
   const [active, setActive] = useState<number | null>(null);
 
   useEffect(() => {
@@ -61,21 +70,37 @@ export function PriceRail({ lang, hidden = false }: { lang: Lang; hidden?: boole
   const nameSpring = useSpring(target, { stiffness: 220, damping: 32, mass: 0.7 });
   const priceSpring = useSpring(target, { stiffness: 170, damping: 30, mass: 0.8 });
   useEffect(() => {
+    // in lite mode the springs are never read, so never wake them
+    if (lite) return;
     nameSpring.set(target);
     priceSpring.set(target);
-  }, [target, nameSpring, priceSpring]);
+  }, [target, lite, nameSpring, priceSpring]);
 
   // A percentage translate on the stack is a percentage of the *whole* stack,
   // so one entry is 100/N of it.
   const step = 100 / PRICE_RAIL.length;
-  const nameY = useTransform(nameSpring, (v) => `${-v * step}%`);
-  const priceY = useTransform(priceSpring, (v) => `${-v * step}%`);
-  const progress = useTransform(priceSpring, (v) => (v + 1) / PRICE_RAIL.length);
+  const springNameY = useTransform(nameSpring, (v) => `${-v * step}%`);
+  const springPriceY = useTransform(priceSpring, (v) => `${-v * step}%`);
+  const springProgress = useTransform(priceSpring, (v) => (v + 1) / PRICE_RAIL.length);
+
+  /* ── the touch readout ──
+     Two springs settling against each other is a lovely instrument and it is
+     also two RAF loops running while a thumb is on the glass. The price does
+     not actually track scroll — it changes when the ACTIVE CHAPTER changes,
+     which is a handful of times over the whole page — so on touch it steps
+     with a CSS transition instead: the browser runs it off the main thread and
+     nothing is being computed in between. Two slightly different durations
+     keep the name and the figure arriving a beat apart, as before. */
+  const flatNameY = `${-target * step}%`;
+  const flatPriceY = `${-target * step}%`;
+  const nameY = lite ? flatNameY : springNameY;
+  const priceY = lite ? flatPriceY : springPriceY;
+  const progress = lite ? (target + 1) / PRICE_RAIL.length : springProgress;
 
   const show = active !== null && !hidden;
 
   return (
-    <div className={`rail${show ? " rail-on" : ""}`} aria-hidden>
+    <div className={`rail${show ? " rail-on" : ""}${lite ? " rail-lite" : ""}`} aria-hidden>
       <div className="rail-line">
         <span className="rail-win rail-win-name">
           <motion.span className="rail-stack" style={{ y: nameY }}>
@@ -115,6 +140,11 @@ export function PriceRail({ lang, hidden = false }: { lang: Lang; hidden?: boole
         .rail-win-name { font-size: 10.5px; height: 1.6em; }
         .rail-win-price { font-size: clamp(19px, 2.1vw, 26px); }
         .rail-stack { display: block; will-change: transform; }
+        /* 240ms for the name, 300ms for the figure — the same beat apart the
+           two springs gave, for none of the per-frame cost. */
+        .rail-lite .rail-stack { transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1); }
+        .rail-lite .rail-win-price .rail-stack { transition-duration: 300ms; }
+        .rail-lite .rail-prog i { transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1); }
         .rail-cell {
           display: flex; align-items: center; gap: 8px; height: 1.6em;
           font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;

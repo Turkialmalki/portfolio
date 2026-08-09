@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import Script from "next/script";
@@ -197,15 +198,42 @@ function useMedia(query: string) {
   return on;
 }
 
+/**
+ * True from the first effect onward — i.e. as soon as the media queries above
+ * have actually been asked.
+ *
+ * This page is prerendered, so the first render happens with every media query
+ * answered `false`: for one commit the page believes it is a wide, fine-pointer
+ * device. Most of what that mis-answers is cosmetic and corrected before
+ * anything is visible — but not the crumple, whose two renderers each name
+ * twenty-two or twelve image sources. Mount the wrong one for a single frame
+ * and the browser has already begun fetching a frame set the visitor will
+ * never see, in parallel with the one they will.
+ *
+ * So the sheet waits one frame for an answer. It is the same frame in which
+ * the stored language resolves, so it also stops an English visitor pulling
+ * the Arabic bake, and the visible cost is nothing: at scroll 0 the ball is
+ * still off the edge of the composition.
+ */
+const NEVER = () => () => {};
+function useMounted() {
+  // false while prerendering and through hydration, true immediately after —
+  // which is the whole contract, and it needs neither an effect nor a setState
+  return useSyncExternalStore(NEVER, () => true, () => false);
+}
+
 /** One scattered object, physically driven by the scene's scroll progress. */
 function FieldObject({
   p,
   o,
   stage,
+  lite = false,
 }: {
   p: MotionValue<number>;
   o: Obj;
   stage: { w: number; h: number };
+  /** drop the depth-of-field blur — a real paint pass for a decorative scrap */
+  lite?: boolean;
 }) {
   const exits = !o.to;
   const f = o.from;
@@ -243,7 +271,7 @@ function FieldObject({
         opacity,
         zIndex: o.z,
         width: o.w * stage.w,
-        ...(f.b ? { filter: `blur(${f.b}px)` } : null),
+        ...(f.b && !lite ? { filter: `blur(${f.b}px)` } : null),
       }}
     >
       {o.node}
@@ -479,7 +507,21 @@ export default function ServicesClient() {
   const { lang } = useLanguage();
   const t = COPY[lang];
   const reduced = useMedia("(prefers-reduced-motion: reduce)");
+  /* Two different questions, deliberately kept apart.
+
+     `mobile` is a LAYOUT question — how many objects fit, where the copy sits,
+     how far the film has to be scrolled. It is a phone-width breakpoint and it
+     changes what the page looks like.
+
+     `lite` is a RENDERING question — how much per-frame work the device can
+     afford. Anything driven by a finger gets the cheap pipeline: the canvas
+     crumple instead of twenty-two composited layers, baked wrinkles instead of
+     a live displacement filter, no scroll-linked blur, prebaked shadows. A
+     tablet looks exactly like the desktop composition and is rendered like a
+     phone, which is the whole point — the story is identical either way, the
+     amount of work is not. */
   const mobile = useMedia("(max-width: 820px)");
+  const lite = useMedia("(max-width: 1100px), (pointer: coarse)");
 
   useEffect(() => {
     trackEvent("services_page_view");
@@ -492,17 +534,17 @@ export default function ServicesClient() {
       <WorkObjectStyles />
       <TopBar />
       <Navbar />
-      <main className="sv">
-        <SceneRestore t={t} lang={lang} mobile={mobile} reduced={reduced} />
+      <main className={`sv${lite ? " sv-lite" : ""}`}>
+        <SceneRestore t={t} lang={lang} mobile={mobile} lite={lite} reduced={reduced} />
         <SceneRewrite t={t} lang={lang} mobile={mobile} reduced={reduced} />
         <SceneSpeaking t={t} lang={lang} reduced={reduced} />
         <SceneLinkedIn t={t} lang={lang} reduced={reduced} />
-        <SceneWork t={t} lang={lang} mobile={mobile} reduced={reduced} />
+        <SceneWork t={t} lang={lang} mobile={mobile} lite={lite} reduced={reduced} />
         <SceneData t={t} lang={lang} mobile={mobile} reduced={reduced} />
         <SceneBundle t={t} lang={lang} mobile={mobile} reduced={reduced} />
         <FinalWord t={t} lang={lang} />
       </main>
-      <PriceRail lang={lang} hidden={reduced} />
+      <PriceRail lang={lang} hidden={reduced} lite={lite} />
       <Footer />
       <PageStyles />
     </>
@@ -521,11 +563,13 @@ function SceneRestore({
   t,
   lang,
   mobile,
+  lite,
   reduced,
 }: {
   t: Copy;
   lang: Lang;
   mobile: boolean;
+  lite: boolean;
   reduced: boolean;
 }) {
   const secRef = useRef<HTMLElement>(null);
@@ -536,6 +580,7 @@ function SceneRestore({
   const p = reduced ? settled : scrollYProgress;
   const D = lang === "ar" ? -1 : 1;
   const s = svc("resumeReview");
+  const ready = useMounted();
   useSectionView(secRef, "resumeReview");
 
   /* The noise — everything that should stop defining this career. All of it
@@ -573,10 +618,24 @@ function SceneRestore({
   /* The restoration is two objects playing one part. The baked crumple owns
      the first stretch — ball, opening, badly-flattened sheet — and hands the
      live sheet over already creased; PaperPhysics only ever represents the
-     back half of the transformation, never its opening state. */
-  const crumpleRange: [number, number] = [0, 0.56];
-  const handoff: [number, number] = [0.48, 0.56];
-  const restRange: [number, number] = [0.5, 0.85];
+     back half of the transformation, never its opening state.
+
+     ── the phone gets a tighter cut ──
+     Desktop has a mouse wheel and 380vh of runway, so the story can breathe.
+     A phone has a thumb: every swipe must visibly move the paper or the page
+     reads as unresponsive, however smooth the frames are. The whole
+     transformation is therefore pulled forward — the sheet is recognisably a
+     CV by the middle of the scene and flat by 80% of it, and the review lands
+     in the last fifth — against a section that is itself ~40% shorter. Same
+     five stages, same order, two swipes instead of six.
+
+        0–15%  crushed        15–35%  opening       35–55%  recognisable CV
+       55–78%  flattening     78–86%  clean sheet   86–100% review begins   */
+  const crumpleRange: [number, number] = [0, mobile ? 0.5 : 0.56];
+  const handoff: [number, number] = mobile ? [0.44, 0.5] : [0.48, 0.56];
+  const restRange: [number, number] = mobile ? [0.46, 0.8] : [0.5, 0.85];
+  const annAt = mobile ? 0.845 : 0.885;
+  const annStep = mobile ? 0.022 : 0.026;
 
   /* …starts half-abandoned with its leading corner already off the edge of
      the frame — discarded things do not sit politely inside the composition —
@@ -612,7 +671,11 @@ function SceneRestore({
   const hintO = useScrub(p, [0, 0.05], [1, 0]);
   /* The red pen only exists once the page can be read at all — while the CV is
      still a ball there is nothing to annotate. */
-  const marksO = useScrub(p, [0.56, 0.63, 0.74, 0.81], [0, 0.9, 0.9, 0]);
+  const marksO = useScrub(
+    p,
+    mobile ? [0.5, 0.58, 0.7, 0.78] : [0.56, 0.63, 0.74, 0.81],
+    [0, 0.9, 0.9, 0],
+  );
   const sheetO = useScrub(p, [handoff[0], handoff[1]], [0, 1]);
   const copyO = useScrub(p, [0.8, 0.9], [0, 1]);
   const copyY = useTransform(p, [0.8, 0.94], [22, 0]);
@@ -623,7 +686,7 @@ function SceneRestore({
       <div className="pin">
         <div ref={stageRef} className="stage">
           {noise.map((o) => (
-            <FieldObject key={o.id} p={p} o={o} stage={stage} />
+            <FieldObject key={o.id} p={p} o={o} stage={stage} lite={lite} />
           ))}
 
           <motion.div
@@ -632,7 +695,7 @@ function SceneRestore({
           >
             {/* the crushed sheet, and under it the same sheet once it can be
                 handled — only one of the two is ever legible at a time */}
-            {!reduced && (
+            {!reduced && ready && (
               <CrumpledSheet
                 p={p}
                 lang={lang}
@@ -640,13 +703,14 @@ function SceneRestore({
                 fade={handoff}
                 tilt={-12}
                 lift={mobile ? 2.05 : 1.75}
+                mobile={lite}
               />
             )}
             <motion.div style={{ opacity: sheetO }}>
             <RestoringPaper
               p={p}
               range={restRange}
-              simple={reduced || mobile}
+              simple={reduced || lite}
               tilt={-12}
               /* The restoration repairs the PAPER, not the writing: the sheet
                  ends up flat, sharp and premium while still carrying the words
@@ -667,7 +731,7 @@ function SceneRestore({
                   on top of that — it waits, and the held beat is what separates
                   "the paper has been restored" from "now I am reading it". */}
               {t.reviewNotes.map(([k, v], i) => (
-                <Annotation key={k} p={p} at={0.885 + i * 0.026} i={i} label={k} note={v} />
+                <Annotation key={k} p={p} at={annAt + i * annStep} i={i} label={k} note={v} />
               ))}
             </RestoringPaper>
             </motion.div>
@@ -704,7 +768,11 @@ function SceneRestore({
         .hero-paper { transform-origin: center; }
         .hp-weak { position: relative; }
         .hp-marks { position: absolute; inset: 0; }
-        @media (max-width: 820px) { .act1 { height: 420vh; } }
+        /* 420vh was six or seven deliberate swipes to get through the opening,
+           and no amount of frame-rate makes that feel fast. 280vh leaves 180vh
+           of actual travel, which is two to three swipes — paired with the
+           tighter mapping above, every one of them visibly moves the paper. */
+        @media (max-width: 820px) { .act1 { height: 280vh; } }
       `}</style>
     </section>
   );
@@ -851,7 +919,7 @@ function SceneRewrite({
         .rw-abs { position: absolute; inset: 0; container-type: inline-size; }
         .rw-sweep { position: absolute; z-index: 4; inset-inline: -2%; height: 2px; translate: 0 -1px; background: linear-gradient(90deg, rgba(20,149,255,0) 0%, rgba(20,149,255,0.85) 18%, rgba(20,149,255,0.85) 82%, rgba(20,149,255,0) 100%); box-shadow: 0 0 18px rgba(20,149,255,0.55); }
         @media (max-width: 900px) {
-          .sc-rw { height: ${mobile ? 260 : 300}vh; }
+          .sc-rw { height: ${mobile ? 200 : 300}vh; }
           .sc-rw-in { grid-template-columns: 1fr; gap: 36px; }
           .sc-rw-doc { width: min(260px, 58%); }
           .sc-rw .svc-copy { align-items: center; text-align: center; }
@@ -933,7 +1001,7 @@ function SceneSpeaking({ t, lang, reduced }: { t: Copy; lang: Lang; reduced: boo
         .sp-inset .ph-img { object-position: 45% 42%; scale: 1.35; }
         .sp-inset { position: absolute; z-index: 3; inset-inline-end: clamp(24px, 5vw, 96px); bottom: clamp(90px, 16vh, 170px); width: clamp(150px, 17vw, 250px); }
         @media (max-width: 900px) {
-          .sc-sp { height: 220vh; }
+          .sc-sp { height: 180vh; }
           .sp-inset { display: none; }
           .sp-copy { bottom: clamp(70px, 12vh, 110px); gap: 16px; }
         }
@@ -1021,7 +1089,7 @@ function SceneLinkedIn({ t, lang, reduced }: { t: Copy; lang: Lang; reduced: boo
         .hl-weak { font-size: clamp(15px, 1.6vw, 20px); font-weight: 600; color: var(--text-muted, #9aa0aa); }
         .hl-strong { font-size: clamp(18px, 2.2vw, 29px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.3; }
         @media (max-width: 900px) {
-          .sc-li { height: 240vh; }
+          .sc-li { height: 190vh; }
           .sc-li-in { grid-template-columns: 1fr; gap: 40px; }
           .lk-stage { aspect-ratio: 4 / 3.6; }
           .sc-li .svc-copy { align-items: center; text-align: center; }
@@ -1059,11 +1127,13 @@ function SceneWork({
   t,
   lang,
   mobile,
+  lite,
   reduced,
 }: {
   t: Copy;
   lang: Lang;
   mobile: boolean;
+  lite: boolean;
   reduced: boolean;
 }) {
   const secRef = useRef<HTMLElement>(null);
@@ -1184,9 +1254,15 @@ function SceneWork({
      can own the frame — nothing has to be moved out of the way. */
   const layerY = useTransform(p, [0.7, 0.86], [0, -0.19 * stage.h]);
   const layerScale = useTransform(p, [0.7, 0.86], [1, 0.86]);
-  const layerO = useScrub(p, [0.72, 0.88], [1, 0.42]);
+  /* The rack focus is a blur over the entire stage — the single most expensive
+     scroll-linked property on the page. On a touch device the same "step back
+     and let the offer own the frame" reads from the scale and the fade alone,
+     so the blur is dropped rather than cheapened; it goes a little further down
+     in opacity to make up the separation. */
+  const layerO = useScrub(p, [0.72, 0.88], [1, lite ? 0.3 : 0.42]);
   const layerBlurPx = useScrub(p, [0.72, 0.88], [0, 3]);
-  const layerBlur = useTransform(layerBlurPx, (v) => (v < 0.05 ? "none" : `blur(${v.toFixed(2)}px)`));
+  const layerBlurCalc = useTransform(layerBlurPx, (v) => (v < 0.05 ? "none" : `blur(${v.toFixed(2)}px)`));
+  const layerBlur = lite ? "none" : layerBlurCalc;
 
   const copyO = useScrub(p, [0.76, 0.88], [0, 1]);
   const copyY = useTransform(p, [0.76, 0.92], [22, 0]);
@@ -1202,7 +1278,7 @@ function SceneWork({
             style={{ y: layerY, scale: layerScale, opacity: layerO, filter: layerBlur }}
           >
             {prods.map((pr) => (
-              <ProductObject key={pr.id} p={p} pr={pr} stage={stage} lang={lang} />
+              <ProductObject key={pr.id} p={p} pr={pr} stage={stage} lang={lang} lite={lite} />
             ))}
           </motion.div>
 
@@ -1227,7 +1303,7 @@ function SceneWork({
         .wk-copy { position: absolute; z-index: 42; inset-inline: 0; margin-inline: auto; bottom: clamp(74px, 11vh, 122px); width: min(760px, calc(100% - 44px)); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; }
         .wk-copy::before { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 128%; height: 240%; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, rgba(251,251,249,0.94) 0%, rgba(251,251,249,0.6) 56%, rgba(251,251,249,0) 100%); }
         [data-theme="dark"] .wk-copy::before { background: radial-gradient(closest-side, rgba(13,14,18,0.94) 0%, rgba(13,14,18,0.6) 56%, rgba(13,14,18,0) 100%); }
-        @media (max-width: 900px) { .sc-wk { height: 340vh; } }
+        @media (max-width: 900px) { .sc-wk { height: 250vh; } }
       `}</style>
     </section>
   );
@@ -1238,11 +1314,13 @@ function ProductObject({
   pr,
   stage,
   lang,
+  lite = false,
 }: {
   p: MotionValue<number>;
   pr: Prod;
   stage: { w: number; h: number };
   lang: Lang;
+  lite?: boolean;
 }) {
   const [a, b] = pr.at;
   const stops = [a, b];
@@ -1251,8 +1329,13 @@ function ProductObject({
   const rotate = useTransform(p, stops, [pr.from.r, pr.to.r], { ease: EASE });
   const scale = useTransform(p, stops, [pr.from.s, pr.to.s], { ease: EASE });
   const opacity = useScrub(p, [a, a + (b - a) * 0.35], [pr.from.o ?? 1, 1], EASE);
+  /* Depth is carried by the blur on desktop and by scale and stacking order on
+     a touch device: six products each running their own animated blur is six
+     full-size paint passes per scroll frame, and the arrival travel already
+     reads without it. */
   const blur = useScrub(p, stops, [(pr.blur ?? 0) + 3, pr.blur ?? 0], EASE);
-  const filter = useTransform(blur, (v) => (v < 0.05 ? "none" : `blur(${v.toFixed(2)}px)`));
+  const blurFilter = useTransform(blur, (v) => (v < 0.05 ? "none" : `blur(${v.toFixed(2)}px)`));
+  const filter = lite ? "none" : blurFilter;
 
   return (
     <motion.div
@@ -1400,7 +1483,7 @@ function SceneData({
         .db-copy::before { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 132%; height: 260%; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, rgba(251,251,249,0.95) 0%, rgba(251,251,249,0.66) 54%, rgba(251,251,249,0) 100%); }
         [data-theme="dark"] .db-copy::before { background: radial-gradient(closest-side, rgba(13,14,18,0.95) 0%, rgba(13,14,18,0.66) 54%, rgba(13,14,18,0) 100%); }
         .db-acts { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 22px; }
-        @media (max-width: 900px) { .sc-db { height: 330vh; } .db-copy { top: 54%; } }
+        @media (max-width: 900px) { .sc-db { height: 240vh; } .db-copy { top: 54%; } }
       `}</style>
     </section>
   );
@@ -1558,7 +1641,7 @@ function SceneBundle({
         .bd-price { display: inline-flex; align-items: baseline; flex-wrap: wrap; justify-content: center; gap: 12px; }
         .bd-price em { font-size: 12.5px; font-style: normal; color: var(--text-muted, #8b8b8b); }
         .bd-price s { text-decoration-thickness: 1px; }
-        @media (max-width: 900px) { .sc-bd { height: 280vh; } .bd-foot { bottom: clamp(118px, 17vh, 156px); } }
+        @media (max-width: 900px) { .sc-bd { height: 210vh; } .bd-foot { bottom: clamp(118px, 17vh, 156px); } }
       `}</style>
     </section>
   );
@@ -1706,6 +1789,31 @@ function PageStyles() {
       @media (prefers-reduced-motion: reduce) {
         .fo { will-change: auto; }
       }
+
+      /* ══════════════════ GPU LAYER DISCIPLINE (touch) ══════════════════
+
+         will-change is a promise to the compositor that costs a texture per
+         element. On desktop, promoting every scattered object is a good trade:
+         there is memory to spare and the objects genuinely all move at once.
+         On a phone the same declaration asks for twenty-plus full-size layers,
+         and past a certain count the compositor spends longer managing them
+         than it saved — which is why "add will-change" can make a page slower.
+
+         So the phone promotes only what actually has to be cheap to move: the
+         hero paper, the product stack that travels as one unit, and the price
+         rail. Everything else is animated on transform and opacity anyway, and
+         the compositor is perfectly able to promote those on demand.          */
+      .sv-lite .fo { will-change: auto; }
+      .sv-lite .hero-paper,
+      .sv-lite .wk-layer { will-change: transform; }
+      .sv-lite .rw-cl { will-change: auto; }
+
+      /* The closing section is genuinely independent — no sticky, no scrubbed
+         value, nothing measured against the viewport — so it can be skipped
+         entirely until it is near. The reserved size keeps the scrollbar
+         honest. Deliberately NOT applied to the pinned scenes: content-visibility
+         establishes containment, and containment breaks sticky positioning. */
+      .fin { content-visibility: auto; contain-intrinsic-size: auto 620px; }
 
       /* ══════════════════ ARABIC PASS OVER THE FILM ══════════════════
 

@@ -167,6 +167,15 @@ html.lenis body {
   height: auto;
 }
 
+/* Touch devices never mount Lenis (see LenisProvider), so they never get the
+   .lenis class that releases the 100% height above. Release it directly. */
+@media (pointer: coarse) {
+  html,
+  body {
+    height: auto;
+  }
+}
+
 .lenis.lenis-smooth {
   scroll-behavior: auto !important;
 }
