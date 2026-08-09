@@ -8,12 +8,20 @@
  * be repriced without disturbing the other.
  *
  * ── CHECKOUT ──────────────────────────────────────────────────────────────
- * Each service has its OWN entry below so the CTAs can be pointed at separate
- * Lemon Squeezy products the moment those products exist. Until then every
- * entry resolves to the one cart that is live today — that is recorded in
- * `CHECKOUT_IS_PLACEHOLDER` rather than hidden, so it is obvious which links
- * still need a real product URL. Replace the values one at a time; nothing
- * else in the page needs to change.
+ * There is exactly ONE place a real product link goes: `REAL_CHECKOUT_URLS`.
+ * A service with an entry there is live. A service without one is a
+ * PLACEHOLDER — it falls back to the single shared cart, and the whole app can
+ * see that it did, because `CHECKOUT_IS_PLACEHOLDER` is DERIVED from the table
+ * rather than hand-maintained beside it. There is no way to add a real link and
+ * forget to flip a flag, and no way to look at this file and believe six
+ * services have six products when they have one.
+ *
+ * What a placeholder costs the buyer is real and worth stating plainly: the
+ * shared cart charges the shared cart's price, not the price printed on the
+ * panel. Until each product exists in Lemon Squeezy, every checkout carries
+ * `checkout[custom][service]` (see `lib/checkout.ts`) so at least the order
+ * records which service the customer believed they were buying, and
+ * development builds show a visible PLACEHOLDER badge on the affected CTAs.
  */
 
 export type ServiceId =
@@ -27,33 +35,48 @@ export type ServiceId =
 
 export type Price = { usd: number; sar: number };
 
-/** The single Lemon Squeezy cart that is live today. */
-const LIVE_SHARED_CART =
-  "https://tryproduct-ai.lemonsqueezy.com/checkout/cart/7c8db786-6f5e-486a-8731-383355308aea";
+export const SERVICE_IDS: ServiceId[] = [
+  "resumeReview",
+  "resumeWriting",
+  "publicSpeaking",
+  "linkedinOptimization",
+  "mvpPortfolio",
+  "dashboardReporting",
+  "completeBundle",
+];
+
+/** The Lemon Squeezy store the checkout lives on — preconnected before any tap. */
+export const LEMON_STORE_ORIGIN = "https://tryproduct-ai.lemonsqueezy.com";
+
+/** The one cart that is live today. Used only where no real product exists yet. */
+const SHARED_CART = `${LEMON_STORE_ORIGIN}/checkout/cart/7c8db786-6f5e-486a-8731-383355308aea`;
 
 /**
- * PLACEHOLDER — every id points at the shared cart until per-service products
- * are created. `true` means "this URL is not yet the real product link".
+ * REAL, per-product checkout URLs — the only table to edit.
+ *
+ * Add an entry and that service is instantly live end to end: its CTA stops
+ * being a placeholder, the dev badge disappears, and nothing else changes.
  */
-export const CHECKOUT_IS_PLACEHOLDER: Record<ServiceId, boolean> = {
-  resumeReview: true,
-  resumeWriting: true,
-  publicSpeaking: true,
-  linkedinOptimization: true,
-  mvpPortfolio: true,
-  dashboardReporting: true,
-  completeBundle: true,
+const REAL_CHECKOUT_URLS: Partial<Record<ServiceId, string>> = {
+  // resumeReview:         "https://tryproduct-ai.lemonsqueezy.com/buy/<uuid>",
+  // resumeWriting:        "…",
+  // publicSpeaking:       "…",
+  // linkedinOptimization: "…",
+  // mvpPortfolio:         "…",
+  // dashboardReporting:   "…",
+  // completeBundle:       "…",
 };
 
-export const CHECKOUT_URLS: Record<ServiceId, string> = {
-  resumeReview: LIVE_SHARED_CART,
-  resumeWriting: LIVE_SHARED_CART,
-  publicSpeaking: LIVE_SHARED_CART,
-  linkedinOptimization: LIVE_SHARED_CART,
-  mvpPortfolio: LIVE_SHARED_CART,
-  dashboardReporting: LIVE_SHARED_CART,
-  completeBundle: LIVE_SHARED_CART,
-};
+const entries = SERVICE_IDS.map(
+  (id) => [id, REAL_CHECKOUT_URLS[id] ?? SHARED_CART] as const,
+);
+
+export const CHECKOUT_URLS = Object.fromEntries(entries) as Record<ServiceId, string>;
+
+/** Derived, never hand-written: `true` means "this is the shared cart, not a product". */
+export const CHECKOUT_IS_PLACEHOLDER = Object.fromEntries(
+  SERVICE_IDS.map((id) => [id, !REAL_CHECKOUT_URLS[id]]),
+) as Record<ServiceId, boolean>;
 
 /** PLACEHOLDER — swap each for the real Tally intake form. */
 export const INTAKE_URLS: Record<ServiceId, string> = {

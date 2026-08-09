@@ -49,7 +49,10 @@ import {
 import { RestoringPaper } from "./PaperPhysics";
 import { CrumpledSheet } from "./CrumpledSheet";
 import { PriceRail } from "./PriceRail";
+import MobileServices from "./MobileServices";
 import { useScrub } from "./scrub";
+import CheckoutButton, { CheckoutButtonStyles } from "@/components/CheckoutButton";
+import { CHECKOUT_ORIGINS, LEMON_SCRIPT_SRC, onLemonError, onLemonLoaded } from "@/lib/checkout";
 import { CAREER_SERVICES, COMPLETE_BUNDLE, formatPrice } from "@/data/careerServices";
 import type { Price } from "@/config/careerServices";
 import { useLanguage } from "@/i18n/LanguageProvider";
@@ -357,19 +360,7 @@ function Cta({
 }) {
   return (
     <span className={`ctaw${tone === "big" ? " ctaw-big" : ""}`}>
-      <a
-        className="lemonsqueezy-button cta"
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => {
-          trackEvent(`${id}_click`, { service: id });
-          trackEvent("checkout_started", { service: id });
-        }}
-      >
-        {label}
-        <LuArrowUpRight size={15} className="cta-i" />
-      </a>
+      <CheckoutButton serviceId={id} href={href} label={label} lang={lang} />
       {price && (
         <span className="cta-p">
           {t.from} <Money price={price} lang={lang} />
@@ -503,7 +494,73 @@ function RewriteNote({
 
 /* ════════════════════════════ page ════════════════════════════ */
 
+/**
+ * TWO PRODUCTS BEHIND ONE URL.
+ *
+ * `MobileServices` is not a responsive variant of the film below it — it is a
+ * different page with a different architecture (see the header of that file).
+ * The split is by POINTER, not by width: a laptop at 700px is still a laptop
+ * and still gets the film; a 1024px tablet has a thumb and gets the phone
+ * build. That is what "coarse pointer" means and it is the honest question.
+ *
+ * The branch is resolved after mount, so the prerendered HTML has to commit to
+ * one of them: it commits to the PHONE build. Two reasons, both practical —
+ * it is the cheaper tree to throw away, and it is the one whose first paint
+ * actually matters. A desktop swaps to the film in the first commit after
+ * hydration, on hardware that will never notice.
+ */
 export default function ServicesClient() {
+  const touch = useMedia("(pointer: coarse)");
+  const ready = useMounted();
+  const { lang } = useLanguage();
+
+  useEffect(() => {
+    trackEvent("services_page_view");
+  }, []);
+
+  return (
+    <>
+      <CheckoutScripts />
+      <CareerObjectStyles />
+      <WorkObjectStyles />
+      <TopBar />
+      <Navbar />
+      {!ready || touch ? <MobileServices lang={lang} /> : <DesktopFilm />}
+      <Footer />
+      <CheckoutButtonStyles />
+    </>
+  );
+}
+
+/**
+ * Lemon.js, loaded like the revenue path it is.
+ *
+ * `afterInteractive`, not `lazyOnload`: the overlay is the difference between
+ * a purchase happening on this page and a purchase happening after a full
+ * navigation, and leaving that to the browser's idle callback means the
+ * customers who tap fastest are exactly the ones who miss it.
+ *
+ * `onError` matters as much as `onLoad`. A blocked or failed script must not
+ * leave a CTA waiting for something that is never coming — it marks the SDK
+ * dead so the very next tap goes straight to the hosted checkout.
+ */
+function CheckoutScripts() {
+  return (
+    <>
+      {CHECKOUT_ORIGINS.map((origin) => (
+        <link key={origin} rel="preconnect" href={origin} crossOrigin="" />
+      ))}
+      <Script
+        src={LEMON_SCRIPT_SRC}
+        strategy="afterInteractive"
+        onLoad={onLemonLoaded}
+        onError={onLemonError}
+      />
+    </>
+  );
+}
+
+function DesktopFilm() {
   const { lang } = useLanguage();
   const t = COPY[lang];
   const reduced = useMedia("(prefers-reduced-motion: reduce)");
@@ -523,17 +580,8 @@ export default function ServicesClient() {
   const mobile = useMedia("(max-width: 820px)");
   const lite = useMedia("(max-width: 1100px), (pointer: coarse)");
 
-  useEffect(() => {
-    trackEvent("services_page_view");
-  }, []);
-
   return (
     <>
-      <Script src="https://assets.lemonsqueezy.com/lemon.js" strategy="lazyOnload" />
-      <CareerObjectStyles />
-      <WorkObjectStyles />
-      <TopBar />
-      <Navbar />
       <main className={`sv${lite ? " sv-lite" : ""}`}>
         <SceneRestore t={t} lang={lang} mobile={mobile} lite={lite} reduced={reduced} />
         <SceneRewrite t={t} lang={lang} mobile={mobile} reduced={reduced} />
@@ -544,8 +592,10 @@ export default function ServicesClient() {
         <SceneBundle t={t} lang={lang} mobile={mobile} reduced={reduced} />
         <FinalWord t={t} lang={lang} />
       </main>
+      {/* Desktop only. On a phone the price is printed in each panel instead —
+          a fixed readout that re-renders as you scroll is exactly the kind of
+          permanent, low-value motion the phone build exists to delete. */}
       <PriceRail lang={lang} hidden={reduced} lite={lite} />
-      <Footer />
       <PageStyles />
     </>
   );
@@ -1614,19 +1664,13 @@ function SceneBundle({
                 {t.bundleSep} <s><Money price={b.individualTotal} lang={lang} /></s>
               </em>
             </span>
-            <a
-              className="lemonsqueezy-button cta cta-big"
+            <CheckoutButton
+              serviceId={b.id}
               href={b.checkoutUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
-                trackEvent("completeBundle_click", { service: "completeBundle" });
-                trackEvent("checkout_started", { service: "completeBundle" });
-              }}
-            >
-              {b.cta[lang]}
-              <LuArrowUpRight size={16} className="cta-i" />
-            </a>
+              label={b.cta[lang]}
+              lang={lang}
+              size="lg"
+            />
           </motion.div>
         </div>
       </div>
@@ -1731,14 +1775,11 @@ function PageStyles() {
       .money { font-variant-numeric: tabular-nums; }
       .money-xl { font-size: clamp(28px, 3.4vw, 44px); font-weight: 900; letter-spacing: -0.035em; }
 
-      /* CTAs */
+      /* CTAs — the pill itself is defined once, globally, in
+         CheckoutButtonStyles: it is needed by both builds of this page and by
+         plain <button> CTAs, and a copy that lives in a desktop-only style
+         block is a copy the phone silently loses. */
       .ctaw { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 10px; }
-      .cta { display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 14px 30px; border: none; border-radius: 999px; background: var(--text-primary); color: var(--bg-primary); font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform 260ms cubic-bezier(0.16,1,0.3,1), opacity 260ms ease; }
-      .cta:hover { transform: translateY(-2px); opacity: 0.9; }
-      .cta-big { min-height: 58px; padding: 16px 34px; font-size: 16px; }
-      @media (max-width: 480px) { .cta { padding: 14px 22px; font-size: 14px; } .cta-big { padding: 15px 24px; font-size: 15px; } }
-      .cta-i { flex-shrink: 0; }
-      [dir="rtl"] .cta-i { transform: scaleX(-1); }
       .cta-p { font-size: 13px; color: var(--text-muted, #8b8b8b); }
       .ctaw-big .cta-p { font-size: 14px; }
       .ghost { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 4px; }
@@ -1845,9 +1886,6 @@ function PageStyles() {
          gives us; the number itself just needs isolating from the name. */
       [dir="rtl"] .chap i { unicode-bidi: isolate; }
 
-      /* CTAs: same 52/58px pill, more glyph room inside it. */
-      [dir="rtl"] .cta { line-height: 1.6; padding-block: 12px; }
-      [dir="rtl"] .cta-big { padding-block: 14px; }
       [dir="rtl"] .cta-p,
       [dir="rtl"] .ghost,
       [dir="rtl"] .fin-ghost { line-height: 1.7; }
