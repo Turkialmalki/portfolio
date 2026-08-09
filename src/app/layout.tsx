@@ -7,19 +7,41 @@ import { LanguageProvider } from "@/i18n/LanguageProvider";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
-// Thmanyah Sans — the single brand typeface (Arabic + Latin).
-// next/font self-hosts, preloads, and generates size-adjusted fallbacks (no CLS).
+/**
+ * Thmanyah Sans — the single brand typeface for BOTH scripts. Every weight the
+ * site uses (300/400/500/700/900) is a real file, so nothing is ever synthesised.
+ *
+ * · woff2, not otf: the same five faces go from ~1.17 MB to ~374 KB total, which
+ *   is what actually keeps Arabic from flashing in a fallback face on first paint.
+ * · `adjustFontFallback: false`: next/font's automatic fallback is derived from
+ *   ARIAL's metrics. Arial's vertical metrics are nothing like an Arabic face's
+ *   (this font is 1000/-250 per em), so the generated `size-adjust` mis-scales
+ *   every Arabic glyph for as long as the fallback is on screen. Better to have
+ *   no synthetic face at all and fall straight through to a real Arabic system
+ *   font for the few milliseconds before the woff2 lands.
+ */
 const thmanyah = localFont({
   src: [
-    { path: "../../public/fonts/thmanyahsans-Light.otf", weight: "300", style: "normal" },
-    { path: "../../public/fonts/thmanyahsans-Regular.otf", weight: "400", style: "normal" },
-    { path: "../../public/fonts/thmanyahsans-Medium.otf", weight: "500", style: "normal" },
-    { path: "../../public/fonts/thmanyahsans-Bold.otf", weight: "700", style: "normal" },
-    { path: "../../public/fonts/thmanyahsans-Black.otf", weight: "900", style: "normal" },
+    { path: "../../public/fonts/thmanyahsans-Light.woff2", weight: "300", style: "normal" },
+    { path: "../../public/fonts/thmanyahsans-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../../public/fonts/thmanyahsans-Medium.woff2", weight: "500", style: "normal" },
+    { path: "../../public/fonts/thmanyahsans-Bold.woff2", weight: "700", style: "normal" },
+    { path: "../../public/fonts/thmanyahsans-Black.woff2", weight: "900", style: "normal" },
   ],
   variable: "--font-thmanyah",
   display: "swap",
-  fallback: ["system-ui", "-apple-system", "Segoe UI", "Tahoma", "sans-serif"],
+  preload: true,
+  adjustFontFallback: false,
+  // Arabic-capable system faces only — never a Latin-only default.
+  fallback: [
+    "SF Arabic",
+    "Geeza Pro",
+    "Segoe UI",
+    "Noto Sans Arabic",
+    "Tahoma",
+    "system-ui",
+    "sans-serif",
+  ],
 });
 
 // Applies persisted language before first paint to avoid an RTL/LTR flash

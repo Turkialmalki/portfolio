@@ -1,0 +1,453 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>crumple frame</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  canvas { display: block; }
+</style>
+<canvas id="c"></canvas>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   CRUMPLED CV — offline mesh baker
+
+   An A4 sheet is a real 3D mesh here. It is crushed by displacing every
+   material point of the sheet in three dimensions, then rendered with a
+   painter's algorithm so parts of the sheet genuinely cover other parts.
+
+   The result is a keyframe sequence: s = 0 is a paper ball, s = 1 is the flat
+   A4 back in its original place, and every frame in between is the SAME mesh
+   with the same topology — so the sequence reads as one sheet opening rather
+   than one object replaced by another.
+
+   Run through scripts/crumple/build.mjs; this page renders exactly one frame,
+   chosen by ?f=<index>&n=<count>, at the device scale Chrome was launched with.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const Q = new URLSearchParams(location.search);
+const FRAME = +(Q.get("f") ?? 0);
+const FRAMES = +(Q.get("n") ?? 11);
+const DPR = +(Q.get("dpr") ?? 1.6);
+const LANG = Q.get("lang") ?? "ar";
+
+/* ── canvas geometry ──────────────────────────────────────────────────
+   The sheet is 600 × 848 (A4) and always sits centred in a 1080 × 1360
+   frame, so the flat last frame lands exactly where the live DOM sheet
+   does and the hand-off is a register, not a jump. */
+const SHEET_W = 600, SHEET_H = 848;
+const CW = 1080, CH = 1360;
+const CX = CW / 2, CY = CH / 2;
+
+/* mesh density — enough facets for sharp creases, few enough to bake fast */
+const NU = 58, NV = 82;
+
+/* ── deterministic value noise in the sheet's own material coordinates ──
+   Feeding noise the *material* point (not the screen point) is what makes the
+   deformation belong to the paper: a crease stays on the same bit of paper
+   however the sheet is moved. */
+function hash(x, y, seed) {
+  let h = Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453;
+  return h - Math.floor(h);
+}
+const fade = (t) => t * t * (3 - 2 * t);
+function noise2(x, y, seed) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = x - xi, yf = y - yi;
+  const u = fade(xf), v = fade(yf);
+  const a = hash(xi, yi, seed), b = hash(xi + 1, yi, seed);
+  const c = hash(xi, yi + 1, seed), d = hash(xi + 1, yi + 1, seed);
+  const ab = a + (b - a) * u, cd = c + (d - c) * u;
+  return (ab + (cd - ab) * v) * 2 - 1; // −1 … 1
+}
+/* A crease is a kink, not a wave. Folding the noise about zero turns every
+   zero crossing into a hard ridge line — this single change is the difference
+   between "wrinkled" and "creased". */
+const crease = (n) => 1 - 2 * Math.abs(n);
+
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (t) => t * t * (3 - 2 * t);
+
+/* ── the crush ────────────────────────────────────────────────────────
+   s = 0 crushed, s = 1 flat. Three channels move at once:
+
+     compaction  the sheet's footprint pulled in toward a ball's diameter
+     wrap        material driven to the front and back of that ball
+     folds       four octaves of creasing, the big ones dying first
+
+   A hand releasing a crumpled sheet does exactly this: the gross folds relax
+   almost immediately, the fine wrinkles are the last thing left. */
+function state(s) {
+  const e = smooth(clamp(s, 0, 1));
+  /* Size and creasing are separate channels, and the sheet gets its size back
+     first — a released ball springs most of the way open, then spends a long
+     time still covered in folds. Keeping the footprint fixed for the whole
+     legible stretch is also what stops consecutive frames printing a double
+     image of the same line of type when they cross-dissolve. */
+  const ec = clamp(s / 0.72, 0, 1);
+  /* Compaction is anisotropic: A4's long axis gives up more, which is why a
+     crushed sheet ends up round and not a small rectangle. */
+  const cx = lerp(0.34, 1, ec);
+  const cy = lerp(0.34 * (SHEET_W / SHEET_H), 1, ec);
+  const ball = Math.pow(1 - ec, 1.6);
+  const amp = (i) => {
+    /* The gross folds carry the sheet almost to the end and then go; the fine
+       wrinkles outlive them, which is the order a released sheet relaxes in. */
+    const life = [0.80, 0.86, 0.91, 0.95, 0.98][i];
+    const A = [30, 13, 5.4, 2.2, 0.9][i];
+    return A * Math.pow(clamp(1 - s / life, 0, 1), 1.15);
+  };
+  return { cx, cy, ball, amps: [amp(0), amp(1), amp(2), amp(3), amp(4)], e, ec };
+}
+
+const LAM = [155, 80, 42, 24, 14];   // fold wavelengths, in millimetres of paper
+const BALL_R = 128;
+
+/** Material point (u,v) ∈ [0,1]² → deformed 3D position. */
+function deform(u, v, st) {
+  const x0 = (u - 0.5) * SHEET_W;
+  const y0 = (v - 0.5) * SHEET_H;
+
+  /* Corners come in harder than the middle — that is what a fist does, and it
+     is the difference between a small rectangle and a ball. */
+  const rn = Math.min(1, Math.hypot(x0 / (SHEET_W / 2), y0 / (SHEET_H / 2)));
+  const pull = 1 - 0.5 * (1 - st.ec) * rn * rn;
+  let x = x0 * st.cx * pull, y = y0 * st.cy * pull, z = 0;
+
+  /* Wrap: a smooth signed field decides which material goes to the front of
+     the ball and which disappears round the back. Because it is smooth, the
+     sheet folds over its own edge instead of tearing. */
+  const w = Math.tanh(4 * noise2(x0 / 150 + 3.1, y0 / 150 - 1.7, 91));
+  const rr = (x * x) / (BALL_R * BALL_R) + (y * y) / (BALL_R * BALL_R);
+  z += st.ball * w * BALL_R * Math.sqrt(Math.max(0, 1 - rr));
+
+  for (let i = 0; i < 5; i++) {
+    const a = st.amps[i];
+    if (a < 0.02) continue;
+    const L = LAM[i];
+    /* Folding happens mostly in depth. Displacing the material sideways as
+       hard as downward throws thin blades out past the silhouette and the
+       ball starts to look like crushed foil; a crumpled sheet is chunky. */
+    x += a * 0.72 * crease(noise2(x0 / L, y0 / L, 11 + i * 7));
+    y += a * 0.72 * crease(noise2(x0 / L + 5.3, y0 / L - 2.9, 29 + i * 7));
+    z += a * 1.5 * crease(noise2(x0 / L - 7.7, y0 / L + 4.1, 53 + i * 7));
+  }
+  return [x, y, z];
+}
+
+/* weak perspective — enough to feel like an object, not a diagram */
+const FOCAL = 2000;
+function project(p) {
+  const k = FOCAL / (FOCAL - p[2]);
+  return [CX + p[0] * k, CY + p[1] * k];
+}
+
+/* ── what is printed on the sheet ─────────────────────────────────────
+   Real CV furniture at real sizes. At ball scale it is texture; by the time
+   the sheet is open it is recognisably a résumé — which is the whole point of
+   texturing the mesh instead of shading a blank. */
+function buildTexture() {
+  const S = 2;
+  const t = document.createElement("canvas");
+  t.width = SHEET_W * S; t.height = SHEET_H * S;
+  const g = t.getContext("2d");
+  g.scale(S, S);
+  /* Same stock as the live weak sheet (.sheet-weak) — the two are cross-
+     dissolved into each other, so a different paper white would read as the
+     lights changing mid-shot. */
+  g.fillStyle = "#FAF9F5";
+  g.fillRect(0, 0, SHEET_W, SHEET_H);
+
+  const rtl = LANG === "ar";
+  /* Metrics are the live sheet's, resolved at this width: .sh-body pads
+     7cqw / 6.6cqw and sets 2.5cqw type, so on a 600px sheet that is 42px and
+     40px of padding around 15px text. Matching them means the header — the
+     one big high-contrast element on the page — lands in the same place in
+     both documents, and the hand-off stops printing a ghost of itself. */
+  const EM = 15;
+  const M = 40;
+  const R = SHEET_W - M;
+  g.textBaseline = "alphabetic";
+  const line = (yy, x1, x2, c, h) => { g.fillStyle = c; g.fillRect(x1, yy, x2 - x1, h); };
+  const put = (txt, x, yy, size, weight, color, align) => {
+    g.font = `${weight} ${size}px ${rtl ? '"Geeza Pro", "Al Bayan", system-ui' : '"Times New Roman", serif'}`;
+    g.fillStyle = color;
+    g.textAlign = align || (rtl ? "right" : "left");
+    g.fillText(txt, x, yy);
+  };
+  const startX = rtl ? R : M;
+
+  /* header — .wk-head: centred name at 1.6em, role at 0.92em, contact at
+     0.76em, then 1.2em of air before the body */
+  put(rtl ? "تركي المالكي" : "Turki Almalki", SHEET_W / 2, 67, EM * 1.6, 700, "#26241f", "center");
+  put(rtl ? "مهندس برمجيات" : "Software Engineer", SHEET_W / 2, 95, EM * 0.92, 400, "#55524c", "center");
+  put(
+    rtl
+      ? "الرياض، السعودية · turkialmalki.com · linkedin.com/in/turkialmalki"
+      : "Riyadh, Saudi Arabia · turkialmalki.com · linkedin.com/in/turkialmalki",
+    SHEET_W / 2, 115, EM * 0.76, 400, "#7d7a73", "center",
+  );
+
+  /* body: labelled blocks whose paragraphs are ruled type. Real words in the
+     headings, ruled lines for the prose — that is exactly how a page of small
+     type reads from arm's length, and it survives being folded. */
+  const blocks = rtl
+    ? [["الهدف الوظيفي", 3], ["الخبرة", 0], ["مركز الابتكار — 2024", 3], ["إمكان للتمويل — 2022", 3],
+       ["مصرف الراجحي — 2019", 3], ["المهارات", 0], ["جافاسكربت · تطبيقات · عمل جماعي", 2],
+       ["التعليم", 0], ["بكالوريوس علوم حاسب — 2019", 2], ["التوصيات متوفرة عند الطلب", 1]]
+    : [["Objective", 3], ["Experience", 0], ["Innovation Center — 2024", 3], ["Emkan Finance — 2022", 3],
+       ["Al Rajhi Bank — 2019", 3], ["Skills", 0], ["JavaScript · apps · teamwork", 2],
+       ["Education", 0], ["BSc Computer Science — 2019", 2], ["References upon request", 1]];
+
+  /* Body — .wk-label is 0.95em bold and underlined, prose is 0.9em at 1.45.
+     The page is filled to its foot on purpose: a crumpled sheet must carry
+     print in every fold, otherwise the ball reads as blank paper. */
+  const LBL = EM * 0.95, TXT = EM * 0.9, LEAD = TXT * 1.45;
+  let y = 152;
+  for (const [label, rows] of blocks) {
+    y += EM * 1.1;
+    put(label, startX, y, LBL, 700, "#26241f");
+    const lw = g.measureText(label).width;
+    line(y + 2.5, rtl ? R - lw : M, rtl ? R : M + lw, "rgba(38,36,31,0.75)", 1);
+    y += EM * 0.35;
+    if (rows === 0) { y += 4; continue; }
+    for (let i = 0; i < rows; i++) {
+      y += LEAD;
+      const w = (R - M) * (0.58 + ((i * 41 + label.length * 17) % 40) / 100);
+      const x1 = rtl ? R - w : M;
+      // heavier than a real 10pt line: it has to survive being folded to a third
+      line(y - TXT * 0.55, x1, x1 + w, "rgba(34,31,25,0.44)", 3.6);
+    }
+  }
+  return t;
+}
+
+/* ── render ───────────────────────────────────────────────────────────── */
+const cv = document.getElementById("c");
+cv.style.width = CW + "px";
+cv.style.height = CH + "px";
+cv.width = Math.round(CW * DPR);
+cv.height = Math.round(CH * DPR);
+const ctx = cv.getContext("2d");
+ctx.scale(DPR, DPR);
+
+const TEX = buildTexture();
+const TW = TEX.width, TH = TEX.height;
+
+// ?tex=1 — inspect the printed sheet on its own
+if (Q.get("tex")) {
+  ctx.drawImage(TEX, CX - SHEET_W / 2, CY - SHEET_H / 2, SHEET_W, SHEET_H);
+  throw new Error("texture preview");
+}
+
+/** Affine-map one texture triangle onto one screen triangle. */
+function texTri(x0, y0, x1, y1, x2, y2, u0, v0, u1, v1, u2, v2) {
+  const D = u0 * v1 + v0 * u2 + u1 * v2 - v1 * u2 - v0 * u1 - u0 * v2;
+  if (Math.abs(D) < 1e-9) return;
+  /* An affine draw paints the whole texture; the triangle it belongs to is
+     what clips it. Grown a hair outward so the quad's two triangles meet
+     without a hairline between them. */
+  ctx.save();
+  const mx = (x0 + x1 + x2) / 3, my = (y0 + y1 + y2) / 3, G = 0.4;
+  ctx.beginPath();
+  [[x0, y0], [x1, y1], [x2, y2]].forEach((p, k) => {
+    const dx = p[0] - mx, dy = p[1] - my, d = Math.hypot(dx, dy) || 1;
+    const px = p[0] + (dx / d) * G, py = p[1] + (dy / d) * G;
+    k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  });
+  ctx.closePath();
+  ctx.clip();
+  const a = (x0 * v1 + v0 * x2 + x1 * v2 - v1 * x2 - v0 * x1 - x0 * v2) / D;
+  const b = (u0 * x1 + x0 * u2 + u1 * x2 - x1 * u2 - x0 * u1 - u0 * x2) / D;
+  const c = (u0 * v1 * x2 + v0 * x1 * u2 + x0 * u1 * v2 - x0 * v1 * u2 - v0 * u1 * x2 - u0 * x1 * v2) / D;
+  const d = (y0 * v1 + v0 * y2 + y1 * v2 - v1 * y2 - v0 * y1 - y0 * v2) / D;
+  const e = (u0 * y1 + y0 * u2 + u1 * y2 - y1 * u2 - y0 * u1 - u0 * y2) / D;
+  const f = (u0 * v1 * y2 + v0 * y1 * u2 + y0 * u1 * v2 - y0 * v1 * u2 - v0 * u1 * y2 - u0 * y1 * v2) / D;
+  // composed onto the device transform, not replacing it
+  ctx.transform(a, d, b, e, c, f);
+  ctx.drawImage(TEX, 0, 0);
+  ctx.restore();
+}
+
+/* The sequence stops short of flat on purpose. Its last frame is the state the
+   live PaperPhysics sheet *starts* in — a badly flattened, still-creased page —
+   so the hand-off from baked frames to the real document is a register between
+   two near-identical images, hidden inside the unfolding motion. */
+const SMAX = +(Q.get("smax") ?? 0.8);
+/* Frames are spaced evenly along the release, and the geometry below is kept
+   linear in `s` for the same reason: consecutive frames are cross-dissolved at
+   playback, so what has to be constant between them is not scroll distance but
+   *shape* difference. Any easing belongs in CrumpledSheet, which decides how
+   fast the scroll moves through this sequence — put it here as well and the
+   frames bunch up where nothing is happening while the fastest part of the
+   unfolding is left to two frames and a visible double image. */
+const u = FRAMES === 1 ? 0 : FRAME / (FRAMES - 1);
+const s = SMAX * u;
+const st = state(s);
+
+// vertices
+const P = [], SP = [];
+for (let j = 0; j <= NV; j++) {
+  for (let i = 0; i <= NU; i++) {
+    const p = deform(i / NU, j / NV, st);
+    P.push(p);
+    SP.push(project(p));
+  }
+}
+const idx = (i, j) => j * (NU + 1) + i;
+
+/* ── cavity ───────────────────────────────────────────────────────────
+   The reason a crease reads dark is not that it faces away from the lamp —
+   it is that the fold shadows itself. Comparing each point's depth against a
+   blurred copy of the same surface gives exactly that: ridges come out above
+   the local mean, valleys below, and only the valleys are darkened. Without
+   this the whole ball has to be dimmed to look three-dimensional, which is
+   what turns white paper grey. */
+const RAD = 3;
+const zRaw = P.map((p) => p[2]);
+const zTmp = new Float32Array(zRaw.length);
+const zSm = new Float32Array(zRaw.length);
+for (let j = 0; j <= NV; j++) {
+  for (let i = 0; i <= NU; i++) {
+    let s2 = 0, n = 0;
+    for (let k = -RAD; k <= RAD; k++) {
+      const ii = i + k;
+      if (ii < 0 || ii > NU) continue;
+      s2 += zRaw[idx(ii, j)]; n++;
+    }
+    zTmp[idx(i, j)] = s2 / n;
+  }
+}
+for (let j = 0; j <= NV; j++) {
+  for (let i = 0; i <= NU; i++) {
+    let s2 = 0, n = 0;
+    for (let k = -RAD; k <= RAD; k++) {
+      const jj = j + k;
+      if (jj < 0 || jj > NV) continue;
+      s2 += zTmp[idx(i, jj)]; n++;
+    }
+    zSm[idx(i, j)] = s2 / n;
+  }
+}
+
+// faces, far to near — this is what makes the sheet cover itself
+const faces = [];
+for (let j = 0; j < NV; j++) {
+  for (let i = 0; i < NU; i++) {
+    const a = idx(i, j), b = idx(i + 1, j), c = idx(i + 1, j + 1), d = idx(i, j + 1);
+    const z = (P[a][2] + P[b][2] + P[c][2] + P[d][2]) / 4;
+    const zs = (zSm[a] + zSm[b] + zSm[c] + zSm[d]) / 4;
+    faces.push({ a, b, c, d, i, j, z, cav: z - zs });
+  }
+}
+faces.sort((m, n) => m.z - n.z);
+
+/* How deep a fold has to be before it reads as a shadow depends on how folded
+   the sheet currently is, so the scale is taken from the surface itself rather
+   than fixed — otherwise the same constant crushes the ball to grey at one end
+   of the sequence and does nothing at the other. */
+const CAV = (() => {
+  let s2 = 0;
+  for (const f of faces) s2 += f.cav * f.cav;
+  return Math.max(4, 2.1 * Math.sqrt(s2 / faces.length));
+})();
+
+/* one key light high and to the left, the way a room lights a desk */
+const L = (() => { const v = [-0.42, -0.72, 0.55]; const m = Math.hypot(...v); return v.map((k) => k / m); })();
+const H = (() => { const v = [L[0], L[1], L[2] + 1]; const m = Math.hypot(...v); return v.map((k) => k / m); })();
+
+/* Paper is a bright diffuse material seen against a bright room: nearly every
+   facet is some flavour of white, and the darkness lives in the folds. A low
+   ambient with a strong key — the obvious choice — is what turns a paper ball
+   into a lump of foil, so the ambient carries most of the light here and
+   occlusion, not the lambert term, supplies the shadow. */
+const AMB = 0.76, KD = 0.34;
+/* Normalised so a facet lying flat and facing the camera — the sheet at the
+   end of the sequence — comes out at full paper white. Everything else is
+   read as shadow against that, which is why the ball stays white paper with
+   dark creases instead of turning into a grey object. */
+const FLAT = AMB + KD * L[2];
+const PAPER = [250, 249, 245];
+
+for (const f of faces) {
+  const A = P[f.a], B = P[f.b], C = P[f.c], D = P[f.d];
+  // face normal from the quad's diagonals
+  const e1 = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
+  const e2 = [D[0] - B[0], D[1] - B[1], D[2] - B[2]];
+  let n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+  const nm = Math.hypot(...n) || 1;
+  n = [n[0] / nm, n[1] / nm, n[2] / nm];
+  const back = n[2] < 0;
+  const nn = back ? [-n[0], -n[1], -n[2]] : n;   // paper has two sides
+
+  const ndl = Math.max(0, nn[0] * L[0] + nn[1] * L[1] + nn[2] * L[2]);
+  /* Depth reads as occlusion: material sunk behind the ball's middle sits in
+     its own shadow. It is tied to how balled-up the sheet still is, so a flat
+     sheet carries none of it. */
+  const depth = clamp((f.z + BALL_R) / (2 * BALL_R), 0, 1);
+  const far = 1 - 0.2 * st.ball * (1 - depth);          // material round the back
+  const dip = clamp(-f.cav / CAV, 0, 1);                 // material inside a fold
+  const ao = far * (1 - 0.55 * dip * dip);
+  let m = clamp(((AMB + KD * ndl) / FLAT) * ao, 0.37, 1);
+  if (back) m *= 0.9;
+
+  const spec = Math.pow(Math.max(0, nn[0] * H[0] + nn[1] * H[1] + nn[2] * H[2]), 24) * 0.5;
+
+  const sa = SP[f.a], sb = SP[f.b], sc = SP[f.c], sd = SP[f.d];
+  // grow the quad a hair so neighbouring facets do not show a seam
+  const gx = (sa[0] + sb[0] + sc[0] + sd[0]) / 4, gy = (sa[1] + sb[1] + sc[1] + sd[1]) / 4;
+  const G = 0.55;
+  const grow = (p) => {
+    const dx = p[0] - gx, dy = p[1] - gy, d = Math.hypot(dx, dy) || 1;
+    return [p[0] + (dx / d) * G, p[1] + (dy / d) * G];
+  };
+  const qa = grow(sa), qb = grow(sb), qc = grow(sc), qd = grow(sd);
+  const path = (p0, p1, p2, p3) => {
+    ctx.beginPath();
+    ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]);
+    ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]);
+    ctx.closePath();
+  };
+
+  ctx.save();
+  /* The facet is laid down as already-lit paper — one opaque fill, slightly
+     grown so neighbours cannot show a seam. Shading is baked into this colour
+     rather than multiplied on afterwards; multiplying would darken every
+     overlap twice and print a grid over the sheet. */
+  path(qa, qb, qc, qd);
+  ctx.clip();
+  ctx.fillStyle = `rgb(${Math.round(PAPER[0] * m)},${Math.round((PAPER[1] - (back ? 2 : 0)) * m)},${Math.round((PAPER[2] - (back ? 6 : 0)) * m)})`;
+  ctx.fill();
+
+  if (!back) {
+    // the print, multiplied into the lit paper so ink darkens but never lightens
+    const u0 = (f.i / NU) * TW, u1 = ((f.i + 1) / NU) * TW;
+    const v0 = (f.j / NV) * TH, v1 = ((f.j + 1) / NV) * TH;
+    ctx.globalCompositeOperation = Q.get("nomul") ? "source-over" : "multiply";
+    texTri(sa[0], sa[1], sb[0], sb[1], sc[0], sc[1], u0, v0, u1, v0, u1, v1);
+    texTri(sa[0], sa[1], sc[0], sc[1], sd[0], sd[1], u0, v0, u1, v1, u0, v1);
+  }
+  if (spec > 0.004) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = `rgba(255,255,255,${spec.toFixed(3)})`;
+    path(qa, qb, qc, qd);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // the sheet's own cut edge, wherever it is on the silhouette
+  const edges = [];
+  if (f.j === 0) edges.push([sa, sb]);
+  if (f.j === NV - 1) edges.push([sd, sc]);
+  if (f.i === 0) edges.push([sa, sd]);
+  if (f.i === NU - 1) edges.push([sb, sc]);
+  if (edges.length && !back) {
+    ctx.strokeStyle = `rgba(${Math.round(150 * m)},${Math.round(144 * m)},${Math.round(128 * m)},0.34)`;
+    ctx.lineWidth = 1;
+    for (const [p, q] of edges) {
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+    }
+  }
+}
+
+document.title = "ready";
+</script>

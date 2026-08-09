@@ -32,9 +32,9 @@ const P = {
 };
 
 const STRONG_CV = {
-  summaryLabel: { ar: "الملخص", en: "Summary" },
+  summaryLabel: { ar: "نبذة", en: "Summary" },
   summary: {
-    ar: "قائد هندسي يبني منتجات رقمية قابلة للتوسع وعالية الأثر عبر القطاع المصرفي والتقنية المالية ومراكز الابتكار.",
+    ar: "قائد هندسي يبني منتجات رقمية تكبر مع المستخدمين، في البنوك والتقنية المالية ومراكز الابتكار.",
     en: "Engineering leader building scalable, high-impact digital products across banking, fintech and government innovation.",
   },
   expLabel: { ar: "الخبرة", en: "Experience" },
@@ -44,11 +44,11 @@ const STRONG_CV = {
       dates: { ar: "أكتوبر 2024 — الآن", en: "Oct 2024 — Present" },
       bullets: [
         {
-          ar: "قيادة المبادرات الرقمية وتحويل احتياجات الأعمال إلى خارطة طريق للويب والجوال.",
+          ar: "أقود المبادرات الرقمية، وأحوّل احتياج الأعمال إلى خطة واضحة للويب والجوال.",
           en: "Lead digital initiatives, translating business needs into prioritized web and mobile roadmaps.",
         },
         {
-          ar: "تقييم الأطر الحديثة وأدوات الذكاء الاصطناعي لرفع الإنتاجية والأثر الهندسي.",
+          ar: "أجرّب التقنيات وأدوات الذكاء الاصطناعي وأدخل المفيد منها في عمل الفريق.",
           en: "Evaluate modern frameworks and AI-enabled tooling to raise productivity and engineering impact.",
         },
       ],
@@ -58,11 +58,11 @@ const STRONG_CV = {
       dates: { ar: "يوليو 2022 — أكتوبر 2024", en: "Jul 2022 — Oct 2024" },
       bullets: [
         {
-          ar: "قيادة تحديث منصات التجار الأساسية عبر الويب والجوال.",
+          ar: "قدت تطوير منصات التجار على الويب والجوال.",
           en: "Led modernization of core digital merchant platforms across web and mobile.",
         },
         {
-          ar: "تكاملات مدعومة بالذكاء الاصطناعي رفعت رضا العملاء بنسبة 150%.",
+          ar: "أطلقت تكاملات ذكاء اصطناعي رفعت رضا العملاء 150%.",
           en: "Shipped UX and AI-driven integrations that improved customer satisfaction by 150%.",
         },
       ],
@@ -72,7 +72,7 @@ const STRONG_CV = {
       dates: { ar: "أغسطس 2019 — يوليو 2022", en: "Aug 2019 — Jul 2022" },
       bullets: [
         {
-          ar: "قيادة تجربة جوال للعملاء بـ React Native: 95% تقييم إيجابي و+90% تحميلات.",
+          ar: "قدت تجربة جوال بـ React Native: 95% تقييم إيجابي و90% زيادة في التحميلات.",
           en: "Led a customer-facing React Native experience: 95% positive feedback, +90% downloads.",
         },
       ],
@@ -95,10 +95,14 @@ const STRONG_CV = {
   },
 };
 
+/* The same career, written the way most CVs are written: a wish instead of a
+   summary, duties instead of outcomes, and not one number. Every Arabic line
+   here should sound like something a real applicant typed — that is the whole
+   point of the object. */
 const WEAK_CV = {
   objectiveLabel: { ar: "الهدف الوظيفي", en: "Objective" },
   objective: {
-    ar: "مهندس برمجيات مجتهد يبحث عن فرصة جيدة في شركة مرموقة لاستخدام مهاراتي وتطوير نفسي.",
+    ar: "مهندس برمجيات مجتهد، أبحث عن فرصة في شركة كبيرة أستفيد فيها من مهاراتي وأطور نفسي.",
     en: "Hard working software engineer looking for a good opportunity in a reputable company where I can use my skills.",
   },
   expLabel: { ar: "الخبرة", en: "Experience" },
@@ -116,7 +120,7 @@ const WEAK_CV = {
       dates: { ar: "2022 — 2024", en: "2022 — 2024" },
       bullets: [
         { ar: "عملت على منصة التجار.", en: "Worked on the merchant platform." },
-        { ar: "مسؤول عن إدارة فريق الجوال.", en: "Responsible for managing the mobile team." },
+        { ar: "مسؤول عن إدارة الفريق التقني.", en: "Responsible for managing the technical team." },
       ],
     },
     {
@@ -124,7 +128,7 @@ const WEAK_CV = {
       dates: { ar: "2019 — 2022", en: "2019 — 2022" },
       bullets: [
         { ar: "عملت على تطبيقات الجوال.", en: "Worked on mobile apps." },
-        { ar: "مهام هندسية متنوعة.", en: "Various engineering tasks." },
+        { ar: "مهام هندسية مختلفة.", en: "Various engineering tasks." },
       ],
     },
   ],
@@ -133,7 +137,7 @@ const WEAK_CV = {
     ar: "جافاسكربت، تطبيقات، عمل جماعي، مايكروسوفت أوفيس",
     en: "JavaScript, apps, teamwork, Microsoft Office",
   },
-  refs: { ar: "المراجع متوفرة عند الطلب.", en: "References available upon request." },
+  refs: { ar: "التوصيات متوفرة عند الطلب.", en: "References available upon request." },
 };
 
 /* ────────────────────────────── CV sheet ────────────────────────────── */
@@ -278,7 +282,7 @@ export function ReviewMarks({ lang }: { lang: Lang }) {
       <span className="mk-circle" />
       <span className="mk-note mk-n1">{lang === "ar" ? "غير واضح" : "unclear"}</span>
       <span className="mk-note mk-n2">?</span>
-      <span className="mk-note mk-n3">{lang === "ar" ? "أين الأثر؟" : "impact?"}</span>
+      <span className="mk-note mk-n3">{lang === "ar" ? "وين الأثر؟" : "impact?"}</span>
     </div>
   );
 }
@@ -294,17 +298,17 @@ const LI = {
   loc: { ar: "الرياض، السعودية", en: "Riyadh, Saudi Arabia" },
   about: { ar: "نبذة", en: "About" },
   aboutStrong: {
-    ar: "أقود فرق الهندسة لبناء منتجات مصرفية وتقنية مالية يستخدمها الملايين — من الفكرة إلى الإطلاق.",
+    ar: "أقود فرق هندسية تبني منتجات مصرفية وتقنية مالية على مستوى المملكة — من الفكرة إلى الإطلاق.",
     en: "I lead engineering teams building banking and fintech products used at national scale — from concept to launch.",
   },
   aboutWeak: {
-    ar: "مهندس برمجيات لدي خبرة في تطوير التطبيقات وأبحث عن فرص جديدة.",
+    ar: "مهندس برمجيات عندي خبرة في تطوير التطبيقات، وأبحث عن فرص جديدة.",
     en: "Software engineer with experience in app development. Open to new opportunities.",
   },
   connections: { ar: "أكثر من 500 متابع", en: "500+ connections" },
   viewsStrong: { ar: "1,284 ظهور في البحث هذا الأسبوع", en: "1,284 search appearances this week" },
-  viewsWeak: { ar: "6 ظهور في البحث هذا الأسبوع", en: "6 search appearances this week" },
-  open: { ar: "متاح للعمل", en: "Open to work" },
+  viewsWeak: { ar: "6 ظهورات في البحث هذا الأسبوع", en: "6 search appearances this week" },
+  open: { ar: "متاح لفرص جديدة", en: "Open to work" },
 };
 
 export function LinkedInCard({
@@ -388,7 +392,7 @@ export function BrowserCard({
         <div className="bw-body bw-empty" dir={lang === "ar" ? "rtl" : "ltr"}>
           <span className="bw-404">404</span>
           <p className="bw-empty-t">
-            {lang === "ar" ? "لا يوجد شيء لعرضه هنا." : "There is nothing here to show."}
+            {lang === "ar" ? "ما فيه شيء يتعرض هنا." : "There is nothing here to show."}
           </p>
           <p className="bw-empty-s">
             {lang === "ar" ? "آخر تحديث: 2019" : "Last updated: 2019"}
@@ -406,15 +410,15 @@ export function RejectionEmail({ lang }: { lang: Lang }) {
   return (
     <div className="em" dir={rtl ? "rtl" : "ltr"}>
       <div className="em-head">
-        <span className="em-from">{rtl ? "فريق التوظيف" : "Talent Acquisition"}</span>
+        <span className="em-from">{rtl ? "إدارة التوظيف" : "Talent Acquisition"}</span>
         <span className="em-date">{rtl ? "قبل 3 أيام" : "3 days ago"}</span>
       </div>
       <p className="em-subj">
-        {rtl ? "بخصوص طلب التوظيف — مهندس برمجيات" : "Re: Your application — Software Engineer"}
+        {rtl ? "بخصوص تقديمك — مهندس برمجيات" : "Re: Your application — Software Engineer"}
       </p>
       <p className="em-body">
         {rtl
-          ? "شكرًا لاهتمامك. بعد مراجعة طلبك، قررنا المضي قدمًا مع مرشحين آخرين تتوافق ملفاتهم بشكل أقرب مع متطلبات الدور."
+          ? "شكرًا لتقديمك معنا. بعد مراجعة طلبك، اخترنا مرشحين آخرين أقرب لمتطلبات الوظيفة في هذه المرحلة."
           : "Thank you for your interest. After reviewing your application, we have decided to move forward with other candidates whose profiles more closely match the requirements of this role."}
       </p>
       <p className="em-sig">{rtl ? "نتمنى لك التوفيق." : "We wish you the best in your search."}</p>
@@ -429,9 +433,9 @@ export function ATSCard({ lang }: { lang: Lang }) {
       <span className="ats-label">{rtl ? "فحص التوافق مع ATS" : "ATS compatibility scan"}</span>
       <span className="ats-score">38%</span>
       <ul className="ats-list">
-        <li>{rtl ? "لم يتم العثور على كلمات مفتاحية" : "Target keywords not found"}</li>
-        <li>{rtl ? "تنسيق غير قابل للقراءة" : "Unparsable layout / columns"}</li>
-        <li>{rtl ? "لا توجد نتائج قابلة للقياس" : "No measurable outcomes"}</li>
+        <li>{rtl ? "ما فيه كلمات مفتاحية للوظيفة" : "Target keywords not found"}</li>
+        <li>{rtl ? "تنسيق النظام ما يقدر يقرأه" : "Unparsable layout / columns"}</li>
+        <li>{rtl ? "ما فيه نتائج قابلة للقياس" : "No measurable outcomes"}</li>
       </ul>
     </div>
   );
@@ -458,7 +462,7 @@ export function RecruiterSearch({ lang, variant = "weak" }: { lang: Lang; varian
   );
   return (
     <div className="rs" dir={rtl ? "rtl" : "ltr"}>
-      <span className="rs-q">{rtl ? "بحث: قائد هندسة برمجيات" : "Search: engineering leader"}</span>
+      <span className="rs-q">{rtl ? "البحث: قائد هندسة برمجيات" : "Search: engineering leader"}</span>
       <div className="rs-rows">
         {strong && me}
         {others.map((r, i) => (
@@ -552,7 +556,14 @@ export function CareerObjectStyles() {
 
       /* ══ weak CV — same career, badly written ══ */
       .sheet-weak { background: #FAF9F5; }
-      .sheet-weak .sh-body { font-family: "Times New Roman", Times, serif; font-size: 2.5cqw; color: #3d3b37; }
+      /* The Word-template serif is a LATIN joke and only reads as one in Latin.
+         Applied to Arabic it resolves to whatever serif the OS happens to have
+         — which is how Turki's name ended up in a system font on this page.
+         Arabic keeps the brand face and carries "amateur" through its layout
+         instead: centred header, underlined labels, no photo, no accent. */
+      .sheet-weak .sh-body { font-size: 2.5cqw; color: #3d3b37; }
+      [dir="ltr"].sheet-weak .sh-body { font-family: "Times New Roman", Times, serif; }
+      [dir="rtl"].sheet-weak .sh-body { font-weight: 400; }
       .wk-head { text-align: center; margin-bottom: 1.2em; }
       .wk-name { margin: 0 0 0.1em; font-size: 1.6em; font-weight: 700; }
       .wk-sub { margin: 0; font-size: 0.92em; color: #55524c; }
@@ -712,6 +723,60 @@ export function CareerObjectStyles() {
         background: #eae7e1; box-shadow: 0 2px 4px rgba(20,22,30,0.08), 0 34px 68px -22px rgba(20,22,30,0.36);
       }
       .ph-img { object-fit: cover; object-position: 52% 26%; }
+
+      /* ══════════════ Arabic pass over the objects ══════════════
+         These props are miniature documents, so they carry the same rule as
+         the page: nothing that holds Arabic gets a line-height below the
+         font's own 1.25em content box, and no fake italics. Sizes and layout
+         are untouched — only the vertical rhythm changes. */
+      [dir="rtl"] .st-name { line-height: 1.3; }
+      [dir="rtl"] .st-title,
+      [dir="rtl"] .st-contact { line-height: 1.5; }
+      [dir="rtl"] .st-summary,
+      [dir="rtl"] .st-list li,
+      [dir="rtl"] .st-small { line-height: 1.65; }
+      [dir="rtl"] .st-role-t { line-height: 1.4; }
+      [dir="rtl"] .st-label { line-height: 1.6; }
+      /* The dates column is Latin digits inside an RTL row — keep it LTR so
+         "أكتوبر 2024 — الآن" never reorders around the dash. */
+      [dir="rtl"] .st-dates,
+      [dir="rtl"] .wk-dates { unicode-bidi: isolate; }
+
+      [dir="rtl"] .wk-name { line-height: 1.35; }
+      [dir="rtl"] .wk-sub,
+      [dir="rtl"] .wk-label { line-height: 1.5; }
+      [dir="rtl"] .wk-text,
+      [dir="rtl"] .wk-list li,
+      [dir="rtl"] .wk-role-t { line-height: 1.6; }
+      [dir="rtl"] .wk-refs { font-style: normal; }
+      [dir="rtl"] .mk-note { font-style: normal; }
+
+      [dir="rtl"] .li-name { line-height: 1.35; }
+      [dir="rtl"] .li-headline { line-height: 1.55; min-height: 1.55em; }
+      [dir="rtl"] .li-meta,
+      [dir="rtl"] .li-views,
+      [dir="rtl"] .li-label { line-height: 1.6; }
+      [dir="rtl"] .li-about { line-height: 1.7; }
+      /* The badge is a pill: give it the glyph room through line-height, not
+         through padding, so it stays the same height as the English one. */
+      [dir="rtl"] .li-badge { line-height: 1.5; padding-block: 0.14em; }
+
+      [dir="rtl"] .bw-title { line-height: 1.3; }
+      [dir="rtl"] .bw-role,
+      [dir="rtl"] .bw-empty-t,
+      [dir="rtl"] .bw-empty-s,
+      [dir="rtl"] .bw-tag { line-height: 1.6; }
+
+      [dir="rtl"] .em-from,
+      [dir="rtl"] .em-subj,
+      [dir="rtl"] .em-sig { line-height: 1.5; }
+      [dir="rtl"] .em-body { line-height: 1.75; }
+
+      [dir="rtl"] .ats-label,
+      [dir="rtl"] .ats-list li { line-height: 1.6; }
+      [dir="rtl"] .rs-q,
+      [dir="rtl"] .rs-txt { line-height: 1.6; }
+      [dir="rtl"] .sn { line-height: 1.4; }
     `}</style>
   );
 }

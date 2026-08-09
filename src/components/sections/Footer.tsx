@@ -547,6 +547,22 @@ export default function Footer() {
             font-size: 13px;
           }
         }
+
+        /* ══════════════════ Arabic footer ══════════════════
+           Thmanyah's Arabic glyph box is 1.25em tall, so every line-height: 1
+           here was cutting the script off. The worst of them was the brand
+           name: "تركي المالكي" is painted through background-clip: text, and
+           a clipped gradient crops to the LINE BOX — so the descenders of ي
+           and ك were being erased outright, not merely overlapped. */
+        [dir="rtl"] .footer-brand h3 { line-height: 1.28; padding-block: 0.04em; }
+        [dir="rtl"] .contact-copy h2 { line-height: 1.22; }
+        [dir="rtl"] .contact-copy p { line-height: 1.75; }
+        [dir="rtl"] .footer-column h4 { line-height: 1.45; }
+        [dir="rtl"] .footer-column a { line-height: 1.7; }
+        [dir="rtl"] .footer-copyright { line-height: 1.7; }
+        /* The pill keeps its 15px/13px proportions: the extra glyph room comes
+           out of the padding, so the button is the same height as in English. */
+        [dir="rtl"] .contact-button { line-height: 1.6; padding-block: 8px; }
       `}</style>
     </footer>
   );

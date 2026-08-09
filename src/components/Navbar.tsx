@@ -131,7 +131,9 @@ export default function Navbar() {
                 fontWeight: active ? 700 : 500,
                 color: active ? "var(--nav-icon-active)" : "var(--nav-icon-inactive)",
                 transition: "color 0.22s ease",
-                lineHeight: 1,
+                // 1 clips Arabic descenders (the font's glyph box is 1.25em);
+                // the dock item is centred, so a taller line box costs nothing.
+                lineHeight: 1.45,
                 fontFamily: "inherit",
                 userSelect: "none",
               }}

@@ -46,6 +46,7 @@ import {
   DASHBOARD_URL,
 } from "./WorkObjects";
 import { RestoringPaper } from "./PaperPhysics";
+import { CrumpledSheet } from "./CrumpledSheet";
 import { PriceRail } from "./PriceRail";
 import { useScrub } from "./scrub";
 import { CAREER_SERVICES, COMPLETE_BUNDLE, formatPrice } from "@/data/careerServices";
@@ -76,34 +77,47 @@ const svc = (id: string) => CAREER_SERVICES.find((s) => s.id === id)!;
 
 const COPY = {
   ar: {
-    chaosH: "خبرتك تستحق\nظهورًا أفضل.",
-    chaosSub: "كل شيء عن مسيرتك موجود. لا شيء منه يعمل معًا.",
+    chaosH: "خبرتك تستاهل\nظهور أوضح.",
+    chaosSub: "كل شيء عن مسيرتك موجود، لكنه ما يشتغل مع بعض.",
     reviewNotes: [
-      ["ATS", "توافق ٣٨٪"],
-      ["الوضوح", "ثلاث روايات مختلفة"],
-      ["الأثر", "لا يوجد رقم واحد"],
-      ["التموضع", "أي دور بالضبط؟"],
+      ["ATS", "التوافق 38%"],
+      ["الوضوح", "ثلاث قصص مختلفة"],
+      ["الأثر", "ولا رقم واحد"],
+      ["التموضع", "أي وظيفة بالضبط؟"],
     ],
     before: "قبل",
     after: "بعد",
-    rewriteBefore: "مسؤول عن إدارة فريق الجوال.",
-    rewriteAfter: "قدت فريقًا من ٨ مهندسين وأطلقت منتجات يستخدمها الملايين.",
+    /* The before line is duty-speak on purpose — it is the same sentence that
+       sits in the weak CV sheet. The after line is then built clause by
+       clause, and each clause carries the editorial reason it exists, so the
+       visitor reads *why* the rewrite is stronger instead of being told. */
+    rewriteBefore: "مسؤول عن إدارة الفريق التقني.",
+    rewriteBeforeNote: "واجب وظيفي. بلا قيادة، بلا حجم، بلا أثر.",
+    /* Two constraints on this line, both deliberate:
+       · No team-size figure. Nothing on this site documents how many
+         engineers reported to Turki, so the rewrite demo must not invent one
+         — a career page that overstates in its own sample is self-defeating.
+       · Western digits only, like every other figure in the Arabic build. */
+    rewriteAfter: "قدت فريقًا هندسيًا، وأسهمت في إطلاق منتجات رقمية واسعة النطاق.",
+    rewriteParts: [
+      { t: "قدت", tag: "فعل قيادي أقوى" },
+      { t: "فريقًا هندسيًا،", tag: "قيادة واضحة" },
+      { t: "وأسهمت في إطلاق", tag: "مساهمة محددة" },
+      { t: "منتجات رقمية واسعة النطاق.", tag: "أثر على المنتج" },
+    ],
     speakKicker: "هيئة الأدب والنشر والترجمة · مسرعة الأعمال",
     linkedinBefore: "مهندس برمجيات",
     linkedinAfter: "قائد هندسة برمجيات | منتجات رقمية | تقنية مالية وتحول رقمي",
-    findable: "أسهل في الظهور",
-    memorable: "أصعب في النسيان",
-    workKicker: "أعمال حقيقية · شُحنت بالفعل",
+    workKicker: "أعمال حقيقية · منشورة فعلًا",
     dataRaw: "بيانات خام",
-    dataOut: "قرار تنفيذي",
-    dashLive: "افتح اللوحة الحقيقية",
-    bundleSep: "بدلًا من",
+    dataOut: "قرار واضح",
+    dashLive: "شوف اللوحة مباشرة",
+    bundleSep: "بدل",
     finalH: "من الفوضى\nإلى الوضوح.",
-    finalSub: "اختر ما تحتاجه، وسأتولى الباقي.",
-    talk: "تحدّث معي أولًا",
-    from: "ابتداءً من",
+    finalSub: "اختر اللي تحتاجه، وأنا أكمل الباقي.",
+    talk: "كلّمني أول",
+    from: "يبدأ من",
     scrollHint: "مرّر",
-    delivery: "التسليم",
   },
   en: {
     chaosH: "Your career\ndeserves better.",
@@ -116,13 +130,20 @@ const COPY = {
     ],
     before: "Before",
     after: "After",
-    rewriteBefore: "Responsible for managing the mobile team.",
-    rewriteAfter: "Led an 8-engineer mobile team delivering products used by millions.",
+    rewriteBefore: "Responsible for managing the technical team.",
+    rewriteBeforeNote: "A duty. No leadership, no scale, no impact.",
+    // Kept in step with the Arabic: no invented team size (see the note there).
+    rewriteAfter:
+      "Led an engineering team and contributed to launching large-scale digital products.",
+    rewriteParts: [
+      { t: "Led", tag: "Stronger action verb" },
+      { t: "an engineering team", tag: "Clear leadership" },
+      { t: "and contributed to launching", tag: "Specific contribution" },
+      { t: "large-scale digital products.", tag: "Product impact" },
+    ],
     speakKicker: "Literature, Publishing & Translation Commission",
     linkedinBefore: "Software Engineer",
     linkedinAfter: "Engineering Leader | Product Builder | Fintech & Digital Transformation",
-    findable: "Easier to find",
-    memorable: "Harder to forget",
     workKicker: "Real work · already shipped",
     dataRaw: "Raw data",
     dataOut: "Executive decision",
@@ -133,7 +154,6 @@ const COPY = {
     talk: "Talk to me first",
     from: "From",
     scrollHint: "Scroll",
-    delivery: "Delivery",
   },
 };
 type Copy = (typeof COPY)["en"];
@@ -350,52 +370,106 @@ function useSectionView(ref: React.RefObject<HTMLElement | null>, service: strin
   }, [ref, service]);
 }
 
+type RewritePart = { t: string; tag: string };
+
 /**
- * A line of text that erases itself and is retyped as scroll advances —
- * the document being rewritten, character by character, rather than
- * cross-faded.
+ * The strong line as an editor actually builds it: one clause at a time, in
+ * the order a professional writer decides them — the verb, then who was led
+ * and how many, then the contribution, then what shipped, then the number
+ * that makes it checkable.
+ *
+ * Every clause is in the DOM from the first frame at `opacity: 0`, so the
+ * paragraph reserves its final height and nothing reflows as the sentence
+ * assembles. Deliberately NOT character typing: whole ideas land, each one
+ * washed in the editor's highlight and then left clean.
  */
-function Retype({
+function Rewrite({
   p,
-  range,
-  before,
-  after,
+  from,
+  to,
+  parts,
 }: {
   p: MotionValue<number>;
-  range: [number, number];
-  before: string;
-  after: string;
+  from: number;
+  to: number;
+  parts: RewritePart[];
 }) {
-  const [a, b] = range;
-  const span = b - a;
-  const del = useScrub(p, [a, a + span * 0.4], [before.length, 0]);
-  const add = useScrub(p, [a + span * 0.48, b], [0, after.length]);
-  // Derived straight from the two scrubbed counters. `useScrub` seeds them
-  // from the current scroll position, so a reload part-way down the page
-  // renders the right frame without an effect.
-  const frame = useCallback(() => {
-    const n = Math.round(add.get());
-    const d = Math.round(del.get());
-    return { txt: n > 0 ? after.slice(0, n) : before.slice(0, d), done: n >= after.length };
-  }, [add, del, after, before]);
-
-  const [{ txt, done }, setFrame] = useState(frame);
-  const apply = useCallback(
-    () =>
-      setFrame((prev) => {
-        const next = frame();
-        return next.txt === prev.txt && next.done === prev.done ? prev : next;
-      }),
-    [frame],
+  // Clauses overlap slightly, so the sentence flows instead of ticking.
+  const step = (to - from) / (parts.length + 0.35);
+  return (
+    <span className="rw-line">
+      {parts.map((part, i) => (
+        <RewriteClause key={part.t} p={p} start={from + i * step} span={step} text={part.t} />
+      ))}
+    </span>
   );
-  useMotionValueEvent(del, "change", apply);
-  useMotionValueEvent(add, "change", apply);
+}
+
+function RewriteClause({
+  p,
+  start,
+  span,
+  text,
+}: {
+  p: MotionValue<number>;
+  start: number;
+  span: number;
+  text: string;
+}) {
+  const at = (v: number) => start + span * v;
+  const opacity = useScrub(p, [at(0), at(0.62)], [0, 1]);
+  const y = useTransform(p, [at(0), at(0.7)], [9, 0]);
+  const blur = useScrub(p, [at(0), at(0.6)], [4.5, 0]);
+  const filter = useTransform(blur, (v) => (v < 0.05 ? "none" : `blur(${v.toFixed(2)}px)`));
+  // the editor's highlight, drained once the clause has settled
+  const wash = useScrub(p, [at(0), at(0.5), at(1.5)], [0, 1, 0]);
+  const backgroundColor = useTransform(
+    wash,
+    (v) => `rgba(20,149,255,${(0.16 * v).toFixed(3)})`,
+  );
+  return (
+    <>
+      <motion.span className="rw-cl" style={{ opacity, y, filter, backgroundColor }}>
+        {text}
+      </motion.span>{" "}
+    </>
+  );
+}
+
+/**
+ * The margin note: the reason the clause now landing was written that way.
+ * It changes with the scroll like a reviewer talking through the edit.
+ */
+function RewriteNote({
+  p,
+  from,
+  to,
+  parts,
+}: {
+  p: MotionValue<number>;
+  from: number;
+  to: number;
+  parts: RewritePart[];
+}) {
+  const step = (to - from) / (parts.length + 0.35);
+  const pick = useCallback(
+    (v: number) => {
+      const i = Math.floor((v - from - step * 0.2) / step);
+      return Math.min(parts.length - 1, Math.max(0, i));
+    },
+    [from, step, parts.length],
+  );
+  const [i, setI] = useState(() => pick(p.get()));
+  useMotionValueEvent(p, "change", (v) => setI((prev) => (pick(v) === prev ? prev : pick(v))));
+  const opacity = useScrub(p, [from, from + step * 0.4, to + step * 0.5, to + step], [0, 1, 1, 0]);
 
   return (
-    <span className={`rt${done ? " rt-done" : ""}`}>
-      {txt}
-      <i className="rt-caret" aria-hidden />
-    </span>
+    <motion.span className="rw-note" style={{ opacity }} aria-hidden>
+      <i className="rw-dot" />
+      <motion.b key={parts[i].tag} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
+        {parts[i].tag}
+      </motion.b>
+    </motion.span>
   );
 }
 
@@ -470,10 +544,13 @@ function SceneRestore({
     const mx = (v: number) => v * D;
     return mobile
       ? [
-          { id: "weakcv", w: 0.44, z: 20, from: { x: mx(-0.28), y: -0.24, r: -9, s: 1 }, node: <CVSheet lang={lang} variant="weak" /> },
-          { id: "li", w: 0.5, z: 18, from: { x: mx(0.27), y: 0.02, r: 8, s: 1 }, node: <LinkedInCard lang={lang} variant="weak" /> },
-          { id: "email", w: 0.56, z: 12, from: { x: mx(-0.08), y: 0.42, r: 5, s: 1 }, node: <RejectionEmail lang={lang} /> },
-          { id: "scrapA", w: 0.3, z: 8, from: { x: mx(0.42), y: -0.34, r: 21, s: 1, b: 2 }, node: <ScrapSheet tone={1} /> },
+          /* Held back on purpose: on a 390px screen the crushed CV has to be
+             the largest thing on the page, so the noise gives up size before
+             the hero does. */
+          { id: "weakcv", w: 0.36, z: 20, from: { x: mx(-0.33), y: -0.27, r: -9, s: 1 }, node: <CVSheet lang={lang} variant="weak" /> },
+          { id: "li", w: 0.42, z: 18, from: { x: mx(0.33), y: 0.02, r: 8, s: 1 }, node: <LinkedInCard lang={lang} variant="weak" /> },
+          { id: "email", w: 0.46, z: 12, from: { x: mx(-0.12), y: 0.44, r: 5, s: 1 }, node: <RejectionEmail lang={lang} /> },
+          { id: "scrapA", w: 0.26, z: 8, from: { x: mx(0.44), y: -0.36, r: 21, s: 1, b: 2 }, node: <ScrapSheet tone={1} /> },
         ]
       : [
           { id: "weakcv", w: 0.165, z: 22, from: { x: mx(-0.325), y: -0.185, r: -11, s: 1 }, node: <CVSheet lang={lang} variant="weak" /> },
@@ -493,19 +570,36 @@ function SceneRestore({
      Travel and growth live here; the crumple physics live inside
      RestoringPaper. Together they read as one object.                    */
   const heroW = mobile ? 0.58 : 0.235;
-  const restRange: [number, number] = [0.26, 0.84];
+  /* The restoration is two objects playing one part. The baked crumple owns
+     the first stretch — ball, opening, badly-flattened sheet — and hands the
+     live sheet over already creased; PaperPhysics only ever represents the
+     back half of the transformation, never its opening state. */
+  const crumpleRange: [number, number] = [0, 0.56];
+  const handoff: [number, number] = [0.48, 0.56];
+  const restRange: [number, number] = [0.5, 0.85];
 
-  // …drifts in from the right, centres itself, then steps aside for the copy.
+  /* …starts half-abandoned with its leading corner already off the edge of
+     the frame — discarded things do not sit politely inside the composition —
+     then drifts in, centres itself, and steps aside for the copy. */
+  /* Far enough out to read as discarded, close enough that the paper ball —
+     a much smaller object than the sheet it becomes — is wholly in frame. */
+  const heroOut = mobile ? 0.24 : 0.3;
   const heroX = useTransform(
     p,
     [0, 0.14, 0.42, 0.74, 0.9],
-    [0.3 * D * stage.w, 0.27 * D * stage.w, 0, 0, (mobile ? 0 : 0.24 * D) * stage.w],
+    [heroOut * D * stage.w, 0.27 * D * stage.w, 0, 0, (mobile ? 0 : 0.24 * D) * stage.w],
     { ease: EASE },
   );
   const heroY = useTransform(
     p,
     [0, 0.14, 0.42, 0.74, 0.9],
-    [0.17 * stage.h, 0.15 * stage.h, 0.01 * stage.h, 0.01 * stage.h, (mobile ? -0.17 : 0) * stage.h],
+    [
+      (mobile ? 0.21 : 0.23) * stage.h,
+      0.15 * stage.h,
+      0.01 * stage.h,
+      0.01 * stage.h,
+      (mobile ? -0.17 : 0) * stage.h,
+    ],
     { ease: EASE },
   );
   const heroScale = useTransform(
@@ -516,7 +610,10 @@ function SceneRestore({
   );
 
   const hintO = useScrub(p, [0, 0.05], [1, 0]);
-  const marksO = useScrub(p, [0.06, 0.3], [0.9, 0]); // the red pen someone already took to it
+  /* The red pen only exists once the page can be read at all — while the CV is
+     still a ball there is nothing to annotate. */
+  const marksO = useScrub(p, [0.56, 0.63, 0.74, 0.81], [0, 0.9, 0.9, 0]);
+  const sheetO = useScrub(p, [handoff[0], handoff[1]], [0, 1]);
   const copyO = useScrub(p, [0.8, 0.9], [0, 1]);
   const copyY = useTransform(p, [0.8, 0.94], [22, 0]);
 
@@ -533,6 +630,19 @@ function SceneRestore({
             className="fo hero-paper"
             style={{ x: heroX, y: heroY, scale: heroScale, width: heroW * stage.w, zIndex: 32 }}
           >
+            {/* the crushed sheet, and under it the same sheet once it can be
+                handled — only one of the two is ever legible at a time */}
+            {!reduced && (
+              <CrumpledSheet
+                p={p}
+                lang={lang}
+                range={crumpleRange}
+                fade={handoff}
+                tilt={-12}
+                lift={mobile ? 2.05 : 1.75}
+              />
+            )}
+            <motion.div style={{ opacity: sheetO }}>
             <RestoringPaper
               p={p}
               range={restRange}
@@ -553,10 +663,14 @@ function SceneRestore({
               strong={<CVSheet lang={lang} variant="weak" />}
             >
               {/* professional review annotations, struck onto the restored sheet */}
+              {/* The sheet finishes settling at 0.85. The review does not start
+                  on top of that — it waits, and the held beat is what separates
+                  "the paper has been restored" from "now I am reading it". */}
               {t.reviewNotes.map(([k, v], i) => (
-                <Annotation key={k} p={p} at={0.84 + i * 0.03} i={i} label={k} note={v} />
+                <Annotation key={k} p={p} at={0.885 + i * 0.026} i={i} label={k} note={v} />
               ))}
             </RestoringPaper>
+            </motion.div>
           </motion.div>
 
           <FieldText p={p} stage={stage} y={-0.02} range={[0, 0.02, 0.14, 0.24]} lit className="ft-mid">
@@ -661,10 +775,15 @@ function SceneRewrite({
   const sweepTop = useTransform(cut, (v) => `${v.toFixed(2)}%`);
   const sweepO = useScrub(p, [0.1, 0.16, 0.62, 0.7], [0, 1, 1, 0]);
 
-  const beforeO = useScrub(p, [0.04, 0.16, 0.36, 0.46], [0, 1, 1, 0.22]);
-  const strike = useTransform(p, [0.24, 0.36], [0, 1]);
-  const afterO = useScrub(p, [0.34, 0.44], [0, 1]);
-  const ctaO = useScrub(p, [0.74, 0.86], [0, 1]);
+  /* The weak line is condemned before anything replaces it: it fades in, is
+     struck through, is told why it fails, and only then does the strong line
+     start assembling. The two lines therefore never show the same words —
+     the AFTER slot renders nothing but AFTER copy, at every scroll position. */
+  const beforeO = useScrub(p, [0.04, 0.16, 0.44, 0.56], [0, 1, 1, 0.24]);
+  const strike = useTransform(p, [0.2, 0.34], [0, 1]);
+  const beforeNoteO = useScrub(p, [0.26, 0.34, 0.56, 0.64], [0, 1, 1, 0.3]);
+  const afterO = useScrub(p, [0.34, 0.42], [0, 1]);
+  const ctaO = useScrub(p, [0.78, 0.9], [0, 1]);
 
   return (
     <section ref={ref} className={`sc-rw${reduced ? " unpinned" : ""}`}>
@@ -690,15 +809,27 @@ function SceneRewrite({
                 <span className="ba-k">{t.before}</span>
                 <span className="ba-line-wrap">
                   {t.rewriteBefore}
-                  <motion.span className="ba-strike" style={{ scaleX: strike }} />
+                  <motion.span
+                    className="ba-strike"
+                    style={{
+                      scaleX: strike,
+                      transformOrigin: lang === "ar" ? "right center" : "left center",
+                    }}
+                  />
                 </span>
+                <motion.span className="ba-why" style={{ opacity: beforeNoteO }}>
+                  {t.rewriteBeforeNote}
+                </motion.span>
               </motion.p>
               <motion.p className="ba-after" style={{ opacity: afterO }}>
                 <span className="ba-k ba-k-on">{t.after}</span>
                 {reduced ? (
                   t.rewriteAfter
                 ) : (
-                  <Retype p={p} range={[0.3, 0.66]} before={t.rewriteBefore} after={t.rewriteAfter} />
+                  <>
+                    <Rewrite p={p} from={0.38} to={0.74} parts={t.rewriteParts} />
+                    <RewriteNote p={p} from={0.38} to={0.74} parts={t.rewriteParts} />
+                  </>
                 )}
               </motion.p>
             </div>
@@ -1550,14 +1681,20 @@ function PageStyles() {
       .ba-before, .ba-after { margin: 0; font-size: clamp(18px, 2.3vw, 31px); font-weight: 700; letter-spacing: -0.025em; line-height: 1.32; }
       .ba-before { color: var(--text-muted, #a5a5a0); }
       .ba-line-wrap { position: relative; display: inline; }
-      .ba-strike { position: absolute; left: 0; right: 0; top: 52%; height: 2px; background: currentColor; opacity: 0.6; transform-origin: left center; }
-      .ba-after { color: var(--text-primary); min-height: 2.6em; }
+      .ba-strike { position: absolute; left: 0; right: 0; top: 52%; height: 2px; background: currentColor; opacity: 0.6; }
+      .ba-after { color: var(--text-primary); }
       .ba-k { display: block; margin-bottom: 8px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted, #a5a5a0); }
       .ba-k-on { color: var(--accent, #1495ff); }
+      .ba-why { display: block; margin-top: 10px; font-size: clamp(12px, 1.05vw, 14px); font-weight: 600; letter-spacing: 0; line-height: 1.5; color: var(--text-muted, #a5a5a0); opacity: 0.85; }
 
-      /* the retyped line */
-      .rt-caret { display: inline-block; width: 2px; height: 0.95em; margin-inline-start: 3px; translate: 0 0.1em; background: var(--accent, #1495ff); }
-      .rt-done .rt-caret { opacity: 0; }
+      /* the rewritten line, assembled clause by clause */
+      .rw-line { display: inline; }
+      /* inline-block, not inline: transforms and filters do not apply to
+         inline boxes, and each clause needs to lift and sharpen as it lands */
+      .rw-cl { display: inline-block; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 0.04em 0.1em; margin-inline: -0.1em; will-change: opacity, transform, filter; }
+      .rw-note { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: clamp(11px, 1vw, 13px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent, #1495ff); }
+      .rw-note b { font-weight: 700; display: inline-block; }
+      .rw-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #1495ff); box-shadow: 0 0 0 4px rgba(20,149,255,0.16); }
 
       @media (max-width: 820px) {
         .mega { font-size: clamp(34px, 10.5vw, 60px); letter-spacing: -0.04em; }
@@ -1569,6 +1706,71 @@ function PageStyles() {
       @media (prefers-reduced-motion: reduce) {
         .fo { will-change: auto; }
       }
+
+      /* ══════════════════ ARABIC PASS OVER THE FILM ══════════════════
+
+         The display scale above is tuned for Latin: 0.95–1.04 line-heights and
+         -0.04em tracking. Thmanyah's Arabic content box is 1.25em tall before
+         line-height applies, so those numbers make two-line Arabic headings
+         overlap — and every scene here is a .stage with overflow: hidden,
+         which turns the overlap into clipping. Arabic therefore gets its own
+         numbers, not extra padding: headings 1.15–1.3, body 1.7–1.85, and
+         buttons that grow through line-height so the pills stay the same
+         height they are in English.                                          */
+
+      [dir="rtl"] .mega { line-height: 1.18; }
+      [dir="rtl"] .mega-2 { line-height: 1.22; }
+      [dir="rtl"] .big { line-height: 1.26; }
+      [dir="rtl"] .mega-sub,
+      [dir="rtl"] .lede { line-height: 1.8; max-width: 40ch; }
+
+      /* Chapter marks and kickers: uppercase does nothing in Arabic, and the
+         tracking is already neutralised globally — what they need is room. */
+      [dir="rtl"] .chap,
+      [dir="rtl"] .wk-kick,
+      [dir="rtl"] .db-tag,
+      [dir="rtl"] .bd-name,
+      [dir="rtl"] .sp-kicker,
+      [dir="rtl"] .hint { line-height: 1.7; }
+      /* "01 · مراجعة السيرة" — the divider rule belongs on the start side of
+         the number in both directions, which padding-inline-end already
+         gives us; the number itself just needs isolating from the name. */
+      [dir="rtl"] .chap i { unicode-bidi: isolate; }
+
+      /* CTAs: same 52/58px pill, more glyph room inside it. */
+      [dir="rtl"] .cta { line-height: 1.6; padding-block: 12px; }
+      [dir="rtl"] .cta-big { padding-block: 14px; }
+      [dir="rtl"] .cta-p,
+      [dir="rtl"] .ghost,
+      [dir="rtl"] .fin-ghost { line-height: 1.7; }
+
+      /* before → after */
+      [dir="rtl"] .ba-before,
+      [dir="rtl"] .ba-after { line-height: 1.6; }
+      /* Reserves the two lines the Arabic "after" needs while it types, so the
+         CTA below it doesn't jump — measured in em, so it tracks the font. */
+      [dir="rtl"] .ba-after { min-height: 3.2em; }
+      [dir="rtl"] .ba-k { line-height: 1.7; }
+      /* The strike-through sweeps from the start edge, which is the right in
+         Arabic — otherwise it crosses the sentence backwards. */
+      [dir="rtl"] .ba-strike { transform-origin: right center; }
+      /* The caret trails the last typed letter; in Arabic that is its left. */
+      [dir="rtl"] .rt-caret { margin-inline-start: 3px; }
+
+      [dir="rtl"] .hl-strong { line-height: 1.45; }
+      [dir="rtl"] .hl-weak { line-height: 1.6; }
+
+      /* Prices: the figure is Latin, the currency word is Arabic. Isolating
+         the pair keeps "1,499 ريال" from reordering next to punctuation. */
+      [dir="rtl"] .money { unicode-bidi: isolate; }
+      [dir="rtl"] .money-xl { line-height: 1.35; }
+      [dir="rtl"] .bd-price em { font-style: normal; line-height: 1.7; }
+
+      /* Margin notes on the CV: no faux italic, and the leader rule is drawn
+         from the sheet's end edge back into the text. */
+      [dir="rtl"] .ann-txt i { font-style: normal; }
+      [dir="rtl"] .ann-txt b,
+      [dir="rtl"] .ann-txt i { line-height: 1.55; }
     `}</style>
   );
 }

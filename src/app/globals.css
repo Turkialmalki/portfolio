@@ -183,7 +183,10 @@ html.lenis body {
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-thmanyah), system-ui, -apple-system, sans-serif;
+  /* `--font-thmanyah` already carries next/font's full stack, including the
+     Arabic-capable system fallbacks declared in layout.tsx. Appending Latin
+     defaults here only re-introduces a font that cannot render Arabic. */
+  font-family: var(--font-thmanyah);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -200,28 +203,67 @@ button { font-weight: 700; }
 nav a, nav button { font-weight: 500; }
 small { font-weight: 300; }
 
-/* ── Arabic / RTL typography ──
-   Thmanyah Sans is designed with its own internal spacing; any Latin-style
-   negative tracking crushes Arabic letterforms (connections, dots, curves)
-   and Latin line-heights are too tight for Arabic ascenders/descenders. */
+/* ══════════════════════ Arabic / RTL typography ══════════════════════
+
+   Thmanyah Sans is 1000/-250 per 1000 em units: its content box is 1.25em
+   tall before a single line-height is applied. That single number explains
+   nearly every Arabic layout complaint on this site:
+
+   · any `line-height` under 1.25 makes consecutive lines overlap, and clips
+     the moment an ancestor has `overflow: hidden` (every pinned .stage does);
+   · Latin display tracking (-0.045em) closes up the joins between letters;
+   · a fixed-height pill built for Latin metrics has ~25% less room than the
+     Arabic glyph box actually needs.
+
+   So RTL gets its own scale rather than per-component padding patches. The
+   numbers below are the whole system — nothing else should set a line-height
+   for Arabic.                                                              */
+
 [dir="rtl"] * {
   letter-spacing: 0 !important;
   font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+}
+
+/* Arabic has no italic and no separate bold face beyond the five real
+   weights; leaving synthesis on gives slanted, smeared glyphs. */
+[dir="rtl"] {
+  font-synthesis: none;
+}
+
+[dir="rtl"] i,
+[dir="rtl"] em,
+[dir="rtl"] cite,
+[dir="rtl"] address {
+  font-style: normal;
 }
 
 /* :where() keeps these at zero specificity, so ANY component class
    (e.g. .hero-title) always wins its own line-height — these are only
    the fallback for elements that don't declare their own. */
 :where([dir="rtl"]) :where(body) {
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
-:where([dir="rtl"]) :where(h1, h2, h3, h4) {
-  line-height: 1.35;
+:where([dir="rtl"]) :where(h1, h2, h3, h4, h5, h6) {
+  line-height: 1.3;
 }
 
-:where([dir="rtl"]) :where(p) {
+:where([dir="rtl"]) :where(p, li) {
   line-height: 1.8;
+}
+
+/* Interactive surfaces: Arabic needs the extra 0.25em of glyph box, and it
+   has to come from line-height + centring, never from extra padding — the
+   pills stay exactly as tall as they are in English. */
+[dir="rtl"] :is(button, a.cta, .cta, input, select, textarea) {
+  line-height: 1.6;
+}
+
+/* Small caps-style labels: `text-transform: uppercase` is a no-op in Arabic
+   but the 1.0–1.2 line-heights they ship with are not — they clip descenders
+   on ي / ج / ع. */
+[dir="rtl"] :is(small, label, figcaption) {
+  line-height: 1.7;
 }
 
 [dir="rtl"] input,

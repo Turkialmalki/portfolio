@@ -104,9 +104,11 @@ export function DataSheet({ lang }: { lang: Lang }) {
 const KPIS = [
   { v: "20", l: { ar: "شركة في الدفعة", en: "companies in batch" } },
   { v: "64%", l: { ar: "متوسط الجاهزية", en: "avg. readiness" } },
-  { v: "12/20", l: { ar: "مدرّة للدخل", en: "revenue-generating" } },
+  { v: "12/20", l: { ar: "لديها إيرادات", en: "revenue-generating" } },
   { v: "118", l: { ar: "وظيفة مباشرة", en: "direct jobs" } },
-  { v: "5.6M", l: { ar: "الحد الأدنى للإيراد (ر.س)", en: "revenue floor (SAR)" } },
+  // No parenthetical: "(ر.س)" is a bidi-neutral run that wraps onto its own
+  // line inside a KPI tile and reads as a stray fragment in Arabic.
+  { v: "5.6M", l: { ar: "أقل إيراد بالريال", en: "revenue floor (SAR)" } },
   { v: "3/20", l: { ar: "جاهزة للاستثمار", en: "investment-ready" } },
 ];
 
@@ -130,12 +132,12 @@ const TOP_READY: [string, number][] = [
 const DASH_COPY = {
   ar: {
     title: "لوحة متابعة مسرعة أعمال الأفلام",
-    sub: "هيئة الأفلام · دفعة الـ ٢٠ شركة",
+    sub: "هيئة الأفلام · دفعة من 20 شركة",
     s1: "الملخص التنفيذي",
-    s2: "توزيع الشركات حسب المرحلة",
+    s2: "الشركات حسب مرحلة الاستثمار",
     s3: "الأقرب لجولة استثمارية",
     s4: "مؤشر صحة المحفظة",
-    risk: "تركّز جغرافي ٨٥٪ في الرياض · ٦ شركات بمخاطر الشخص الواحد",
+    risk: "85% من الشركات في الرياض · 6 شركات تعتمد على شخص واحد",
   },
   en: {
     title: "Film Accelerator — portfolio dashboard",
@@ -250,6 +252,11 @@ export function WorkObjectStyles() {
       .ds-row span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .ds-head { background: #f7f7f5; color: #97978f; letter-spacing: 0.02em; }
       .ds-row:nth-child(even) { background: rgba(0,0,0,0.015); }
+      /* The sheet is monospace because it is a CSV — but the header row is the
+         one part that gets localised, and no system mono covers Arabic, so in
+         Arabic it fell through to a default face. The rows stay mono; only the
+         translated header returns to the brand font. */
+      .ds-head:lang(ar) { font-family: var(--font-thmanyah), sans-serif; line-height: 1.6; }
 
       /* ══ executive dashboard ══ */
       .db {
@@ -307,6 +314,20 @@ export function WorkObjectStyles() {
         .db-charts { grid-template-columns: 1fr; }
         .db-live { display: none; }
       }
+
+      /* ══ Arabic pass over the dashboard ══
+         Every label here is small and sits inside a fixed-height tile, which
+         is exactly where a 1.0–1.45 line-height eats Arabic descenders. The
+         tiles keep their size; only the text rhythm inside them changes. */
+      [dir="rtl"] .db-title { line-height: 1.35; }
+      [dir="rtl"] .db-sub { line-height: 1.5; }
+      [dir="rtl"] .db-live { line-height: 1.5; }
+      [dir="rtl"] .db-kpi span { line-height: 1.55; }
+      [dir="rtl"] .db-lab { line-height: 1.6; }
+      [dir="rtl"] .db-risk { line-height: 1.7; }
+      /* The chapter figure and the label are one string ("01 — الملخص") —
+         isolate it so the Latin digits stay on the correct side. */
+      [dir="rtl"] .db-live { unicode-bidi: isolate; }
     `}</style>
   );
 }

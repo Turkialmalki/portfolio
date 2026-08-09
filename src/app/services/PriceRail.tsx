@@ -128,8 +128,23 @@ export function PriceRail({ lang, hidden = false }: { lang: Lang; hidden?: boole
         .rail-prog { display: block; width: 88px; height: 1px; background: currentColor; opacity: 0.18; }
         .rail-prog i { display: block; height: 100%; background: currentColor; opacity: 1; transform-origin: left center; }
         [dir="rtl"] .rail-prog i { transform-origin: right center; }
+
+        /* ══ Arabic rail ══
+           The rail is a rolling window: the stack translates by a percentage,
+           so the window height and the cell height must stay identical. Arabic
+           needs a taller cell than the 1.35/1.6em Latin one — bump BOTH, and
+           the roll stays exactly in register. */
+        [dir="rtl"] .rail-win { height: 1.7em; }
+        [dir="rtl"] .rail-win-name { height: 2em; }
+        [dir="rtl"] .rail-cell { height: 2em; line-height: 1.7; }
+        [dir="rtl"] .rail-price { height: 1.7em; line-height: 1.4; unicode-bidi: isolate; }
+        /* The chapter figure is Latin inside an Arabic label. */
+        [dir="rtl"] .rail-cell i { unicode-bidi: isolate; }
         @media (max-width: 620px) {
-          .rail { bottom: 14px; inset-inline-start: 16px; gap: 6px; }
+          /* The bottom dock spans the full width on phones, so a 14px offset
+             put the readout underneath it — the price was unreadable in both
+             languages. Sit the rail on top of the dock instead. */
+          .rail { bottom: 104px; inset-inline-start: 16px; gap: 6px; }
           .rail-win-price { font-size: 18px; }
           .rail-prog { width: 64px; }
         }
