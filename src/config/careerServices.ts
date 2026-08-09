@@ -1,49 +1,85 @@
 /**
- * Checkout (Lemon Squeezy) and intake (Tally) URLs for the career-services
- * offering on /services.
+ * Commerce configuration for the /services journey.
  *
- * Checkout: every service currently points at ONE shared Lemon Squeezy cart —
- * a deliberate interim setup until per-service products exist. Because they
- * share a link, the buyer's chosen service is not encoded in the checkout;
- * the `service` property on the analytics events is the only signal of which
- * one they clicked. Give each service its own link when the products are set
- * up, then this comment can go away.
+ * ── PRICES ────────────────────────────────────────────────────────────────
+ * Every service stores BOTH currencies explicitly. There is no live FX call
+ * and no runtime conversion: the English site renders USD, the Arabic site
+ * renders SAR, and the two figures are independently authored so either can
+ * be repriced without disturbing the other.
  *
- * Intake: still PLACEHOLDERS — swap each for the real Tally form URL.
+ * ── CHECKOUT ──────────────────────────────────────────────────────────────
+ * Each service has its OWN entry below so the CTAs can be pointed at separate
+ * Lemon Squeezy products the moment those products exist. Until then every
+ * entry resolves to the one cart that is live today — that is recorded in
+ * `CHECKOUT_IS_PLACEHOLDER` rather than hidden, so it is obvious which links
+ * still need a real product URL. Replace the values one at a time; nothing
+ * else in the page needs to change.
  */
 
-const SHARED_CHECKOUT_URL =
+export type ServiceId =
+  | "resumeReview"
+  | "resumeWriting"
+  | "publicSpeaking"
+  | "linkedinOptimization"
+  | "mvpPortfolio"
+  | "dashboardReporting"
+  | "completeBundle";
+
+export type Price = { usd: number; sar: number };
+
+/** The single Lemon Squeezy cart that is live today. */
+const LIVE_SHARED_CART =
   "https://tryproduct-ai.lemonsqueezy.com/checkout/cart/7c8db786-6f5e-486a-8731-383355308aea";
 
-export const CHECKOUT_URLS = {
-  cvReview: SHARED_CHECKOUT_URL,
-  cvRewrite: SHARED_CHECKOUT_URL,
-  linkedin: SHARED_CHECKOUT_URL,
-  portfolio: SHARED_CHECKOUT_URL,
-  careerUpgrade: SHARED_CHECKOUT_URL,
-} as const;
-
-export const INTAKE_URLS = {
-  cvReview: "https://tally.so/r/REPLACE_CV_REVIEW_INTAKE_URL",
-  cvRewrite: "https://tally.so/r/REPLACE_CV_REWRITE_INTAKE_URL",
-  linkedin: "https://tally.so/r/REPLACE_LINKEDIN_INTAKE_URL",
-  portfolio: "https://tally.so/r/REPLACE_PORTFOLIO_INTAKE_URL",
-  careerUpgrade: "https://tally.so/r/REPLACE_CAREER_UPGRADE_INTAKE_URL",
-} as const;
-
 /**
- * PLACEHOLDER PRICING — no real prices were provided. These are reasonable
- * SAR figures scaled to each service's effort level so the page is usable
- * end-to-end; replace with actual configured prices before launch.
+ * PLACEHOLDER — every id points at the shared cart until per-service products
+ * are created. `true` means "this URL is not yet the real product link".
  */
-export const PRICING_SAR = {
-  cvReview: 349,
-  cvRewrite: 899,
-  linkedin: 549,
-  portfolio: 2499,
-  careerUpgradeIndividualValue: 1448, // cvRewrite + linkedin
-  careerUpgradePackage: 1199,
-  get careerUpgradeSavings() {
-    return this.careerUpgradeIndividualValue - this.careerUpgradePackage;
-  },
-} as const;
+export const CHECKOUT_IS_PLACEHOLDER: Record<ServiceId, boolean> = {
+  resumeReview: true,
+  resumeWriting: true,
+  publicSpeaking: true,
+  linkedinOptimization: true,
+  mvpPortfolio: true,
+  dashboardReporting: true,
+  completeBundle: true,
+};
+
+export const CHECKOUT_URLS: Record<ServiceId, string> = {
+  resumeReview: LIVE_SHARED_CART,
+  resumeWriting: LIVE_SHARED_CART,
+  publicSpeaking: LIVE_SHARED_CART,
+  linkedinOptimization: LIVE_SHARED_CART,
+  mvpPortfolio: LIVE_SHARED_CART,
+  dashboardReporting: LIVE_SHARED_CART,
+  completeBundle: LIVE_SHARED_CART,
+};
+
+/** PLACEHOLDER — swap each for the real Tally intake form. */
+export const INTAKE_URLS: Record<ServiceId, string> = {
+  resumeReview: "https://tally.so/r/REPLACE_RESUME_REVIEW_INTAKE",
+  resumeWriting: "https://tally.so/r/REPLACE_RESUME_WRITING_INTAKE",
+  publicSpeaking: "https://tally.so/r/REPLACE_PUBLIC_SPEAKING_INTAKE",
+  linkedinOptimization: "https://tally.so/r/REPLACE_LINKEDIN_INTAKE",
+  mvpPortfolio: "https://tally.so/r/REPLACE_MVP_PORTFOLIO_INTAKE",
+  dashboardReporting: "https://tally.so/r/REPLACE_DASHBOARD_INTAKE",
+  completeBundle: "https://tally.so/r/REPLACE_COMPLETE_BUNDLE_INTAKE",
+};
+
+export const PRICING: Record<ServiceId, Price> = {
+  resumeReview: { usd: 5, sar: 19 },
+  resumeWriting: { usd: 30, sar: 113 },
+  publicSpeaking: { usd: 40, sar: 150 },
+  linkedinOptimization: { usd: 30, sar: 113 },
+  mvpPortfolio: { usd: 250, sar: 939 },
+  dashboardReporting: { usd: 100, sar: 376 },
+  completeBundle: { usd: 399, sar: 1499 },
+};
+
+/** Sum of the six individual services — the bundle's strike-through anchor. */
+export const INDIVIDUAL_TOTAL: Price = (
+  ["resumeReview", "resumeWriting", "publicSpeaking", "linkedinOptimization", "mvpPortfolio", "dashboardReporting"] as const
+).reduce<Price>((acc, id) => ({ usd: acc.usd + PRICING[id].usd, sar: acc.sar + PRICING[id].sar }), {
+  usd: 0,
+  sar: 0,
+});

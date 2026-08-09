@@ -437,25 +437,37 @@ export function ATSCard({ lang }: { lang: Lang }) {
   );
 }
 
-export function RecruiterSearch({ lang }: { lang: Lang }) {
+/**
+ * A recruiter's search for an engineering leader.
+ * `weak` buries Turki at result 47 under three identical strangers; `strong`
+ * is the same search after the profile has been positioned — he is result 1.
+ */
+export function RecruiterSearch({ lang, variant = "weak" }: { lang: Lang; variant?: "weak" | "strong" }) {
   const rtl = lang === "ar";
-  const rows = rtl
+  const strong = variant === "strong";
+  const others = rtl
     ? ["مهندس برمجيات — الرياض", "مهندس برمجيات — جدة", "مهندس برمجيات — الرياض"]
     : ["Software Engineer — Riyadh", "Software Engineer — Jeddah", "Software Engineer — Riyadh"];
+  const me = (
+    <div className={`rs-row ${strong ? "rs-me" : "rs-you"}`}>
+      <span className={`rs-av ${strong ? "rs-av-me" : "rs-av-you"}`} />
+      <span className="rs-txt">
+        {P.name[lang]} — {strong ? (rtl ? "النتيجة 1" : "result 1") : rtl ? "النتيجة 47" : "result 47"}
+      </span>
+    </div>
+  );
   return (
     <div className="rs" dir={rtl ? "rtl" : "ltr"}>
       <span className="rs-q">{rtl ? "بحث: قائد هندسة برمجيات" : "Search: engineering leader"}</span>
       <div className="rs-rows">
-        {rows.map((r, i) => (
+        {strong && me}
+        {others.map((r, i) => (
           <div key={i} className="rs-row">
             <span className="rs-av" />
             <span className="rs-txt">{r}</span>
           </div>
         ))}
-        <div className="rs-row rs-you">
-          <span className="rs-av rs-av-you" />
-          <span className="rs-txt">{P.name[lang]} — {rtl ? "النتيجة 47" : "result 47"}</span>
-        </div>
+        {!strong && me}
       </div>
     </div>
   );
@@ -674,6 +686,9 @@ export function CareerObjectStyles() {
       .rs-txt { font-size: 0.76em; color: #4a4d52; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .rs-you { padding-top: 0.55em; border-top: 1px dashed rgba(0,0,0,0.12); opacity: 0.55; }
       .rs-you .rs-txt { color: #a0a3a8; }
+      .rs-me { padding-bottom: 0.55em; border-bottom: 1px solid rgba(10,102,194,0.22); }
+      .rs-me .rs-txt { color: #0a66c2; font-weight: 700; }
+      .rs-av-me { background: #cfe2f7; }
 
       /* ══ sticky note ══ */
       .sn {
