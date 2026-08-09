@@ -3,37 +3,86 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
-const FAQS = [
-  {
-    question: "What kind of work do you specialize in?",
-    answer:
-      "I specialize in leading frontend and mobile engineering teams, building scalable digital products, and turning complex business requirements into clear, high-performing user experiences.",
+const FAQS = {
+  en: [
+    {
+      question: "What kind of work do you specialize in?",
+      answer:
+        "I specialize in leading frontend and mobile engineering teams, building scalable digital products, and turning complex business requirements into clear, high-performing user experiences.",
+    },
+    {
+      question: "What is your strongest technical background?",
+      answer:
+        "My strongest background is in React, Next.js, React Native, TypeScript, clean architecture, frontend/mobile architecture, and building scalable systems that are maintainable and performance-focused.",
+    },
+    {
+      question: "What industries have you worked in?",
+      answer:
+        "I have worked across government innovation, fintech, banking, enterprise platforms, and digital transformation projects in Saudi Arabia and the MENA region.",
+    },
+    {
+      question: "How do you work with product and design teams?",
+      answer:
+        "I partner closely with product, design, backend, QA, and business teams to align technical decisions with user needs, business goals, and delivery timelines.",
+    },
+    {
+      question: "What makes your experience different?",
+      answer:
+        "I combine engineering leadership, product thinking, UI/UX sensitivity, and hands-on technical depth. I have led teams, shipped large-scale web and mobile products, improved platform quality, and won national programming and innovation competitions.",
+    },
+  ],
+  ar: [
+    {
+      question: "ما هي مجالات تخصصك؟",
+      answer:
+        "أتخصص في قيادة فرق هندسة الواجهات وتطبيقات الجوال، وبناء منتجات رقمية قابلة للتوسع، وتحويل متطلبات الأعمال المعقدة إلى تجارب استخدام واضحة وعالية الأداء.",
+    },
+    {
+      question: "ما هي أقوى خلفيتك التقنية؟",
+      answer:
+        "أقوى خبراتي في React و Next.js و React Native و TypeScript، والمعمارية النظيفة، ومعمارية الواجهات والجوال، وبناء أنظمة قابلة للتوسع سهلة الصيانة وعالية الأداء.",
+    },
+    {
+      question: "ما هي القطاعات التي عملت فيها؟",
+      answer:
+        "عملت في الابتكار الحكومي، والتقنية المالية، والقطاع المصرفي، والمنصات المؤسسية، ومشاريع التحول الرقمي في السعودية ومنطقة الشرق الأوسط وشمال أفريقيا.",
+    },
+    {
+      question: "كيف تعمل مع فرق المنتج والتصميم؟",
+      answer:
+        "أعمل عن قرب مع فرق المنتج والتصميم والأنظمة الخلفية والجودة والأعمال لمواءمة القرارات التقنية مع احتياجات المستخدم وأهداف العمل ومواعيد التسليم.",
+    },
+    {
+      question: "ما الذي يميز خبرتك؟",
+      answer:
+        "أجمع بين القيادة الهندسية، والتفكير المنتجي، والحس التصميمي، والعمق التقني العملي. قدت فرقًا، وأطلقت منتجات ويب وجوال واسعة النطاق، وحسّنت جودة المنصات، وفزت بمسابقات وطنية في البرمجة والابتكار.",
+    },
+  ],
+};
+
+const COPY = {
+  en: {
+    pill: "FAQ",
+    heading1: "Got Questions?",
+    heading2: "I Got Answers!",
+    supporting:
+      "Here are common questions about my experience, leadership, and product engineering work.",
   },
-  {
-    question: "What is your strongest technical background?",
-    answer:
-      "My strongest background is in React, Next.js, React Native, TypeScript, clean architecture, frontend/mobile architecture, and building scalable systems that are maintainable and performance-focused.",
+  ar: {
+    pill: "الأسئلة الشائعة",
+    heading1: "عندك سؤال؟",
+    heading2: "لدي الإجابة!",
+    supporting: "إجابات على أكثر الأسئلة شيوعًا حول خبرتي وقيادتي وأعمالي في هندسة المنتجات.",
   },
-  {
-    question: "What industries have you worked in?",
-    answer:
-      "I have worked across government innovation, fintech, banking, enterprise platforms, and digital transformation projects in Saudi Arabia and the MENA region.",
-  },
-  {
-    question: "How do you work with product and design teams?",
-    answer:
-      "I partner closely with product, design, backend, QA, and business teams to align technical decisions with user needs, business goals, and delivery timelines.",
-  },
-  {
-    question: "What makes your experience different?",
-    answer:
-      "I combine engineering leadership, product thinking, UI/UX sensitivity, and hands-on technical depth. I have led teams, shipped large-scale web and mobile products, improved platform quality, and won national programming and innovation competitions.",
-  },
-];
+};
 
 export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number>(0);
+  const { lang } = useLanguage();
+  const copy = COPY[lang];
+  const faqs = FAQS[lang];
 
   const toggle = (index: number) => {
     setOpenIndex((prev) => (prev === index ? -1 : index));
@@ -44,18 +93,15 @@ export default function FAQ() {
       <div style={containerStyle} className="faq-grid">
         {/* ── Left column ── */}
         <div style={leftColStyle} className="faq-left-col">
-          <div style={pillStyle}>FAQ</div>
+          <div style={pillStyle}>{copy.pill}</div>
 
           <h2 style={headingStyle} className="faq-heading">
-            Got Questions?
+            {copy.heading1}
             <br />
-            I Got Answers!
+            {copy.heading2}
           </h2>
 
-          <p style={supportingTextStyle}>
-            Here are common questions about my experience, leadership, and
-            product engineering work.
-          </p>
+          <p style={supportingTextStyle}>{copy.supporting}</p>
 
           <div style={imageWrapStyle} className="faq-image-wrap">
             <Image
@@ -71,7 +117,7 @@ export default function FAQ() {
 
         {/* ── Right column ── */}
         <div style={rightColStyle} className="faq-right-col">
-          {FAQS.map((faq, index) => {
+          {faqs.map((faq, index) => {
             const isOpen = openIndex === index;
             return (
               <div key={index} style={cardStyle}>
@@ -224,7 +270,7 @@ const cardHeaderStyle: React.CSSProperties = {
   border: "none",
   cursor: "pointer",
   fontFamily: "inherit",
-  textAlign: "left",
+  textAlign: "start",
 };
 
 const questionStyle: React.CSSProperties = {

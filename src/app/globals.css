@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Thmanyah Sans is loaded via next/font/local in src/app/layout.tsx
+   (self-hosted, preloaded, CLS-safe) and exposed as --font-thmanyah.
+   Weight map: Light 300 · Regular 400 · Medium 500 · Bold 700 · Black 900 */
+
 @theme inline {
   --color-bg-primary: #F5F5F3;
   --color-bg-surface: #FFFFFF;
@@ -8,9 +12,7 @@
   --color-text-secondary: #6B7280;
   --color-border: rgba(0, 0, 0, 0.06);
   --color-accent: #111111;
-  --font-sans: var(--font-inter);
-  --font-script: var(--font-dancing-script);
-  --font-arabic: var(--font-noto-naskh);
+  --font-sans: var(--font-thmanyah);
 }
 
 /* ── Design tokens ── */
@@ -181,12 +183,49 @@ html.lenis body {
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-thmanyah), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
   transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* ── Typography weight scale (Thmanyah Sans) ── */
+h1 { font-weight: 900; }
+h2, h3 { font-weight: 700; }
+button { font-weight: 700; }
+nav a, nav button { font-weight: 500; }
+small { font-weight: 300; }
+
+/* ── Arabic / RTL typography ──
+   Thmanyah Sans is designed with its own internal spacing; any Latin-style
+   negative tracking crushes Arabic letterforms (connections, dots, curves)
+   and Latin line-heights are too tight for Arabic ascenders/descenders. */
+[dir="rtl"] * {
+  letter-spacing: 0 !important;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+}
+
+/* :where() keeps these at zero specificity, so ANY component class
+   (e.g. .hero-title) always wins its own line-height — these are only
+   the fallback for elements that don't declare their own. */
+:where([dir="rtl"]) :where(body) {
+  line-height: 1.7;
+}
+
+:where([dir="rtl"]) :where(h1, h2, h3, h4) {
+  line-height: 1.35;
+}
+
+:where([dir="rtl"]) :where(p) {
+  line-height: 1.8;
+}
+
+[dir="rtl"] input,
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  text-align: right;
 }
 
 /* Smooth theme transitions */

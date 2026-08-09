@@ -1,42 +1,52 @@
 import type { Metadata } from "next";
-import { Inter, Dancing_Script, Noto_Naskh_Arabic } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import LenisProvider from "@/providers/LenisProvider";
 import Analytics from "@/components/Analytics";
+import { LanguageProvider } from "@/i18n/LanguageProvider";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
+// Thmanyah Sans — the single brand typeface (Arabic + Latin).
+// next/font self-hosts, preloads, and generates size-adjusted fallbacks (no CLS).
+const thmanyah = localFont({
+  src: [
+    { path: "../../public/fonts/thmanyahsans-Light.otf", weight: "300", style: "normal" },
+    { path: "../../public/fonts/thmanyahsans-Regular.otf", weight: "400", style: "normal" },
+    { path: "../../public/fonts/thmanyahsans-Medium.otf", weight: "500", style: "normal" },
+    { path: "../../public/fonts/thmanyahsans-Bold.otf", weight: "700", style: "normal" },
+    { path: "../../public/fonts/thmanyahsans-Black.otf", weight: "900", style: "normal" },
+  ],
+  variable: "--font-thmanyah",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
+  fallback: ["system-ui", "-apple-system", "Segoe UI", "Tahoma", "sans-serif"],
 });
 
-const dancingScript = Dancing_Script({
-  subsets: ["latin"],
-  variable: "--font-dancing-script",
-  display: "swap",
-  weight: ["700"],
-});
-
-const notoNaskhArabic = Noto_Naskh_Arabic({
-  subsets: ["arabic"],
-  variable: "--font-noto-naskh",
-  display: "swap",
-  weight: ["400", "700"],
-});
+// Applies persisted language before first paint to avoid an RTL/LTR flash
+const LANG_INIT = `(function(){try{var l=localStorage.getItem("portfolio-lang");if(l!=="en"&&l!=="ar")l="ar";var d=document.documentElement;d.lang=l;d.dir=l==="ar"?"rtl":"ltr";d.setAttribute("data-lang",l);}catch(e){}})();`;
 
 export const metadata: Metadata = {
-  title: "Turki Al-Malki — Creative Developer & Product Designer",
+  title: "تركي المالكي — قائد هندسة برمجيات ومستشار تقني",
   description:
-    "Portfolio of Turki Al-Malki — crafting intuitive and impactful digital products that seamlessly bridge user needs and business goals.",
-  keywords: ["portfolio", "creative developer", "product designer", "Next.js", "UI/UX"],
+    "الموقع الرسمي لتركي المالكي — قائد هندسة برمجيات ومستشار تقني معتمد، أساعد الشركات والمنشآت على بناء منتجات رقمية قابلة للتوسع وعالية الأثر.",
+  keywords: [
+    "تركي المالكي",
+    "مستشار تقني",
+    "هندسة برمجيات",
+    "استشارات تقنية",
+    "Turki Almalki",
+    "engineering leader",
+    "technology consultant",
+    "Next.js",
+    "React",
+  ],
   openGraph: {
-    title: "Turki Al-Malki — Creative Developer & Product Designer",
+    title: "تركي المالكي — قائد هندسة برمجيات ومستشار تقني",
     description:
-      "Crafting intuitive and impactful digital products that seamlessly bridge user needs and business goals.",
+      "أساعد الشركات والمنشآت على بناء منتجات رقمية قابلة للتوسع وعالية الأثر — استشارات، مراجعات، وبناء منتجات.",
     type: "website",
+    locale: "ar_SA",
+    alternateLocale: "en_US",
   },
 };
 
@@ -46,8 +56,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${dancingScript.variable} ${notoNaskhArabic.variable}`}>
-      <body className="antialiased overflow-x-hidden">
+    <html lang="ar" dir="rtl" className={thmanyah.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: LANG_INIT }} />
+      </head>
+      <body className={`antialiased overflow-x-hidden ${thmanyah.variable}`}>
         {/* GTM noscript — must be first child of body */}
         {GTM_ID && (
           <noscript>
@@ -59,7 +72,9 @@ export default function RootLayout({
             />
           </noscript>
         )}
-<LenisProvider>{children}</LenisProvider>
+        <LanguageProvider>
+          <LenisProvider>{children}</LenisProvider>
+        </LanguageProvider>
         <Analytics />
       </body>
     </html>

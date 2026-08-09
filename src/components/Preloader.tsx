@@ -212,7 +212,7 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
         </g>
       </svg>
 
-      {/* San Francisco system font — fades in as the last strokes land */}
+      {/* Caption — fades in as the last strokes land */}
       <motion.p
         initial={{ opacity: 0, y: 10 }}
         animate={drawing ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
@@ -226,10 +226,9 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
               }
         }
         style={{
-          fontFamily:  '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          fontFamily:  "inherit",
           fontSize:    "clamp(12px, 1.5vw, 16px)",
           fontWeight:  400,
-          letterSpacing: "0.08em",
           color:       "#6E6E73",
           margin:      0,
           userSelect:  "none",

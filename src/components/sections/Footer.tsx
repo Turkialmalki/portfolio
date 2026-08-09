@@ -10,6 +10,7 @@ import {
   FiMail,
 } from "react-icons/fi";
 import { trackEvent } from "@/lib/analytics";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 type Bezier = [number, number, number, number];
 
@@ -36,12 +37,24 @@ const SOCIAL_LINKS = [
   },
 ];
 
-const PAGE_LINKS = [
-  { label: "Home", href: "/" },
-  { label: "Portfolio", href: "/projects" },
-  { label: "About", href: "/about" },
-  { label: "Blog", href: "/blog" },
-];
+const COPY = {
+  en: {
+    heading: "Let's Connect",
+    body: "I'm always open to new opportunities, ideas, or just a good conversation.",
+    cta: "Get in Touch",
+    pages: "Pages",
+    copyright: "Created by Turki Almalki © 2026",
+    brand: "Turki Almalki",
+  },
+  ar: {
+    heading: "لنتواصل",
+    body: "أرحّب دائمًا بالفرص الجديدة والأفكار، أو حتى حديث ممتع.",
+    cta: "تواصل معي",
+    pages: "الصفحات",
+    copyright: "صُنع بواسطة تركي المالكي © 2026",
+    brand: "تركي المالكي",
+  },
+};
 
 // const INFO_LINKS = [
 //   {
@@ -55,6 +68,16 @@ const PAGE_LINKS = [
 
 export default function Footer() {
   const ref = useRef<HTMLElement>(null);
+  const { t, lang } = useLanguage();
+  const copy = COPY[lang];
+
+  const pageLinks = [
+    { label: t.nav.home, href: "/" },
+    { label: t.nav.portfolio, href: "/projects" },
+    { label: t.nav.services, href: "/services" },
+    { label: t.nav.about, href: "/about" },
+    { label: t.nav.blog, href: "/blog" },
+  ];
 
   const inView = useInView(ref, {
     once: true,
@@ -88,7 +111,7 @@ export default function Footer() {
                 delay: 0.08,
               }}
             >
-              Let&apos;s Connect
+              {copy.heading}
             </motion.h2>
 
             <motion.p
@@ -100,8 +123,7 @@ export default function Footer() {
                 delay: 0.14,
               }}
             >
-              I&apos;m always open to new opportunities, ideas, or just a good
-              conversation.
+              {copy.body}
             </motion.p>
 
             <motion.div
@@ -125,8 +147,8 @@ export default function Footer() {
                 onClick={() => trackEvent("contact_click", { location: "footer" })}
                 className="contact-button"
               >
-                Get in Touch
-                <span aria-hidden="true">→</span>
+                {copy.cta}
+                <span aria-hidden="true" className="contact-button-arrow">→</span>
               </Link>
             </motion.div>
           </div>
@@ -164,7 +186,7 @@ export default function Footer() {
         >
           <div className="footer-main-row">
             <div className="footer-brand">
-              <h3>Turki Almalki</h3>
+              <h3>{copy.brand}</h3>
 
               <div className="social-links">
                 {SOCIAL_LINKS.map(({ label, href, Icon, event }) => (
@@ -204,9 +226,9 @@ export default function Footer() {
                 className="footer-column"
                 aria-label="Footer pages"
               >
-                <h4>Pages</h4>
+                <h4>{copy.pages}</h4>
 
-                {PAGE_LINKS.map((item) => (
+                {pageLinks.map((item) => (
                   <Link
                     key={item.label}
                     href={item.href}
@@ -220,9 +242,7 @@ export default function Footer() {
             </div>
           </div>
 
-          <p className="footer-copyright">
-            Created by Turki Almalki © 2026
-          </p>
+          <p className="footer-copyright">{copy.copyright}</p>
         </motion.section>
       </div>
 
@@ -259,8 +279,14 @@ export default function Footer() {
           flex-direction: column;
           align-items: flex-start;
           justify-content: center;
-          text-align: left;
-          padding: 58px 28px 58px 46px;
+          text-align: start;
+          padding-block: 58px;
+          padding-inline: 46px 28px;
+        }
+
+        [dir="rtl"] .contact-button-arrow {
+          display: inline-block;
+          transform: scaleX(-1);
         }
 
         .contact-copy h2 {
@@ -384,7 +410,7 @@ export default function Footer() {
           flex-direction: column;
           align-items: flex-start;
           gap: 19px;
-          text-align: left;
+          text-align: start;
         }
 
         .footer-column h4 {

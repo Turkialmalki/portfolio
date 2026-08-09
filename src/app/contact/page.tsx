@@ -6,6 +6,7 @@ import { LuMail, LuPhone, LuCalendarDays, LuCheck, LuArrowUpRight } from "react-
 import TopBar from "@/components/TopBar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/sections/Footer";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -18,30 +19,69 @@ type FormState = {
 
 type Status = "idle" | "submitting" | "success";
 
-const CONTACT_ACTIONS = [
-  {
-    icon: LuMail,
-    label: "Mail",
-    href: "mailto:turkialmalki202200@gmail.com",
-    external: false,
+const COPY = {
+  en: {
+    pill: "Contact",
+    heading: "Get in Touch",
+    sub: "Have a question, opportunity, or just want to talk? I'm always open to thoughtful conversations.",
+    actions: { mail: "Mail", call: "Call", book: "Book" },
+    cardTitle: "Or shoot me a message!",
+    labels: { name: "Name", email: "Email", business: "Business", message: "Message" },
+    errors: {
+      required: "This field is required",
+      invalidEmail: "Please enter a valid email address",
+    },
+    sending: "Sending…",
+    submit: "Submit",
+    successTitle: "Message received!",
+    successSub: "Your email client opened — I'll get back to you soon.",
+    sendAnother: "Send another",
   },
-  {
-    icon: LuPhone,
-    label: "Call",
-    href: "tel:+966550866000",
-    external: false,
+  ar: {
+    pill: "تواصل",
+    heading: "لنتواصل",
+    sub: "لديك سؤال أو فرصة عمل أو تريد فقط الحديث؟ أرحّب دائمًا بالمحادثات الهادفة.",
+    actions: { mail: "بريد", call: "اتصال", book: "حجز موعد" },
+    cardTitle: "أو أرسل لي رسالة مباشرة!",
+    labels: { name: "الاسم", email: "البريد الإلكتروني", business: "الجهة / الشركة", message: "الرسالة" },
+    errors: {
+      required: "هذا الحقل مطلوب",
+      invalidEmail: "يرجى إدخال بريد إلكتروني صحيح",
+    },
+    sending: "جارٍ الإرسال…",
+    submit: "إرسال",
+    successTitle: "تم استلام رسالتك!",
+    successSub: "تم فتح تطبيق البريد لديك — سأعاود التواصل معك قريبًا.",
+    sendAnother: "إرسال رسالة أخرى",
   },
-  {
-    icon: LuCalendarDays,
-    label: "Book",
-    href: "https://calendly.com/turkialmalki202200/30min",
-    external: true,
-  },
-] as const;
+};
 
 export default function ContactPage() {
   const heroRef = useRef<HTMLDivElement>(null);
   const inView = useInView(heroRef, { once: true, margin: "-60px" });
+  const { lang } = useLanguage();
+  const t = COPY[lang];
+
+  const CONTACT_ACTIONS = [
+    {
+      icon: LuMail,
+      label: t.actions.mail,
+      href: "mailto:turkialmalki202200@gmail.com",
+      external: false,
+    },
+    {
+      icon: LuPhone,
+      label: t.actions.call,
+      href: "tel:+966550866000",
+      external: false,
+    },
+    {
+      icon: LuCalendarDays,
+      label: t.actions.book,
+      href: "https://calendly.com/turkialmalki202200/30min",
+      external: true,
+    },
+  ] as const;
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -50,6 +90,7 @@ export default function ContactPage() {
     message: "",
   });
   const [status, setStatus] = useState<Status>("idle");
+  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -61,8 +102,19 @@ export default function ContactPage() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const validate = (): boolean => {
+    const next: typeof errors = {};
+    if (!form.name.trim()) next.name = t.errors.required;
+    if (!form.email.trim()) next.email = t.errors.required;
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) next.email = t.errors.invalidEmail;
+    if (!form.message.trim()) next.message = t.errors.required;
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setStatus("submitting");
     await new Promise<void>((r) => setTimeout(r, 1100));
     const subject = `Message from ${form.name}${form.business ? ` — ${form.business}` : ""}`;
@@ -85,7 +137,7 @@ export default function ContactPage() {
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, ease: EASE }}
           >
-            Contact
+            {t.pill}
           </motion.span>
 
           <motion.h1
@@ -94,7 +146,7 @@ export default function ContactPage() {
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.72, ease: EASE, delay: 0.06 }}
           >
-            Get in Touch
+            {t.heading}
           </motion.h1>
 
           <motion.p
@@ -103,8 +155,7 @@ export default function ContactPage() {
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.65, ease: EASE, delay: 0.13 }}
           >
-            Have a question, opportunity, or just want to talk?
-            I&apos;m always open to thoughtful conversations.
+            {t.sub}
           </motion.p>
 
           {/* Action buttons */}
@@ -154,30 +205,29 @@ export default function ContactPage() {
                 <span className="cp-success-icon">
                   <LuCheck size={28} />
                 </span>
-                <h2 className="cp-success-title">Message received!</h2>
-                <p className="cp-success-sub">
-                  Your email client opened — I&apos;ll get back to you soon.
-                </p>
+                <h2 className="cp-success-title">{t.successTitle}</h2>
+                <p className="cp-success-sub">{t.successSub}</p>
                 <button
                   className="cp-success-reset"
                   onClick={() => {
                     setStatus("idle");
                     setForm({ name: "", email: "", business: "", message: "" });
+                    setErrors({});
                   }}
                 >
-                  Send another
+                  {t.sendAnother}
                 </button>
               </motion.div>
             ) : (
               <>
-                <h2 className="cp-card-title">Or shoot me a message!</h2>
+                <h2 className="cp-card-title">{t.cardTitle}</h2>
 
                 <form className="cp-form" onSubmit={handleSubmit} noValidate>
                   {/* Name + Email row */}
                   <div className="cp-row-2">
                     <div className="cp-field">
                       <label className="cp-label" htmlFor="name">
-                        Name
+                        {t.labels.name}
                       </label>
                       <input
                         id="name"
@@ -189,11 +239,13 @@ export default function ContactPage() {
                         onChange={handleChange}
                         required
                         autoComplete="name"
+                        aria-invalid={!!errors.name}
                       />
+                      {errors.name && <span className="cp-error" role="alert">{errors.name}</span>}
                     </div>
                     <div className="cp-field">
                       <label className="cp-label" htmlFor="email">
-                        Email
+                        {t.labels.email}
                       </label>
                       <input
                         id="email"
@@ -205,14 +257,17 @@ export default function ContactPage() {
                         onChange={handleChange}
                         required
                         autoComplete="email"
+                        dir="ltr"
+                        aria-invalid={!!errors.email}
                       />
+                      {errors.email && <span className="cp-error" role="alert">{errors.email}</span>}
                     </div>
                   </div>
 
                   {/* Business */}
                   <div className="cp-field">
                     <label className="cp-label" htmlFor="business">
-                      Business
+                      {t.labels.business}
                     </label>
                     <input
                       id="business"
@@ -229,7 +284,7 @@ export default function ContactPage() {
                   {/* Message */}
                   <div className="cp-field">
                     <label className="cp-label" htmlFor="message">
-                      Message
+                      {t.labels.message}
                     </label>
                     <textarea
                       id="message"
@@ -240,7 +295,9 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       rows={5}
+                      aria-invalid={!!errors.message}
                     />
+                    {errors.message && <span className="cp-error" role="alert">{errors.message}</span>}
                   </div>
 
                   {/* Submit */}
@@ -252,11 +309,11 @@ export default function ContactPage() {
                     whileTap={status === "idle" ? { scale: 0.97 } : {}}
                   >
                     {status === "submitting" ? (
-                      <span className="cp-spinner" aria-label="Sending…" />
+                      <span className="cp-spinner" aria-label={t.sending} />
                     ) : (
                       <>
-                        Submit
-                        <LuArrowUpRight size={16} />
+                        {t.submit}
+                        <LuArrowUpRight size={16} className="cp-submit-icon" />
                       </>
                     )}
                   </motion.button>
@@ -491,6 +548,18 @@ export default function ContactPage() {
         .cp-textarea:focus {
           border-color: var(--accent, #1495ff);
           box-shadow: 0 0 0 3px rgba(20, 149, 255, 0.14);
+        }
+
+        .cp-error {
+          display: block;
+          margin-top: 6px;
+          font-size: 12px;
+          font-weight: 400;
+          color: #ef4444;
+        }
+
+        [dir="rtl"] .cp-submit-icon {
+          transform: scaleX(-1);
         }
 
         /* ── Submit button ──────────────────────────────── */

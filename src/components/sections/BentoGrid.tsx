@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 type Bezier = [number, number, number, number];
 
@@ -13,29 +14,57 @@ type EssenceCard = {
   text: string;
 };
 
-const ESSENCE_CARDS: EssenceCard[] = [
-  {
-    icon: "🤔",
-    title: "Who am I?",
-    text:
-      "Build scalable, high-impact web and mobile experiences",
+const COPY = {
+  en: {
+    pill: "Essence",
+    title: "Behind the Screens",
+    subtitle: "A glimpse into my mindset, style, and engineering edge.",
+    cards: [
+      {
+        icon: "🤔",
+        title: "Who am I?",
+        text: "Build scalable, high-impact web and mobile experiences",
+      },
+      {
+        icon: "🧠",
+        title: "My Philosophy",
+        text: "Bridge the gap between design and development through clear collaboration",
+      },
+      {
+        icon: "✨",
+        title: "My Distinct Edge",
+        text: "Design technology around real user and business needs",
+      },
+    ] as EssenceCard[],
   },
-  {
-    icon: "🧠",
-    title: "My Philosophy",
-    text:
-      "Bridge the gap between design and development through clear collaboration",
+  ar: {
+    pill: "الجوهر",
+    title: "خلف الشاشات",
+    subtitle: "لمحة عن طريقة تفكيري وأسلوبي وميزتي الهندسية.",
+    cards: [
+      {
+        icon: "🤔",
+        title: "من أنا؟",
+        text: "أبني تجارب ويب وجوال قابلة للتوسع وعالية الأثر",
+      },
+      {
+        icon: "🧠",
+        title: "فلسفتي",
+        text: "أردم الفجوة بين التصميم والتطوير عبر تعاون واضح",
+      },
+      {
+        icon: "✨",
+        title: "ميزتي المختلفة",
+        text: "أصمم التقنية حول احتياجات المستخدم والأعمال الحقيقية",
+      },
+    ] as EssenceCard[],
   },
-  {
-    icon: "✨",
-    title: "My Distinct Edge",
-    text:
-      "Design technology around real user and business needs",
-  },
-];
+};
 
 export default function BentoGrid() {
   const sectionRef = useRef<HTMLElement>(null);
+  const { lang } = useLanguage();
+  const copy = COPY[lang];
 
   const inView = useInView(sectionRef, {
     once: true,
@@ -62,7 +91,7 @@ export default function BentoGrid() {
           }}
           className="essence-pill"
         >
-          Essence
+          {copy.pill}
         </motion.div>
 
         <motion.h2
@@ -79,7 +108,7 @@ export default function BentoGrid() {
           }}
           className="essence-title"
         >
-          Behind the Screens
+          {copy.title}
         </motion.h2>
 
         <motion.p
@@ -96,11 +125,11 @@ export default function BentoGrid() {
           }}
           className="essence-subtitle"
         >
-          A glimpse into my mindset, style, and engineering edge.
+          {copy.subtitle}
         </motion.p>
 
         <div className="essence-grid">
-          {ESSENCE_CARDS.map((card, index) => (
+          {copy.cards.map((card, index) => (
             <motion.article
               key={card.title}
               initial={{

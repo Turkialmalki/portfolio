@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useInView, useReducedMotion } from "framer-motion";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,35 +21,83 @@ type BlogPostPreview = {
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const PREVIEW_POSTS: BlogPostPreview[] = [
-  {
-    slug: "/blog/scaling-frontend-architecture",
-    title: "Scaling Frontend Architecture with Next.js and TypeScript",
-    excerpt:
-      "Practical principles for building maintainable web platforms that can grow across products, teams, and changing business needs.",
-    category: "Architecture",
-    image: "/blog/frontend-architecture.jpg",
-    gradient: "linear-gradient(140deg, #dbe8ff 0%, #b8d0ff 100%)",
+const PREVIEW_POSTS: Record<"ar" | "en", BlogPostPreview[]> = {
+  en: [
+    {
+      slug: "/blog/scaling-frontend-architecture",
+      title: "Scaling Frontend Architecture with Next.js and TypeScript",
+      excerpt:
+        "Practical principles for building maintainable web platforms that can grow across products, teams, and changing business needs.",
+      category: "Architecture",
+      image: "/blog/frontend-architecture.jpg",
+      gradient: "linear-gradient(140deg, #dbe8ff 0%, #b8d0ff 100%)",
+    },
+    {
+      slug: "/blog/leading-cross-functional-teams",
+      title: "Leading Cross-Functional Engineering Teams",
+      excerpt:
+        "Lessons on aligning engineering, product, design, backend, and QA teams around quality, ownership, and successful delivery.",
+      category: "Leadership",
+      image: "/blog/engineering-leadership.jpg",
+      gradient: "linear-gradient(140deg, #d8f5e8 0%, #a8e8c8 100%)",
+    },
+    {
+      slug: "/blog/modernizing-digital-platforms",
+      title: "Modernizing Digital Platforms Without Slowing Delivery",
+      excerpt:
+        "How clean architecture, observability, CI/CD, and thoughtful iteration can modernize products while maintaining delivery momentum.",
+      category: "Transformation",
+      image: "/blog/platform-modernization.jpg",
+      gradient: "linear-gradient(140deg, #ffe8d8 0%, #ffd0b0 100%)",
+    },
+  ],
+  ar: [
+    {
+      slug: "/blog/scaling-frontend-architecture",
+      title: "توسيع معمارية الواجهات مع Next.js و TypeScript",
+      excerpt:
+        "مبادئ عملية لبناء منصات ويب سهلة الصيانة قادرة على النمو عبر المنتجات والفرق واحتياجات الأعمال المتغيرة.",
+      category: "معمارية",
+      image: "/blog/frontend-architecture.jpg",
+      gradient: "linear-gradient(140deg, #dbe8ff 0%, #b8d0ff 100%)",
+    },
+    {
+      slug: "/blog/leading-cross-functional-teams",
+      title: "قيادة فرق هندسية متعددة التخصصات",
+      excerpt:
+        "دروس في مواءمة فرق الهندسة والمنتج والتصميم والأنظمة الخلفية والجودة حول الجودة والملكية والتسليم الناجح.",
+      category: "قيادة",
+      image: "/blog/engineering-leadership.jpg",
+      gradient: "linear-gradient(140deg, #d8f5e8 0%, #a8e8c8 100%)",
+    },
+    {
+      slug: "/blog/modernizing-digital-platforms",
+      title: "تحديث المنصات الرقمية دون إبطاء التسليم",
+      excerpt:
+        "كيف تُحدّث منتجاتك عبر المعمارية النظيفة والمراقبة و CI/CD والتحسين المستمر مع الحفاظ على سرعة الإنجاز.",
+      category: "تحوّل رقمي",
+      image: "/blog/platform-modernization.jpg",
+      gradient: "linear-gradient(140deg, #ffe8d8 0%, #ffd0b0 100%)",
+    },
+  ],
+};
+
+const COPY = {
+  en: {
+    pill: "Blog",
+    heading: "Insights & Ideas",
+    sub1: "Thoughts on engineering leadership, scalable architecture,",
+    sub2: "product delivery, and AI-powered innovation.",
+    cta: "View All Blog Posts",
   },
-  {
-    slug: "/blog/leading-cross-functional-teams",
-    title: "Leading Cross-Functional Engineering Teams",
-    excerpt:
-      "Lessons on aligning engineering, product, design, backend, and QA teams around quality, ownership, and successful delivery.",
-    category: "Leadership",
-    image: "/blog/engineering-leadership.jpg",
-    gradient: "linear-gradient(140deg, #d8f5e8 0%, #a8e8c8 100%)",
+  ar: {
+    pill: "المدونة",
+    heading: "رؤى وأفكار",
+    sub1: "خواطر حول القيادة الهندسية والمعمارية القابلة للتوسع،",
+    sub2: "وتسليم المنتجات والابتكار المدعوم بالذكاء الاصطناعي.",
+    cta: "عرض جميع المقالات",
   },
-  {
-    slug: "/blog/modernizing-digital-platforms",
-    title: "Modernizing Digital Platforms Without Slowing Delivery",
-    excerpt:
-      "How clean architecture, observability, CI/CD, and thoughtful iteration can modernize products while maintaining delivery momentum.",
-    category: "Transformation",
-    image: "/blog/platform-modernization.jpg",
-    gradient: "linear-gradient(140deg, #ffe8d8 0%, #ffd0b0 100%)",
-  },
-];
+};
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
@@ -58,6 +107,9 @@ export default function BlogPreview() {
   const ref = useRef<HTMLElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
   const reduced = useReducedMotion();
+  const { lang } = useLanguage();
+  const copy = COPY[lang];
+  const posts = PREVIEW_POSTS[lang];
 
   const fadeUp = (delay = 0) =>
     reduced
@@ -78,23 +130,23 @@ export default function BlogPreview() {
         {/* ── Header ── */}
         <div style={{ textAlign: "center", marginBottom: "clamp(44px, 6vw, 72px)" }}>
           <motion.div {...fadeUp(0)} style={{ display: "inline-block" }}>
-            <span style={pillStyle}>Blog</span>
+            <span style={pillStyle}>{copy.pill}</span>
           </motion.div>
 
           <motion.h2 {...fadeUp(0.07)} style={headingStyle}>
-            Insights &amp; Ideas
+            {copy.heading}
           </motion.h2>
 
           <motion.p {...fadeUp(0.14)} style={subheadingStyle}>
-            Thoughts on engineering leadership, scalable architecture,
+            {copy.sub1}
             <br className="bp-break" />
-            product delivery, and AI-powered innovation.
+            {copy.sub2}
           </motion.p>
         </div>
 
         {/* ── Cards grid ── */}
         <div style={gridStyle} className="bp-grid">
-          {PREVIEW_POSTS.map((post, index) => (
+          {posts.map((post, index) => (
             <BlogPreviewCard
               key={post.slug}
               post={post}
@@ -111,7 +163,7 @@ export default function BlogPreview() {
           style={{ display: "flex", justifyContent: "center", marginTop: "clamp(44px, 6vw, 64px)" }}
         >
           <Link href="/blog" style={ctaStyle} className="bp-cta">
-            View All Blog Posts
+            {copy.cta}
           </Link>
         </motion.div>
       </div>

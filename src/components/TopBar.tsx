@@ -4,8 +4,12 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { FiSun, FiMoon } from "react-icons/fi";
+import { useLanguage } from "@/i18n/LanguageProvider";
+import type { Language } from "@/i18n/translations";
+
 export default function TopBar() {
   const [dark, setDark] = useState(false);
+  const { t, lang, setLang } = useLanguage();
 
   // Sync state with any persisted preference on mount
   useEffect(() => {
@@ -47,7 +51,7 @@ export default function TopBar() {
           justifyContent: "space-between",
         }}
       >
-        {/* Left: Avatar + Name */}
+        {/* Start: Avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
           <div
             className="topbar-avatar-wrapper"
@@ -61,27 +65,16 @@ export default function TopBar() {
               className="topbar-avatar-img"
             />
           </div>
-          <span
-            style={{
-              fontSize: 15,
-              fontWeight: 600,
-              color: "var(--topbar-name-color)",
-              letterSpacing: "-0.018em",
-              fontFamily: "inherit",
-              transition: "color 0.45s ease",
-            }}
-          >
-          </span>
         </div>
 
-        {/* Right: Theme Toggle + Connect */}
+        {/* End: Theme Toggle + Language Switcher + Connect */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
           <motion.button
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
             transition={{ type: "spring", stiffness: 400, damping: 22 }}
             onClick={toggleTheme}
-            aria-label="Toggle theme"
+            aria-label={t.topbar.toggleTheme}
             style={{
               width: 38,
               height: 38,
@@ -100,7 +93,14 @@ export default function TopBar() {
             {dark ? <FiSun size={15} /> : <FiMoon size={15} />}
           </motion.button>
 
+          <LanguageSwitcher
+            lang={lang}
+            setLang={setLang}
+            ariaLabel={t.topbar.switchLanguage}
+          />
+
           <motion.button
+            className="topbar-connect-btn"
             whileHover={{ scale: 1.04, filter: "brightness(1.15)" }}
             whileTap={{ scale: 0.96 }}
             transition={{ type: "spring", stiffness: 400, damping: 22 }}
@@ -117,16 +117,94 @@ export default function TopBar() {
               border: "none",
               cursor: "pointer",
               fontFamily: "inherit",
-              letterSpacing: "-0.012em",
               whiteSpace: "nowrap",
               transition: "background 0.45s ease, color 0.45s ease",
               boxShadow: "0 2px 12px rgba(0,0,0,0.18)",
             }}
           >
-            Connect
+            {t.topbar.connect}
           </motion.button>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 560px) {
+          .topbar-connect-btn { display: none !important; }
+        }
+      `}</style>
     </motion.header>
+  );
+}
+
+function LanguageSwitcher({
+  lang,
+  setLang,
+  ariaLabel,
+}: {
+  lang: Language;
+  setLang: (l: Language) => void;
+  ariaLabel: string;
+}) {
+  const options: { value: Language; label: string }[] = [
+    { value: "ar", label: "العربية" },
+    { value: "en", label: "English" },
+  ];
+
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        padding: 3,
+        borderRadius: 100,
+        background: "var(--topbar-toggle-bg)",
+        transition: "background 0.45s ease",
+      }}
+    >
+      {options.map(({ value, label }) => {
+        const active = lang === value;
+        return (
+          <motion.button
+            key={value}
+            onClick={() => setLang(value)}
+            whileTap={{ scale: 0.94 }}
+            aria-pressed={active}
+            lang={value}
+            style={{
+              position: "relative",
+              padding: "6px 13px",
+              borderRadius: 100,
+              border: "none",
+              cursor: "pointer",
+              background: "transparent",
+              fontSize: 12.5,
+              fontWeight: active ? 700 : 500,
+              fontFamily: "inherit",
+              color: active ? "var(--bg-primary)" : "var(--topbar-toggle-color)",
+              whiteSpace: "nowrap",
+              transition: "color 0.3s ease",
+            }}
+          >
+            {active && (
+              <motion.span
+                layoutId="lang-pill"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: 100,
+                  background: "var(--text-primary)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                }}
+                transition={{ type: "spring", bounce: 0.2, duration: 0.45 }}
+              />
+            )}
+            <span style={{ position: "relative", zIndex: 1 }}>{label}</span>
+          </motion.button>
+        );
+      })}
+    </div>
   );
 }

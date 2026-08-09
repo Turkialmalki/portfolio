@@ -3,22 +3,32 @@
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LuHouse, LuBriefcase, LuUserRound, LuNewspaper, LuMail } from "react-icons/lu";
-
-const NAV_ITEMS = [
-  { Icon: LuHouse,     label: "Home",      href: "/" },
-  { Icon: LuBriefcase, label: "Portfolio", href: "/projects" },
-  { Icon: LuUserRound, label: "About",     href: "/about" },
-  { Icon: LuNewspaper, label: "Blog",      href: "/blog" },
-  { Icon: LuMail,      label: "Contact",   href: "/contact" },
-];
+import {
+  LuHouse,
+  LuBriefcase,
+  LuSparkles,
+  LuUserRound,
+  LuNewspaper,
+  LuMail,
+} from "react-icons/lu";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => setMounted(true), []);
+
+  const NAV_ITEMS = [
+    { Icon: LuHouse, label: t.nav.home, href: "/" },
+    { Icon: LuBriefcase, label: t.nav.portfolio, href: "/projects" },
+    { Icon: LuSparkles, label: t.nav.services, href: "/services" },
+    { Icon: LuUserRound, label: t.nav.about, href: "/about" },
+    { Icon: LuNewspaper, label: t.nav.blog, href: "/blog" },
+    { Icon: LuMail, label: t.nav.contact, href: "/contact" },
+  ];
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -60,13 +70,15 @@ export default function Navbar() {
           "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.18)",
         transition: "background-color 0.45s ease, border-color 0.45s ease",
         whiteSpace: "nowrap",
+        maxWidth: "calc(100vw - 24px)",
+        overflowX: "auto",
       }}
     >
       {NAV_ITEMS.map(({ Icon, label, href }) => {
         const active = isActive(href);
         return (
           <motion.button
-            key={label}
+            key={href}
             onClick={() => router.push(href)}
             title={label}
             whileHover={{ scale: 1.06, y: -1 }}
@@ -74,7 +86,7 @@ export default function Navbar() {
             transition={{ type: "spring", stiffness: 420, damping: 24 }}
             style={{
               position: "relative",
-              padding: "7px 16px",
+              padding: "7px 14px",
               borderRadius: 100,
               border: "none",
               cursor: "pointer",
@@ -85,7 +97,7 @@ export default function Navbar() {
               justifyContent: "center",
               gap: 4,
               flexShrink: 0,
-              minWidth: 56,
+              minWidth: 52,
             }}
           >
             {active && (
@@ -116,12 +128,11 @@ export default function Navbar() {
                 position: "relative",
                 zIndex: 1,
                 fontSize: 11,
-                fontWeight: active ? 600 : 500,
-                letterSpacing: "0.01em",
+                fontWeight: active ? 700 : 500,
                 color: active ? "var(--nav-icon-active)" : "var(--nav-icon-inactive)",
                 transition: "color 0.22s ease",
                 lineHeight: 1,
-                fontFamily: "var(--font-inter, system-ui, sans-serif)",
+                fontFamily: "inherit",
                 userSelect: "none",
               }}
             >

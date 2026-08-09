@@ -8,7 +8,6 @@ import Navbar from "./Navbar";
 import Hero from "./sections/Hero";
 import BentoGrid from "./sections/BentoGrid";
 import Projects from "./sections/Projects";
-import ProjectMarquee from "./sections/ProjectMarquee";
 import Metrics from "./sections/Metrics";
 import FAQ from "./sections/FAQ";
 import BlogPreview from "./sections/BlogPreview";
@@ -31,7 +30,6 @@ export default function HomeClient() {
         <Navbar />
         <main>
           <Hero ready={!loading} />
-          <ProjectMarquee />
           <BentoGrid />
           <Projects />
           <Metrics />
