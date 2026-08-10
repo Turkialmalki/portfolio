@@ -274,10 +274,25 @@ function CrumpleCanvas(props: Props) {
     let visible = true;
     let pending = 0; // progress waiting to be drawn while offscreen
 
+    /* ── HOW OFTEN THIS IS ALLOWED TO PAINT ──
+       The scene is ~190vh of scroll over a 12-frame sequence. Quantising the
+       cross-fade to hundredths meant ~1,200 distinct states, i.e. ~1,200
+       canvas clears and up to 2,400 drawImage calls across one scroll of the
+       hero — nearly all of them differing from the previous paint by an
+       amount no eye can resolve. That is the phone's single largest piece of
+       per-frame work on this page.
+
+       STEPS = 6 sub-positions per frame pair, so the whole sequence is ~66
+       meaningful paints instead of ~1,200 — an order of magnitude fewer, for
+       a dissolve that still reads as continuous. Dropping the blend entirely
+       (12 paints, the theoretical floor) makes the signature moment of the
+       page visibly tick between shapes, which is not a trade worth taking on
+       the one animation that is meant to be watched. */
+    const STEPS = 6;
     const draw = (v: number) => {
       const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
       const { lo, frac } = frameAt(t, CRUMPLE_FRAMES_M, 1.12);
-      const q = Math.round(mix(frac) * 100) / 100;
+      const q = Math.round(mix(frac) * STEPS) / STEPS;
       // nothing visibly changed — the commonest case mid-frame, and free
       if (lo === last && q === lastFrac) return;
       last = lo;

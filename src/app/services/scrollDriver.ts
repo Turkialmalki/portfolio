@@ -157,36 +157,54 @@ export function useSectionProgress(
 }
 
 /**
- * Adds a class ONCE, the first time an element is meaningfully on screen, and
- * then disconnects for good.
+ * Adds `sv-in` to a SECTION exactly once, triggered by a small SENTINEL that
+ * sits immediately before that section's visual.
  *
- * This is the entire animation mechanism for every service below the hero on a
- * phone: a class lands, CSS transitions run for well under a second, and the
- * section is inert DOM for the rest of the session. No scroll listener, no
- * progress, no per-pixel computation, nothing to unsubscribe.
+ * ── WHY A SENTINEL AND NOT THE SECTION ─────────────────────────────────────
+ * These sections are 90–110vh tall. Observing the section itself fires the
+ * moment its top edge clears the bottom of the viewport — which, for a scene
+ * whose visual sits in its middle, is most of a screen-height BEFORE the
+ * visual is anywhere near the eye. The 600–1000ms animation then runs and
+ * finishes against an off-screen element, and by the time the visitor
+ * actually arrives they are looking at a still frame that never moved. That
+ * is the "some mobile sections appear static" bug, and it is a timing bug,
+ * not a missing animation.
+ *
+ * So the trigger is a zero-height marker rendered directly above the visual,
+ * and the threshold is a bottom rootMargin of -32%: it fires when the marker
+ * has crossed ~68% of the viewport height, i.e. when the visual below it is
+ * genuinely entering the frame. The animation then plays where it can be
+ * seen, finishes, and holds its final state forever.
+ *
+ * `sentinel` is optional: pass nothing and the section observes itself, which
+ * is right for a section with no separate visual.
  */
 export function useReveal(
   ref: RefObject<HTMLElement | null>,
   onReveal?: () => void,
+  sentinel?: RefObject<HTMLElement | null>,
 ): void {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Already on screen at load (a deep link, a restored position): reveal
-    // immediately rather than waiting for a scroll that may never come.
+    const watch = sentinel?.current ?? el;
+    /* -32% bottom margin => "has this crossed 68% of the viewport?" A section
+       already on screen at load (a deep link, a restored scroll position)
+       satisfies it on the observer's first callback, so it reveals at once
+       rather than waiting for a scroll that may never come. */
     const io = new IntersectionObserver(
       ([e]) => {
         if (!e.isIntersecting) return;
-        el.classList.add("is-in");
+        el.classList.add("sv-in");
         onReveal?.();
         io.disconnect();
       },
-      { rootMargin: "0px 0px -12% 0px" },
+      { rootMargin: "0px 0px -32% 0px" },
     );
-    io.observe(el);
+    io.observe(watch);
     return () => io.disconnect();
     // `onReveal` is a fire-once analytics ping; re-running on identity change
     // would re-observe a section that has already been counted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ref]);
+  }, [ref, sentinel]);
 }

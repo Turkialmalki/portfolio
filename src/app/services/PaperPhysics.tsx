@@ -317,7 +317,13 @@ export function RestoringPaper({
         /* No filter graph runs here, so promoting for one is a wasted layer.
            The shadow arrives in three steps (see shadowT) and this is what
            makes the steps invisible. */
-        .pp-simple { will-change: auto; transition: box-shadow 340ms cubic-bezier(0.4, 0, 0.2, 1); }
+        /* No transition on the phone. The shadow is already quantised to
+           three states above, so the only thing a 340ms box-shadow
+           transition adds is 340ms of continuously re-rasterised blurred
+           shadow — three times, mid-scroll, on the one element the hero
+           repaints per frame. The three steps cut straight instead: at this
+           size the cut is invisible and the paint is not. */
+        .pp-simple { will-change: auto; }
         .pp-base { position: relative; container-type: inline-size; }
         .pp-over { position: absolute; inset: 0; z-index: 2; container-type: inline-size; }
         .pp-tex {

@@ -43,6 +43,7 @@ import {
   WorkObjectStyles,
   DASHBOARD_URL,
 } from "./WorkObjects";
+import { MobilePlate } from "./MobileScenes";
 import { RestoringPaper } from "./PaperPhysics";
 import { CrumpledSheet } from "./CrumpledSheet";
 import { PriceRail } from "./PriceRail";
@@ -144,11 +145,19 @@ const subscribeFilm = (cb: () => void) => {
  * and the one whose first paint actually matters. The CSS is media-query
  * driven regardless, so the *layout* is never wrong on either device.
  */
-function useMode(): "film" | "phone" {
+function useMode(): "film" | "phone" | null {
   return useSyncExternalStore(
     subscribeFilm,
     () => (window.matchMedia(FILM_QUERY).matches ? "film" : "phone"),
-    () => "phone" as const,
+    /* `null` on the server AND on the first client render, which is what
+       makes the split safe: both devices agree on the initial tree, so there
+       is no hydration mismatch to repair and no wrong tree to paint. What is
+       server-rendered is every scene's real content — heading, description,
+       price, buy link. Only the decorative VISUAL waits one frame for a
+       definite answer, and it waits because the two answers are genuinely
+       different machinery: a phone must never construct the film's DOM, not
+       even for the frame before it is hidden. */
+    () => null,
   );
 }
 
@@ -221,6 +230,14 @@ const COPY = {
     finalH: "من الفوضى\nإلى الوضوح.",
     finalSub: "اختر اللي تحتاجه، وأنا أكمل الباقي.",
     from: "يبدأ من",
+    /* What each pre-rendered plate SHOWS, for anyone who cannot see it. The
+       plate is a video with role="img", so this is its alt text — and it
+       describes the transformation, not the file. */
+    a11yRewrite: "سيرة ذاتية تُعاد كتابتها سطرًا بسطر: العبارات الضعيفة تُشطب وتحلّ محلها صياغة أقوى.",
+    a11yLinkedIn: "ملف لينكدإن قبل التحسين وبعده، ونتيجة بحث الموظِّف وقد صار الملف أول ظهور فيها.",
+    a11yWork: "مشاريع حقيقية منشورة تتجمّع طبقةً فوق طبقة، وينتهي المشهد بموقع turkialmalki.com أمامها.",
+    a11yDashboard: "جداول بيانات خام تتحول إلى لوحة متابعة فيها مؤشرات ورسوم بيانية واضحة.",
+    a11yBundle: "السيرة الذاتية ولينكدإن والعرض والمشاريع ولوحة المتابعة تجتمع كلها في تركيبة واحدة.",
   },
   en: {
     chaosH: "Your career\ndeserves better.",
@@ -255,6 +272,16 @@ const COPY = {
     finalH: "Chaos,\nresolved.",
     finalSub: "Pick what you need. I'll take it from there.",
     from: "From",
+    a11yRewrite:
+      "A CV being rewritten line by line: weak phrasing is struck out and replaced with stronger writing.",
+    a11yLinkedIn:
+      "A LinkedIn profile before and after, and the recruiter search that now returns it first.",
+    a11yWork:
+      "Real shipped products assembling layer by layer, with turkialmalki.com landing in front of them.",
+    a11yDashboard:
+      "Raw data tables collapsing into a dashboard of clear KPIs and charts.",
+    a11yBundle:
+      "The CV, the LinkedIn profile, the talk, the shipped work and the dashboard settling into one composition.",
   },
 };
 type Copy = (typeof COPY)["en"];
@@ -279,8 +306,10 @@ type Obj = {
 type Ctx = {
   t: Copy;
   lang: Lang;
-  /** scroll-scrubbed rather than class-triggered */
+  /** the film is mounted and scrubbing: pointer device, motion allowed */
   film: boolean;
+  /** the phone renderer is mounted: pre-rendered plates, one-shot reveals */
+  phone: boolean;
   reduced: boolean;
   /** the narrow composition — fewer, larger objects. True on every phone. */
   tight: boolean;
@@ -392,7 +421,7 @@ function FieldObject({
   if (ctx.film) {
     return (
       <motion.div
-        className="fo"
+        className="sv-obj"
         style={{
           x,
           y,
@@ -404,14 +433,14 @@ function FieldObject({
           ...(f.b && !lite ? { filter: `blur(${f.b}px)` } : null),
         }}
       >
-        <div className="fo-e">{o.node}</div>
+        <div className="sv-obj-e">{o.node}</div>
       </motion.div>
     );
   }
 
   return (
-    <div className="fo" style={restStyle(o, t)}>
-      <div className="fo-e">{o.node}</div>
+    <div className="sv-obj" style={restStyle(o, t)}>
+      <div className="sv-obj-e">{o.node}</div>
     </div>
   );
 }
@@ -445,7 +474,7 @@ function FieldText({
   const scale = useTransform(p, [range[0], range[3]], [1, 0.97]);
   return (
     <motion.div
-      className={`fo ft ${className ?? ""}`}
+      className={`sv-obj sv-fx ${className ?? ""}`}
       style={
         ctx.film
           ? { opacity, scale, zIndex: z, x: x * stage.w, y: y * stage.h }
@@ -464,13 +493,13 @@ function FieldText({
  * is actually on screen. It is also the anchor a `#service` link lands on.
  */
 function RailMark({ id, top, height = "34%" }: { id: string; top: string; height?: string }) {
-  return <span id={id} className="rmark" style={{ top, height }} aria-hidden />;
+  return <span id={id} className="sv-rmark" style={{ top, height }} aria-hidden />;
 }
 
 /** Chapter number + service name. The only label a section ever gets. */
 function Chapter({ index, name }: { index: string; name: string }) {
   return (
-    <span className="chap">
+    <span className="sv-chap">
       <i>{index}</i>
       {name}
     </span>
@@ -478,7 +507,7 @@ function Chapter({ index, name }: { index: string; name: string }) {
 }
 
 function Money({ price, lang, className = "" }: { price: Price; lang: Lang; className?: string }) {
-  return <span className={`money ${className}`}>{formatPrice(price, lang)}</span>;
+  return <span className={`sv-money ${className}`}>{formatPrice(price, lang)}</span>;
 }
 
 /**
@@ -502,10 +531,10 @@ function Cta({
     return <ComingSoon serviceId={s.id} label={s.cta[lang]} lang={lang} />;
   }
   return (
-    <span className="ctaw">
+    <span className="sv-ctaw">
       <CheckoutButton serviceId={s.id} href={s.checkoutUrl} label={s.cta[lang]} />
       {s.price && (
-        <span className="cta-p">
+        <span className="sv-cta-p">
           {t.from} <Money price={s.price} lang={lang} />
         </span>
       )}
@@ -526,6 +555,8 @@ function useScene(
   ref: React.RefObject<HTMLElement | null>,
   service: string,
   scrub: boolean,
+  /** the marker directly above this scene's visual — see `useReveal` */
+  sentinel?: React.RefObject<HTMLElement | null>,
 ) {
   const seen = useRef(false);
   const ping = useCallback(() => {
@@ -533,7 +564,7 @@ function useScene(
     seen.current = true;
     trackEvent("service_card_view", { service });
   }, [service]);
-  useReveal(ref, ping);
+  useReveal(ref, ping, sentinel);
   return useSectionProgress(ref, scrub);
 }
 
@@ -543,11 +574,12 @@ export default function ServicesClient() {
   const { lang } = useLanguage();
   const mode = useMode();
   const film = mode === "film";
+  const phone = mode === "phone";
   const reduced = useMedia("(prefers-reduced-motion: reduce)");
   const t = COPY[lang];
   const ctx: Ctx = useMemo(
-    () => ({ t, lang, film: film && !reduced, reduced, tight: !film }),
-    [t, lang, film, reduced],
+    () => ({ t, lang, film: film && !reduced, phone, reduced, tight: !film }),
+    [t, lang, film, phone, reduced],
   );
 
   useEffect(() => {
@@ -564,9 +596,25 @@ export default function ServicesClient() {
       <CareerObjectStyles />
       <WorkObjectStyles />
       <TopBar />
-      <Navbar />
+      {/* ── THE SITE DOCK IS NOT RENDERED ON A PHONE HERE ──
+          It is a full-width fixed pill 28px off the bottom with a live
+          backdrop-filter. On this page it did two measurable kinds of damage:
 
-      <main className={`sv${ctx.film ? " sv-film" : " sv-phone"}`}>
+          · IT ATE THE BUY BUTTONS. Any CTA resting within ~100px of the
+            bottom of the viewport had its lower third covered by the dock,
+            and `document.elementFromPoint` at those coordinates returned
+            <nav>, not the <a>. A thumb — which lands low on a button, not
+            dead centre — was tapping site navigation and getting nothing.
+            That is the whole of "the checkout buttons don't respond".
+          · It is a permanently composited, blurred, full-width layer that
+            has to be re-blended for every scrolled frame.
+
+          Navigation is not lost: the top bar is present throughout and the
+          footer carries the full menu. The buy button is not optional; the
+          dock is. */}
+      {!phone && <Navbar />}
+
+      <main className={`sv${mode ? (film ? " sv-film" : " sv-phone") : ""}`}>
         <SceneRestore ctx={ctx} />
         <SceneRewrite ctx={ctx} />
         <SceneSpeaking ctx={ctx} />
@@ -628,19 +676,17 @@ function SceneRestore({ ctx }: { ctx: Ctx }) {
   const fx = (v: object) => (reduced ? undefined : v);
 
   /* The noise — everything that should stop defining this career. All of it
-     exits; none of it survives into the services. */
+     exits; none of it survives into the services.
+     ── PHONE: THERE IS NO NOISE FIELD ──
+     It was four live documents — a CV, a LinkedIn surface, a rejection email
+     — each a full component, each scrubbed, each behind the one object the
+     visitor is actually watching, and all four gone by 42% of the scene. The
+     phone renders none of them. The crushed paper opens against clean space,
+     which is the same statement for none of the DOM. */
   const noise = useMemo<Obj[]>(() => {
     const mx = (v: number) => v * D;
     return tight
-      ? [
-          /* Held back on purpose: on a 390px screen the crushed CV has to be
-             the largest thing on the page, so the noise gives up size before
-             the hero does. */
-          { id: "weakcv", w: 0.36, z: 20, from: { x: mx(-0.33), y: -0.27, r: -9, s: 1 }, node: <CVSheet lang={lang} variant="weak" /> },
-          { id: "li", w: 0.42, z: 18, from: { x: mx(0.33), y: 0.02, r: 8, s: 1 }, node: <LinkedInCard lang={lang} variant="weak" /> },
-          { id: "email", w: 0.46, z: 12, from: { x: mx(-0.12), y: 0.44, r: 5, s: 1 }, node: <RejectionEmail lang={lang} /> },
-          { id: "scrapA", w: 0.26, z: 8, from: { x: mx(0.44), y: -0.36, r: 21, s: 1, b: 2 }, node: <ScrapSheet tone={1} /> },
-        ]
+      ? []
       : [
           { id: "weakcv", w: 0.165, z: 22, from: { x: mx(-0.325), y: -0.185, r: -11, s: 1 }, node: <CVSheet lang={lang} variant="weak" /> },
           { id: "li", w: 0.2, z: 20, from: { x: mx(-0.375), y: 0.29, r: -7, s: 1 }, node: <LinkedInCard lang={lang} variant="weak" /> },
@@ -727,16 +773,16 @@ function SceneRestore({ ctx }: { ctx: Ctx }) {
   const copyY = useTransform(p, [0.8, 0.94], [22, 0]);
 
   return (
-    <section ref={secRef} className={`scn scn-hero${reduced ? " is-still" : ""}`}>
+    <section ref={secRef} className={`sv-scene sv-hero${reduced ? " sv-still" : ""}`}>
       <RailMark id="resumeReview" top="72%" height="28%" />
-      <div className="pin">
-        <div ref={stageRef} className="stage">
+      <div className="sv-pin">
+        <div ref={stageRef} className="sv-stage">
           {noise.map((o) => (
             <FieldObject key={o.id} p={p} o={o} stage={stage} ctx={heroCtx} lite={tight} />
           ))}
 
           <motion.div
-            className="fo hero-paper"
+            className="sv-obj sv-hero-paper"
             style={
               reduced
                 ? { width: `${heroW * 100}%`, zIndex: 32, top: "38%" }
@@ -767,9 +813,16 @@ function SceneRestore({ ctx }: { ctx: Ctx }) {
                    the words that are holding it back. That is what the review
                    annotates — and what scene 02 goes on to rewrite. */
                 weak={
-                  <div className="hp-weak">
-                    <CVSheet lang={lang} variant="weak" />
-                    <motion.div className="hp-marks" style={fx({ opacity: marksO })}>
+                  <div className="sv-hp-weak">
+                    {/* The over-layer only exists to carry the red pen. On a
+                        laptop it carries a second copy of the sheet under it
+                        too, which is what lets the whole layer cross-fade
+                        without the paper appearing to flicker. On a phone
+                        that is a second full CV document rendered so that an
+                        identical one can be faded across it — so the phone
+                        keeps the marks and drops the duplicate. */}
+                    {!tight && <CVSheet lang={lang} variant="weak" />}
+                    <motion.div className="sv-hp-marks" style={fx({ opacity: marksO })}>
                       <ReviewMarks lang={lang} />
                     </motion.div>
                   </div>
@@ -795,17 +848,17 @@ function SceneRestore({ ctx }: { ctx: Ctx }) {
             y={-0.02}
             range={[0, 0.02, 0.14, 0.24]}
             lit
-            className="ft-mid"
+            className="sv-fx-mid"
           >
-            <h1 className="mega">{t.chaosH}</h1>
-            <p className="mega-sub">{t.chaosSub}</p>
+            <h1 className="sv-mega">{t.chaosH}</h1>
+            <p className="sv-sub">{t.chaosSub}</p>
           </FieldText>
         </div>
 
-        <motion.div className="copy copy-hero" style={fx({ opacity: copyO, y: copyY })}>
+        <motion.div className="sv-copy sv-copy-hero" style={fx({ opacity: copyO, y: copyY })}>
           <Chapter index={s.index} name={s.name[lang]} />
-          <h2 className="big">{s.headline[lang]}</h2>
-          <p className="lede">{s.outcome[lang]}</p>
+          <h2 className="sv-big">{s.headline[lang]}</h2>
+          <p className="sv-lede">{s.outcome[lang]}</p>
           <Cta s={s} lang={lang} t={t} />
         </motion.div>
       </div>
@@ -834,9 +887,9 @@ function Annotation({
   const w = useTransform(p, [at, at + 0.07], [0, 1]);
   const top = ["13%", "35%", "58%", "80%"][i];
   return (
-    <motion.div className="ann" style={{ top, opacity: o }}>
-      <motion.span className="ann-line" style={{ scaleX: w }} />
-      <span className="ann-txt">
+    <motion.div className="sv-ann" style={{ top, opacity: o }}>
+      <motion.span className="sv-ann-line" style={{ scaleX: w }} />
+      <span className="sv-ann-txt">
         <b>{label}</b>
         <i>{note}</i>
       </span>
@@ -852,14 +905,16 @@ function Annotation({
 
    film   the rewrite is scrubbed: a cut line travels down the sheet and
           everything above it is already the rewritten CV.
-   phone  the same sentences in the same order, played once over ~750ms by
-          CSS when the section is reached. Transform and opacity only, and
-          then it stops for good.                                          */
+   phone  that same cut, baked from that same film, played once as one video
+          when the plate reaches the eye. The SENTENCES stay live DOM either
+          way — struck, explained and assembled clause by clause — because
+          they are the argument, not the decoration.                        */
 
 function SceneRewrite({ ctx }: { ctx: Ctx }) {
-  const { t, lang, film, reduced } = ctx;
+  const { t, lang, film, phone, reduced } = ctx;
   const ref = useRef<HTMLElement>(null);
-  const p = useScene(ref, "resumeWriting", film);
+  const trig = useRef<HTMLSpanElement>(null);
+  const p = useScene(ref, "resumeWriting", film, trig);
   const s = svc("resumeWriting");
 
   // The sheet arrives from where Act I left it and settles.
@@ -885,44 +940,60 @@ function SceneRewrite({ ctx }: { ctx: Ctx }) {
   const fx = (v: object) => (film ? v : undefined);
 
   return (
-    <section ref={ref} className="scn scn-rw">
+    <section ref={ref} className="sv-scene sv-rw">
       <RailMark id="resumeWriting" top="30%" height="50%" />
-      <div className="pin">
-        <div className="stage stage-doc">
-          <motion.div className="scn-rw-doc" style={fx({ x: docX, rotate: docRot, scale: docScale })}>
-            <div className="rw-stack">
-              <CVSheet lang={lang} variant="strong" />
-              <motion.div className="rw-abs" style={fx({ clipPath: weakClip })}>
-                <CVSheet lang={lang} variant="weak" />
-              </motion.div>
-              <motion.span className="rw-sweep" style={fx({ top: sweepTop, opacity: sweepO })} />
-            </div>
-          </motion.div>
+      <div className="sv-pin">
+        <div className="sv-stage sv-stagedoc">
+          <span ref={trig} className="sv-trigger" aria-hidden />
+          {/* THE VISUAL, AND ONLY THE VISUAL, IS RENDERER-SPECIFIC.
+              Two full CV documents stacked with an animated clip-path and a
+              travelling sweep is the right way to show a page being retyped
+              on a machine with a cursor. On a phone the same 800ms of that
+              exact scene is one decoded video — see MobileScenes.tsx. */}
+          {film && (
+            <motion.div className="sv-rwdoc" style={{ x: docX, rotate: docRot, scale: docScale }}>
+              <div className="sv-rw-stack">
+                <CVSheet lang={lang} variant="strong" />
+                <motion.div className="sv-rw-abs" style={{ clipPath: weakClip }}>
+                  <CVSheet lang={lang} variant="weak" />
+                </motion.div>
+                <motion.span className="sv-rw-sweep" style={{ top: sweepTop, opacity: sweepO }} />
+              </div>
+            </motion.div>
+          )}
+          {phone && (
+            <MobilePlate
+              id="rewrite"
+              lang={lang}
+              reduced={reduced}
+              label={t.a11yRewrite}
+            />
+          )}
         </div>
 
-        <div className="copy">
+        <div className="sv-copy">
           <Chapter index={s.index} name={s.name[lang]} />
-          <h2 className="big">{s.headline[lang]}</h2>
+          <h2 className="sv-big">{s.headline[lang]}</h2>
 
-          <div className="ba">
-            <motion.p className="ba-before" style={fx({ opacity: beforeO })}>
-              <span className="ba-k">{t.before}</span>
-              <span className="ba-line-wrap">
+          <div className="sv-ba">
+            <motion.p className="sv-ba-before" style={fx({ opacity: beforeO })}>
+              <span className="sv-ba-k">{t.before}</span>
+              <span className="sv-ba-wrap">
                 {t.rewriteBefore}
                 <motion.span
-                  className="ba-strike"
+                  className="sv-ba-strike"
                   style={fx({
                     scaleX: strike,
                     transformOrigin: lang === "ar" ? "right center" : "left center",
                   })}
                 />
               </span>
-              <motion.span className="ba-why" style={fx({ opacity: beforeNoteO })}>
+              <motion.span className="sv-ba-why" style={fx({ opacity: beforeNoteO })}>
                 {t.rewriteBeforeNote}
               </motion.span>
             </motion.p>
-            <motion.p className="ba-after" style={fx({ opacity: afterO })}>
-              <span className="ba-k ba-k-on">{t.after}</span>
+            <motion.p className="sv-ba-after" style={fx({ opacity: afterO })}>
+              <span className="sv-ba-k sv-ba-k-on">{t.after}</span>
               {reduced ? (
                 t.rewriteAfter
               ) : (
@@ -934,7 +1005,7 @@ function SceneRewrite({ ctx }: { ctx: Ctx }) {
             </motion.p>
           </div>
 
-          <motion.span className="cta-slot" style={fx({ opacity: ctaO })}>
+          <motion.span className="sv-cta-slot" style={fx({ opacity: ctaO })}>
             <Cta s={s} lang={lang} t={t} />
           </motion.span>
         </div>
@@ -970,7 +1041,7 @@ function Rewrite({
   // Clauses overlap slightly, so the sentence flows instead of ticking.
   const step = (to - from) / (parts.length + 0.35);
   return (
-    <span className="rw-line">
+    <span className="sv-rw-line">
       {parts.map((part, i) => (
         <RewriteClause
           key={part.t}
@@ -1017,7 +1088,7 @@ function RewriteClause({
   if (!ctx.film) {
     return (
       <>
-        <span className="rw-cl" style={{ ["--i" as string]: i }}>
+        <span className="sv-rw-cl" style={{ ["--i" as string]: i }}>
           {text}
         </span>{" "}
       </>
@@ -1025,7 +1096,7 @@ function RewriteClause({
   }
   return (
     <>
-      <motion.span className="rw-cl" style={{ opacity, y, filter, backgroundColor }}>
+      <motion.span className="sv-rw-cl" style={{ opacity, y, filter, backgroundColor }}>
         {text}
       </motion.span>{" "}
     </>
@@ -1062,8 +1133,8 @@ function RewriteNote({
   const opacity = useScrub(p, [from, from + step * 0.4, to + step * 0.5, to + step], [0, 1, 1, 0]);
 
   return (
-    <motion.span className="rw-note" style={{ opacity }} aria-hidden>
-      <i className="rw-dot" />
+    <motion.span className="sv-rw-note" style={{ opacity }} aria-hidden>
+      <i className="sv-rw-dot" />
       <motion.b key={parts[i].tag} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
         {parts[i].tag}
       </motion.b>
@@ -1084,9 +1155,10 @@ function RewriteNote({
    قريبًا / COMING SOON and routes to contact.                              */
 
 function SceneSpeaking({ ctx }: { ctx: Ctx }) {
-  const { t, lang, film, reduced } = ctx;
+  const { t, lang, film, phone, reduced } = ctx;
   const ref = useRef<HTMLElement>(null);
-  const p = useScene(ref, "publicSpeaking", film);
+  const trig = useRef<HTMLSpanElement>(null);
+  const p = useScene(ref, "publicSpeaking", film, trig);
   const s = svc("publicSpeaking");
 
   // A slow cinematic push-in and drift across the whole scene.
@@ -1101,10 +1173,10 @@ function SceneSpeaking({ ctx }: { ctx: Ctx }) {
   const fx = (v: object) => (film ? v : undefined);
 
   return (
-    <section ref={ref} className="scn scn-sp">
+    <section ref={ref} className="sv-scene sv-sp">
       <RailMark id="publicSpeaking" top="20%" height="60%" />
-      <div className="pin">
-        <motion.div className="sp-shot" style={fx({ scale, y: shotY })}>
+      <div className="sv-pin">
+        <motion.div className="sv-sp-shot" style={fx({ scale, y: shotY })}>
           <Image
             src="/speaking-stage.jpg"
             alt={
@@ -1114,23 +1186,30 @@ function SceneSpeaking({ ctx }: { ctx: Ctx }) {
             }
             fill
             sizes="100vw"
-            className="sp-img"
+            className="sv-sp-img"
           />
         </motion.div>
-        <motion.div className="sp-scrim" style={fx({ opacity: scrim })} />
+        <motion.div className="sv-sp-scrim" style={fx({ opacity: scrim })} />
+        <span ref={trig} className="sv-trigger sv-trigger-abs" aria-hidden />
 
-        <motion.div className="sp-inset" style={fx({ opacity: insetO, x: insetX })}>
-          <PhotoCard
-            src="/speaking-portrait.jpg"
-            alt={lang === "ar" ? "تركي المالكي أثناء العرض" : "Turki Almalki presenting"}
-          />
-        </motion.div>
+        {/* The picture-in-picture is a second decode of a second photograph
+            for a scene that already IS a photograph. It earns its place on a
+            1440px frame and nowhere near a 390px one, so the phone does not
+            render it rather than rendering it and hiding it. */}
+        {!phone && (
+          <motion.div className="sv-sp-inset" style={fx({ opacity: insetO, x: insetX })}>
+            <PhotoCard
+              src="/speaking-portrait.jpg"
+              alt={lang === "ar" ? "تركي المالكي أثناء العرض" : "Turki Almalki presenting"}
+            />
+          </motion.div>
+        )}
 
-        <motion.div className="copy sp-copy" style={fx({ y: titleY, opacity: titleO })}>
+        <motion.div className="sv-copy sv-sp-copy" style={fx({ y: titleY, opacity: titleO })}>
           <Chapter index={s.index} name={s.name[lang]} />
-          <h2 className="mega mega-2 sp-h">{s.headline[lang]}</h2>
-          <p className="sp-kicker">{t.speakKicker}</p>
-          <motion.span className="cta-slot" style={fx({ opacity: ctaO })}>
+          <h2 className="sv-mega sv-mega2 sv-sp-h">{s.headline[lang]}</h2>
+          <p className="sv-sp-kicker">{t.speakKicker}</p>
+          <motion.span className="sv-cta-slot" style={fx({ opacity: ctaO })}>
             <Cta s={s} lang={lang} t={t} />
           </motion.span>
         </motion.div>
@@ -1147,9 +1226,10 @@ function SceneSpeaking({ ctx }: { ctx: Ctx }) {
    laptop — same four beats, same order.                                    */
 
 function SceneLinkedIn({ ctx }: { ctx: Ctx }) {
-  const { t, lang, film } = ctx;
+  const { t, lang, film, phone, reduced } = ctx;
   const ref = useRef<HTMLElement>(null);
-  const p = useScene(ref, "linkedinOptimization", film);
+  const trig = useRef<HTMLSpanElement>(null);
+  const p = useScene(ref, "linkedinOptimization", film, trig);
   const s = svc("linkedinOptimization");
 
   const cardY = useTransform(p, [0, 1], [70, -50]);
@@ -1171,39 +1251,52 @@ function SceneLinkedIn({ ctx }: { ctx: Ctx }) {
   const fx = (v: object) => (film ? v : undefined);
 
   return (
-    <section ref={ref} className="scn scn-li">
+    <section ref={ref} className="sv-scene sv-li">
       <RailMark id="linkedinOptimization" top="22%" height="56%" />
-      <div className="pin">
-        <div className="stage lk-stage">
-          <motion.div
-            className="lk-card"
-            style={fx({ y: cardY, rotate: cardRot, scale: strongScale })}
-          >
-            <LinkedInCard lang={lang} variant="strong" />
-            <motion.div className="lk-card-over" style={fx({ opacity: weakO })}>
-              <LinkedInCard lang={lang} variant="weak" />
-            </motion.div>
-          </motion.div>
-          <motion.div className="lk-rank" style={fx({ opacity: srchO, y: srchY })}>
-            <RecruiterSearch lang={lang} variant="strong" />
-            <motion.div className="lk-rank-over" style={fx({ opacity: srchWeakO })}>
-              <RecruiterSearch lang={lang} variant="weak" />
-            </motion.div>
-          </motion.div>
+      <div className="sv-pin">
+        <div className="sv-stage sv-lk-stage">
+          <span ref={trig} className="sv-trigger" aria-hidden />
+          {/* Four LinkedIn surfaces — two profile cards and two recruiter
+              result lists, stacked and cross-faded. That is the right way to
+              show a profile being repositioned on a machine that can afford
+              it, and it is 80-odd nodes of chrome, avatars, badges and result
+              rows. The phone plays the same hand-off as one video. */}
+          {film && (
+            <>
+              <motion.div
+                className="sv-lk-card"
+                style={{ y: cardY, rotate: cardRot, scale: strongScale }}
+              >
+                <LinkedInCard lang={lang} variant="strong" />
+                <motion.div className="sv-lk-card-over" style={{ opacity: weakO }}>
+                  <LinkedInCard lang={lang} variant="weak" />
+                </motion.div>
+              </motion.div>
+              <motion.div className="sv-lk-rank" style={{ opacity: srchO, y: srchY }}>
+                <RecruiterSearch lang={lang} variant="strong" />
+                <motion.div className="sv-lk-rank-over" style={{ opacity: srchWeakO }}>
+                  <RecruiterSearch lang={lang} variant="weak" />
+                </motion.div>
+              </motion.div>
+            </>
+          )}
+          {phone && (
+            <MobilePlate id="linkedin" lang={lang} reduced={reduced} label={t.a11yLinkedIn} />
+          )}
         </div>
 
-        <div className="copy">
+        <div className="sv-copy">
           <Chapter index={s.index} name={s.name[lang]} />
-          <h2 className="big">{s.headline[lang]}</h2>
-          <div className="hl">
-            <motion.span className="hl-weak" style={fx({ opacity: hlWeakO })}>
+          <h2 className="sv-big">{s.headline[lang]}</h2>
+          <div className="sv-hl">
+            <motion.span className="sv-hl-weak" style={fx({ opacity: hlWeakO })}>
               {t.linkedinBefore}
             </motion.span>
-            <motion.span className="hl-strong" style={fx({ opacity: hlStrongO, x: hlStrongX })}>
+            <motion.span className="sv-hl-strong" style={fx({ opacity: hlStrongO, x: hlStrongX })}>
               {t.linkedinAfter}
             </motion.span>
           </div>
-          <motion.span className="cta-slot" style={fx({ opacity: ctaO })}>
+          <motion.span className="sv-cta-slot" style={fx({ opacity: ctaO })}>
             <Cta s={s} lang={lang} t={t} />
           </motion.span>
         </div>
@@ -1239,11 +1332,12 @@ type Prod = {
 };
 
 function SceneWork({ ctx }: { ctx: Ctx }) {
-  const { t, lang, film, tight } = ctx;
+  const { t, lang, film, phone, reduced, tight } = ctx;
   const secRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const trig = useRef<HTMLSpanElement>(null);
   const stage = useStage(stageRef, film);
-  const p = useScene(secRef, "mvpPortfolio", film);
+  const p = useScene(secRef, "mvpPortfolio", film, trig);
   const D = lang === "ar" ? -1 : 1;
   const s = svc("mvpPortfolio");
 
@@ -1371,28 +1465,37 @@ function SceneWork({ ctx }: { ctx: Ctx }) {
   const fx = (v: object) => (film ? v : undefined);
 
   return (
-    <section ref={secRef} className="scn scn-wk">
+    <section ref={secRef} className="sv-scene sv-wk">
       <RailMark id="mvpPortfolio" top="18%" height="62%" />
-      <div className="pin">
-        <div ref={stageRef} className="stage">
-          <motion.div
-            className="wk-layer"
-            style={fx({ y: layerY, scale: layerScale, opacity: layerO, filter: layerBlur })}
-          >
-            {prods.map((pr, i) => (
-              <ProductObject key={pr.id} p={p} pr={pr} i={i} stage={stage} ctx={ctx} />
-            ))}
-          </motion.div>
+      <div className="sv-pin">
+        <div ref={stageRef} className="sv-stage">
+          <span ref={trig} className="sv-trigger" aria-hidden />
+          {/* Seven browser surfaces, each with its own chrome, screenshot and
+              animated blur, plus a rack-focus filter over the whole stack.
+              The phone gets the same assembly — the same real screenshots, in
+              the same depth order — as one video, and keeps the kicker as
+              live text above it. */}
+          {film && (
+            <motion.div
+              className="sv-wk-layer"
+              style={{ y: layerY, scale: layerScale, opacity: layerO, filter: layerBlur }}
+            >
+              {prods.map((pr, i) => (
+                <ProductObject key={pr.id} p={p} pr={pr} i={i} stage={stage} ctx={ctx} />
+              ))}
+            </motion.div>
+          )}
+          {phone && <MobilePlate id="work" lang={lang} reduced={reduced} label={t.a11yWork} />}
 
-          <motion.span className="wk-kick" style={fx({ opacity: kickO })}>
+          <motion.span className="sv-wk-kick" style={fx({ opacity: kickO })}>
             {t.workKicker}
           </motion.span>
         </div>
 
-        <motion.div className="copy copy-center" style={fx({ opacity: copyO, y: copyY })}>
+        <motion.div className="sv-copy sv-copy-center" style={fx({ opacity: copyO, y: copyY })}>
           <Chapter index={s.index} name={s.name[lang]} />
-          <h2 className="big">{s.headline[lang]}</h2>
-          <p className="lede">{s.outcome[lang]}</p>
+          <h2 className="sv-big">{s.headline[lang]}</h2>
+          <p className="sv-lede">{s.outcome[lang]}</p>
           <Cta s={s} lang={lang} t={t} />
         </motion.div>
       </div>
@@ -1437,17 +1540,17 @@ function ProductObject({
     // 1 → 2 → 3, 190ms apart, ~520ms each: a ~700ms assembly, then static.
     const obj: Obj = { id: pr.id, w: pr.w, z: pr.z, from: pr.from, to: pr.to, delay: i * 0.136, node };
     return (
-      <div className="fo" style={restStyle(obj, pr.to)}>
-        <div className="fo-e">{node}</div>
+      <div className="sv-obj" style={restStyle(obj, pr.to)}>
+        <div className="sv-obj-e">{node}</div>
       </div>
     );
   }
   return (
     <motion.div
-      className="fo"
+      className="sv-obj"
       style={{ x, y, rotate, scale, opacity, filter, zIndex: pr.z, width: pr.w * stage.w }}
     >
-      <div className="fo-e">{node}</div>
+      <div className="sv-obj-e">{node}</div>
     </motion.div>
   );
 }
@@ -1465,30 +1568,32 @@ function ProductObject({
    Nothing here animates continuously on either device.                     */
 
 function SceneData({ ctx }: { ctx: Ctx }) {
-  const { t, lang, film, tight } = ctx;
+  const { t, lang, film, phone, reduced } = ctx;
   const secRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const trig = useRef<HTMLSpanElement>(null);
   const stage = useStage(stageRef, film);
-  const p = useScene(secRef, "dashboardReporting", film);
+  const p = useScene(secRef, "dashboardReporting", film, trig);
   const D = lang === "ar" ? -1 : 1;
   const s = svc("dashboardReporting");
 
-  // Fragments of the raw table, drifting in from the edges and converging.
+  /* Fragments of the raw table, drifting in from the edges and converging.
+     The phone renders NONE of these and no DashboardCard either. The whole
+     scene there is one video: a 20×14 dataset rendered twice, plus a full
+     dashboard of KPI tiles, bar columns, ranked rows and an SVG ring, is 255
+     nodes of decoration behind a headline and a price. */
   const frags = useMemo(
     () =>
-      (tight
+      (film
         ? [
-            { x: -0.2, y: -0.32, r: -7, w: 0.66, z: 6, d: 0 },
-            { x: 0.22, y: -0.2, r: 6, w: 0.6, z: 5, d: 0.05 },
-          ]
-        : [
             { x: -0.33, y: -0.24, r: -8, w: 0.3, z: 6, d: 0 },
             { x: 0.34, y: -0.2, r: 7, w: 0.28, z: 5, d: 0.04 },
             { x: -0.29, y: 0.26, r: 6, w: 0.26, z: 4, d: 0.08 },
             { x: 0.32, y: 0.28, r: -7, w: 0.29, z: 3, d: 0.12 },
           ]
+        : []
       ).map((f, i) => ({ ...f, id: `frag${i}`, x: f.x * D })),
-    [tight, D],
+    [film, D],
   );
 
   /* The dashboard is the proof, so it never dims or blurs — it simply steps
@@ -1507,47 +1612,48 @@ function SceneData({ ctx }: { ctx: Ctx }) {
   const fx = (v: object) => (film ? v : undefined);
 
   return (
-    <section ref={secRef} className="scn scn-db">
+    <section ref={secRef} className="sv-scene sv-db">
       <RailMark id="dashboardReporting" top="20%" height="60%" />
-      <div className="pin">
-        <div ref={stageRef} className="stage">
+      <div className="sv-pin">
+        <div ref={stageRef} className="sv-stage">
+          <span ref={trig} className="sv-trigger" aria-hidden />
           {frags.map((f) => (
             <DataFragment key={f.id} p={p} f={f} stage={stage} ctx={ctx} />
           ))}
 
-          <motion.div
-            className="db-hero"
-            style={fx({
-              opacity: dashO,
-              scale: dashScale,
-              y: dashY,
-              width: (tight ? 0.92 : 0.66) * stage.w,
-            })}
-          >
+          {film && (
             <motion.div
-              className="db-vars"
-              style={fx({ ["--kpi"]: kpi, ["--bars"]: bars, ["--ring"]: ring } as never)}
+              className="sv-db-hero"
+              style={{ opacity: dashO, scale: dashScale, y: dashY, width: 0.66 * stage.w }}
             >
-              <DashboardCard lang={lang} />
+              <motion.div
+                className="sv-db-vars"
+                style={{ ["--kpi"]: kpi, ["--bars"]: bars, ["--ring"]: ring } as never}
+              >
+                <DashboardCard lang={lang} />
+              </motion.div>
             </motion.div>
-          </motion.div>
+          )}
+          {phone && (
+            <MobilePlate id="dashboard" lang={lang} reduced={reduced} label={t.a11yDashboard} />
+          )}
 
-          <motion.span className="db-tag db-tag-raw" style={fx({ opacity: rawO })}>
+          <motion.span className="sv-db-tag sv-db-tag-raw" style={fx({ opacity: rawO })}>
             {t.dataRaw}
           </motion.span>
-          <motion.span className="db-tag db-tag-out" style={fx({ opacity: outO })}>
+          <motion.span className="sv-db-tag sv-db-tag-out" style={fx({ opacity: outO })}>
             {t.dataOut}
           </motion.span>
         </div>
 
-        <motion.div className="copy copy-center" style={fx({ opacity: copyO, y: copyY })}>
+        <motion.div className="sv-copy sv-copy-center" style={fx({ opacity: copyO, y: copyY })}>
           <Chapter index={s.index} name={s.name[lang]} />
-          <h2 className="big">{s.headline[lang]}</h2>
-          <p className="lede">{s.outcome[lang]}</p>
-          <div className="db-acts">
+          <h2 className="sv-big">{s.headline[lang]}</h2>
+          <p className="sv-lede">{s.outcome[lang]}</p>
+          <div className="sv-db-acts">
             <Cta s={s} lang={lang} t={t} />
             <a
-              className="ghost"
+              className="sv-ghost"
               href={DASHBOARD_URL}
               target="_blank"
               rel="noopener noreferrer"
@@ -1590,7 +1696,7 @@ function DataFragment({
   if (!ctx.film) {
     return (
       <div
-        className="fo fo-raw"
+        className="sv-obj sv-obj-raw"
         style={{
           left: `${50 + f.x * 100}%`,
           top: `${50 + f.y * 100}%`,
@@ -1604,16 +1710,16 @@ function DataFragment({
           ["--or" as string]: `${f.r}deg`,
         }}
       >
-        <div className="fo-e">{node}</div>
+        <div className="sv-obj-e">{node}</div>
       </div>
     );
   }
   return (
     <motion.div
-      className="fo"
+      className="sv-obj"
       style={{ x, y, rotate, scale, opacity, zIndex: f.z, width: f.w * stage.w }}
     >
-      <div className="fo-e">{node}</div>
+      <div className="sv-obj-e">{node}</div>
     </motion.div>
   );
 }
@@ -1627,40 +1733,34 @@ function DataFragment({
    continuous animation, on either device.                                  */
 
 function SceneBundle({ ctx }: { ctx: Ctx }) {
-  const { t, lang, film, tight } = ctx;
+  const { t, lang, film, phone, reduced } = ctx;
   const secRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const trig = useRef<HTMLSpanElement>(null);
   const stage = useStage(stageRef, film);
-  const p = useScene(secRef, "completeBundle", film);
+  const p = useScene(secRef, "completeBundle", film, trig);
   const D = lang === "ar" ? -1 : 1;
   const b = COMPLETE_BUNDLE;
 
   const objects = useMemo<Obj[]>(() => {
+    if (!film) return [];
     const mx = (v: number) => v * D;
     /* One object per service, in journey order: the restored and rewritten
        CV, the positioned profile, the stage, the shipped product, the
        dashboard. */
-    const lock = tight
-      ? [
-          { x: -0.25, y: -0.235, s: 0.4, w: 0.44 },
-          { x: 0.2, y: -0.215, s: 0.36, w: 0.5 },
-          { x: -0.26, y: -0.05, s: 0.38, w: 0.34 },
-          { x: 0.19, y: -0.045, s: 0.34, w: 0.5 },
-          { x: 0, y: 0.075, s: 0.46, w: 0.56 },
-        ]
-      : [
-          { x: -0.315, y: -0.02, s: 0.66, w: 0.15 },
-          { x: -0.155, y: -0.045, s: 0.66, w: 0.15 },
-          { x: 0, y: -0.03, s: 0.62, w: 0.12 },
-          { x: 0.165, y: -0.045, s: 0.62, w: 0.2 },
-          { x: 0.335, y: -0.015, s: 0.62, w: 0.22 },
-        ];
+    const lock = [
+      { x: -0.315, y: -0.02, s: 0.66, w: 0.15 },
+      { x: -0.155, y: -0.045, s: 0.66, w: 0.15 },
+      { x: 0, y: -0.03, s: 0.62, w: 0.12 },
+      { x: 0.165, y: -0.045, s: 0.62, w: 0.2 },
+      { x: 0.335, y: -0.015, s: 0.62, w: 0.22 },
+    ];
     const nodes: ReactNode[] = [
       <CVSheet key="cv" lang={lang} variant="strong" />,
       <LinkedInCard key="li" lang={lang} variant="strong" />,
       <PhotoCard key="ph" src="/speaking-portrait.jpg" alt={lang === "ar" ? "تركي المالكي" : "Turki Almalki"} />,
       <BrowserCard key="wb" lang={lang} variant="strong" />,
-      <div key="db" className="bd-dash">
+      <div key="db" className="sv-bd-dash">
         <DashboardCard lang={lang} />
       </div>,
     ];
@@ -1677,40 +1777,57 @@ function SceneBundle({ ctx }: { ctx: Ctx }) {
       z: 20 + i,
       from: entry[i],
       to: { x: mx(lock[i].x), y: lock[i].y, r: 0, s: lock[i].s },
-      delay: i * 0.075,
+      /* 0.035, restored. The stagger had drifted to 0.075, which pushes the
+         last object's arrival past 0.86 — the point where `FieldObject`'s
+         travel ends — so the five objects never actually locked into the
+         approved composition: mid-scene they were still scattered at
+         different depths and heights instead of settling into one row. This
+         one number is the whole "the bundle scene looks wrong" report. */
+      delay: i * 0.035,
       node,
     }));
-  }, [lang, tight, D]);
+  }, [lang, film, D]);
 
   const footO = useScrub(p, [0.78, 0.92], [0, 1]);
   const footY = useTransform(p, [0.78, 0.94], [20, 0]);
   const fx = (v: object) => (film ? v : undefined);
 
   return (
-    <section ref={secRef} className="scn scn-bd">
+    <section ref={secRef} className="sv-scene sv-bd">
       <RailMark id="completeBundle" top="40%" height="58%" />
-      <div className="pin">
-        <div ref={stageRef} className="stage">
+      <div className="sv-pin">
+        {/* The bundle's headline is a real heading on a phone, above the
+            plate, rather than a scrubbed layer floating inside the stage. */}
+        {phone && <h2 className="sv-mega sv-mega2 sv-bd-h">{b.headline[lang]}</h2>}
+        <div ref={stageRef} className="sv-stage">
+          <span ref={trig} className="sv-trigger" aria-hidden />
+          {/* Five services' worth of components — a CV, a profile, a
+              photograph, a browser and an entire second DashboardCard —
+              assembling into one composition. On a phone it is the same
+              assembly, played once, as one video. */}
           {objects.map((o) => (
             <FieldObject key={o.id} p={p} o={o} stage={stage} ctx={ctx} />
           ))}
+          {phone && <MobilePlate id="bundle" lang={lang} reduced={reduced} label={t.a11yBundle} />}
 
-          <FieldText
-            p={p}
-            stage={stage}
-            ctx={ctx}
-            y={tight ? -0.42 : -0.34}
-            range={tight ? [0.3, 0.5, 0.7, 0.8] : [0.3, 0.5, 2, 2.1]}
-            className="ft-mid ft-bd"
-          >
-            <h2 className="mega mega-2">{b.headline[lang]}</h2>
-          </FieldText>
+          {film && (
+            <FieldText
+              p={p}
+              stage={stage}
+              ctx={ctx}
+              y={-0.34}
+              range={[0.3, 0.5, 2, 2.1]}
+              className="sv-fx-mid sv-fx-bd"
+            >
+              <h2 className="sv-mega sv-mega2">{b.headline[lang]}</h2>
+            </FieldText>
+          )}
         </div>
 
-        <motion.div className="copy copy-center bd-foot" style={fx({ opacity: footO, y: footY })}>
-          <span className="bd-name">{b.name[lang]}</span>
-          <span className="bd-price">
-            <Money price={b.price} lang={lang} className="money-xl" />
+        <motion.div className="sv-copy sv-copy-center sv-bd-foot" style={fx({ opacity: footO, y: footY })}>
+          <span className="sv-bd-name">{b.name[lang]}</span>
+          <span className="sv-bd-price">
+            <Money price={b.price} lang={lang} className="sv-money-xl" />
             <em>
               {t.bundleSep}{" "}
               <s>
@@ -1729,10 +1846,10 @@ function SceneBundle({ ctx }: { ctx: Ctx }) {
 
 function FinalWord({ t, lang }: { t: Copy; lang: Lang }) {
   return (
-    <section className="fin">
-      <h2 className="mega mega-2">{t.finalH}</h2>
-      <p className="mega-sub">{t.finalSub}</p>
-      <div className="fin-a">
+    <section className="sv-fin">
+      <h2 className="sv-mega sv-mega2">{t.finalH}</h2>
+      <p className="sv-sub">{t.finalSub}</p>
+      <div className="sv-fin-a">
         {/* A real anchor to the first service's rail mark: no handler, no
             smooth-scroll script, and it works before hydration. */}
         <a className="cta" href="#resumeReview">
@@ -1742,32 +1859,65 @@ function FinalWord({ t, lang }: { t: Copy; lang: Lang }) {
             above this one is that offer, made properly. */}
       </div>
       <style>{`
-        .fin { width: min(880px, calc(100% - 48px)); margin: 0 auto; padding-block: clamp(100px, 14vw, 190px); text-align: center; }
-        .fin-a { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 26px; margin-top: 40px; }
+        .sv-fin { width: min(880px, calc(100% - 48px)); margin: 0 auto; padding-block: clamp(100px, 14vw, 190px); text-align: center; }
+        .sv-fin-a { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 26px; margin-top: 40px; }
       `}</style>
     </section>
   );
 }
 
+
 /* ════════════════════════ the stylesheet ════════════════════════
 
-   Read this as two documents in one.
+   THREE BLOCKS, AND THE TWO THAT DESCRIBE GEOMETRY ARE MUTUALLY EXCLUSIVE.
 
-   THE FIRST is unconditional and describes the PHONE: scenes that flow, a
-   stage with its own proportions followed by its copy, natural section
-   heights, and one-shot entrances waiting on `.is-in`. It is also the
-   server-rendered layout, so it is what every device paints first and what a
-   phone paints for good.
+     SHARED   objects, typography, colour, the Arabic pass. Nothing here
+              positions a scene.
+     PHONE    `@media not all and (hover:hover) and (pointer:fine)`
+     FILM     `@media (hover:hover) and (pointer:fine)`
 
-   THE SECOND lives inside `@media (hover:hover) and (pointer:fine)` and turns
-   that into the film: sections become tall, `.pin` becomes sticky and
-   viewport-tall, `.stage` fills it absolutely, and `.copy` is lifted into the
-   stage and positioned. Every entrance transition is cancelled there, because
-   the film scrubs those same channels itself and two animations on one
-   property is one animation too many.
+   ── WHY THE PHONE BLOCK IS INSIDE A NEGATIVE MEDIA QUERY ─────────────────
+   Because the version this replaces did not put it in one, and that is what
+   broke the desktop film.
+
+   The phone rules used to be the unconditional base, with the film written
+   as a set of overrides on top. Every one of those overrides had to remember
+   to undo every phone declaration it did not want — and one did not. The
+   phone's hero copy is a centred block:
+
+       .copy-hero { inset-inline: 0; margin-inline: auto; width: min(460px, …) }
+
+   and the film's is edge-aligned:
+
+       .copy-hero { inset-inline-start: max(24px, (100vw - 1300px) / 2); … }
+
+   `inset-inline-start` overrode the start side. `inset-inline-end: 0` and
+   `margin-inline: auto` SURVIVED — and an absolutely positioned box with
+   both insets set and `margin: auto` is a CENTRED box, whichever start value
+   it was given. Measured on a 1440px laptop the hero copy computed to
+   `left: 0; right: 70px; margin-left: 435px` and sat at x=435…935: directly
+   on top of the crumpled CV, which is the "desktop animations are now
+   positioned incorrectly" report.
+
+   No amount of care makes that class of bug not happen again; the two
+   blocks being mutually exclusive does. A phone declaration is now
+   unreachable on a pointer device — not overridden, not outranked,
+   UNREACHABLE — so the film's geometry is only ever what the film block
+   says it is.
+
+   ── AND WHY EVERY CLASS IS `sv-` ─────────────────────────────────────────
+   `.db-*` and `.wk-*` were used by this file for scene layout AND by
+   WorkObjects/CareerObjects for the internals of a dashboard and a work
+   history. `.stage`, `.copy`, `.pin`, `.scn`, `.fo`, `.big` were one-word
+   names on a site with other pages. Everything this file owns is now
+   `sv-`-prefixed and lives under `.sv`, so it cannot reach an object's
+   internals or another route.
 
    The media query string is the one `useMode` asks matchMedia. They must not
    drift apart.                                                             */
+
+const FILM_ONLY = "@media (hover: hover) and (pointer: fine)";
+const PHONE_ONLY = "@media not all and (hover: hover) and (pointer: fine)";
 
 function PageStyles() {
   return (
@@ -1775,479 +1925,549 @@ function PageStyles() {
       .sv { background: #FBFBF9; color: #0d0e12; overflow-x: clip; }
       [data-theme="dark"] .sv { background: #0d0e12; color: #f0f0ef; }
 
-      /* ═══════════════ 1 · THE PHONE (and the server HTML) ═══════════════ */
+      /* The page must never resist the finger. No scroll snapping anywhere,
+         mandatory or proximity; no touch-action: none on any wrapper; and
+         nothing on this page calls preventDefault on a touch or pointer
+         event. Vertical panning is stated explicitly so a stray horizontal
+         gesture over a scene cannot be interpreted as a drag on it. */
+      .sv, .sv .sv-scene, .sv .sv-pin, .sv .sv-stage { touch-action: pan-y; }
 
-      /* NO scroll snapping. Not mandatory, not proximity, not anywhere. The
-         page must never resist the finger. */
-      .scn { position: relative; }
-      .scn .pin {
-        display: flex; flex-direction: column; justify-content: center;
-        gap: clamp(26px, 6vw, 40px);
-        /* clears the site's own fixed navigation pill */
-        padding: clamp(56px, 12vw, 84px) 22px calc(96px + env(safe-area-inset-bottom, 0px));
-      }
-      /* Deliberately min-height, and deliberately NOT the same number twice.
-         A page where all seven panels are exactly 100vh reads as a slideshow
-         you are being marched through; content allowed its own height reads
-         as a page. */
-      .scn-rw .pin { min-height: 92vh; }
-      .scn-li .pin { min-height: 100vh; }
-      .scn-wk .pin { min-height: 104vh; }
-      .scn-db .pin { min-height: 108vh; }
-      .scn-bd .pin { min-height: 110vh; }
+      /* ═══════════════════════ 1 · SHARED ═══════════════════════ */
 
-      /* The stage keeps the composition's proportions instead of being handed
-         a viewport. Objects inside are placed as percentages of it, so the
-         same from/to vectors that compose the film compose this. */
-      .stage {
-        position: relative; width: 100%; max-width: 460px; margin-inline: auto;
-        aspect-ratio: var(--ar, 1 / 0.86);
-      }
-      /* Each ratio is the one its own composition actually needs, measured
-         rather than guessed. A stage that is shorter than its contents does
-         not clip on a phone — it spills into the copy underneath, and a
-         headline with a CV sheet lying across it is the single most obvious
-         way for this page to look broken. */
-      .scn-rw .stage { --ar: 1 / 1.42; max-width: 240px; }
-      .scn-li .stage { --ar: 1 / 0.98; }
-      .scn-wk .stage { --ar: 1 / 1.0; }
-      .scn-db .stage { --ar: 1 / 1.34; }
-      .scn-bd .stage { --ar: 1 / 1.12; }
+      .sv .sv-scene { position: relative; }
 
-      .copy {
-        display: flex; flex-direction: column; align-items: center; text-align: center;
-        gap: clamp(14px, 3.4vw, 20px);
-        width: 100%; max-width: 480px; margin-inline: auto;
-      }
-      .copy .ck { width: 100%; }
-      .ctaw { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
-      .cta-slot { display: contents; }
+      /* ── decorative layers take NO pointer, ever ──
+         Every one of these is a picture of something. A thumb aiming at a buy
+         button must never be able to land on one of them, and the way to
+         guarantee that is not z-index — it is not being in the hit test at
+         all. Interactive things opt back in below. */
+      .sv .sv-stage,
+      .sv .sv-obj,
+      .sv .sv-obj-e,
+      .sv .sv-fx,
+      .sv .sv-plate,
+      .sv .sv-plate-v,
+      .sv .sv-trigger,
+      .sv .sv-sp-shot,
+      .sv .sv-sp-scrim,
+      .sv .sv-sp-inset,
+      .sv .sv-wk-layer,
+      .sv .sv-db-hero,
+      .sv .sv-db-tag,
+      .sv .sv-wk-kick,
+      .sv .sv-rmark,
+      .sv .sv-hero-paper,
+      .sv .sv-hp-weak,
+      .sv .sv-hp-marks,
+      .sv .sv-ann,
+      .sv .sv-rw-sweep { pointer-events: none; }
 
-      /* ── the entrance ──
-         ONE class, added once by IntersectionObserver, never removed. What
-         follows is CSS: a transform and an opacity for well under a second,
-         and then the section is inert DOM for the rest of the session. No
-         filter, no blur, no backdrop-filter, no animated box-shadow and no
-         spring — those are what turn a "premium" entrance into a dropped
-         frame. */
-      .fo-e {
-        transform: translate3d(var(--ex, 0), var(--ey, 14%), 0)
-                   scale(calc(var(--os, 1) * var(--es, 0.94)))
-                   rotate(var(--er, 0deg));
-        opacity: 0;
-        transition:
-          transform 620ms cubic-bezier(0.22, 1, 0.36, 1) var(--ed, 0ms),
-          opacity 420ms ease var(--ed, 0ms);
-      }
-      .is-in .fo-e {
-        transform: scale(var(--os, 1)) rotate(var(--or, 0deg));
-        opacity: 1;
-      }
-      /* The copy follows its scene in, a beat behind the objects. */
-      .scn > .pin > .copy {
-        opacity: 0; transform: translate3d(0, 14px, 0);
-        transition: opacity 460ms ease 200ms, transform 520ms cubic-bezier(0.22,1,0.36,1) 200ms;
-      }
-      .scn.is-in > .pin > .copy { opacity: 1; transform: none; }
+      /* …and the copy block, which contains every link on the page, takes it
+         back. A stage that covers the copy cannot intercept it, because the
+         stage is not in the hit test and the copy is. */
+      .sv .sv-copy,
+      .sv .sv-copy a,
+      .sv .sv-copy button,
+      .sv .sv-ctaw,
+      .sv .sv-db-acts { pointer-events: auto; }
 
-      /* ── 02 · the rewrite, played once ──
-         Four clauses, 150ms apart, 380ms each — a ~750ms sentence that
-         assembles and then stops. */
-      .sv-phone .rw-cl {
-        opacity: 0; transform: translate3d(0, 8px, 0);
-        transition: opacity 380ms ease, transform 380ms cubic-bezier(0.22,1,0.36,1);
-        transition-delay: calc(560ms + var(--i, 0) * 150ms);
-      }
-      .sv-phone .is-in .rw-cl { opacity: 1; transform: none; }
-      /* The weak line is struck through just before the strong one starts. */
-      .sv-phone .ba-strike {
-        transform: scaleX(0); transform-origin: left center;
-        transition: transform 420ms cubic-bezier(0.22,1,0.36,1) 300ms;
-      }
-      [dir="rtl"] .sv-phone .ba-strike { transform-origin: right center; }
-      .sv-phone .is-in .ba-strike { transform: scaleX(1); }
-      .sv-phone .ba-before { transition: opacity 400ms ease 720ms; }
-      .sv-phone .is-in .ba-before { opacity: 0.45; }
-      .sv-phone .ba-why { opacity: 0; transition: opacity 380ms ease 480ms; }
-      .sv-phone .is-in .ba-why { opacity: 0.85; }
-
-      /* ── 04 · the LinkedIn headline, transformed ──
-         The weak headline is struck and dimmed; the strong one arrives behind
-         it; the weak profile card and the failed search dissolve to reveal the
-         strong ones underneath — the same hand-off the film scrubs. */
-      .sv-phone .hl-weak { transition: opacity 360ms ease 560ms; }
-      .sv-phone .is-in .hl-weak { opacity: 0.4; text-decoration: line-through; }
-      .sv-phone .hl-strong {
-        opacity: 0; transform: translate3d(0, 10px, 0);
-        transition: opacity 420ms ease 560ms, transform 520ms cubic-bezier(0.22,1,0.36,1) 560ms;
-      }
-      .sv-phone .is-in .hl-strong { opacity: 1; transform: none; }
-      .sv-phone .lk-card-over,
-      .sv-phone .lk-rank-over { transition: opacity 460ms ease 420ms; }
-      .sv-phone .is-in .lk-card-over,
-      .sv-phone .is-in .lk-rank-over { opacity: 0; }
-
-      /* ── 03 · the photograph, revealed ──
-         Scale 1.04 → 1, a small lift, and a clip that opens from the bottom.
-         ~560ms, then it is a photograph and nothing more. */
-      .sv-phone .sp-shot {
-        transform: scale(1.04) translate3d(0, 10px, 0);
-        clip-path: inset(0 0 12% 0);
-        transition:
-          transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
-          clip-path 560ms cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .sv-phone .is-in .sp-shot { transform: none; clip-path: inset(0 0 0 0); }
-
-      /* ── 06 · raw data → dashboard ──
-         The three registered properties the dashboard exposes: the KPI tiles
-         settle, then the charts grow, then the ring fills. ~850ms end to end,
-         then absolutely still — no chart on this page animates twice. */
-      .sv-phone .db-vars {
-        --kpi: 0; --bars: 0; --ring: 0;
-        transition: --kpi 300ms ease 300ms, --bars 420ms ease 460ms, --ring 380ms ease 600ms;
-      }
-      .sv-phone .is-in .db-vars { --kpi: 1; --bars: 1; --ring: 1; }
-      .sv-phone .db-hero {
-        position: absolute; z-index: 20; left: 50%; top: 58%; translate: -50% -50%;
-        width: 100%;
-      }
-      .sv-phone .fo-raw { z-index: 4; }
-      .sv-phone .db-tag { display: none; }
-
-      /* ── 05 · the kicker rides above the stack ── */
-      .sv-phone .wk-kick {
-        position: absolute; z-index: 40; top: -4px; inset-inline: 0; text-align: center;
-        font-size: 10px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
-        color: var(--text-muted, #a5a5a0);
+      /* The buy link's own layer. "z-index" here is not a guess — it is
+         above every scene layer this file defines (max 44), and it is stated
+         so that no future stage can be authored on top of it. */
+      .sv .sv-copy .ck,
+      .sv .sv-copy .cta {
+        position: relative; z-index: 100;
+        pointer-events: auto; touch-action: manipulation;
       }
 
-      /* ── 03 · the speaking scene keeps its dark, full-bleed frame ── */
-      .scn-sp { background: #08090c; color: #fff; }
-      .scn-sp .pin {
-        position: relative; min-height: 94vh; padding: 0; overflow: hidden; display: block;
-      }
-      .sp-shot { position: absolute; inset: 0; }
-      .sp-img { object-fit: cover; object-position: 46% 36%; }
-      .sp-scrim {
-        position: absolute; inset: 0; opacity: 0.88;
-        background: linear-gradient(to top, rgba(6,7,10,0.97) 0%, rgba(6,7,10,0.86) 24%, rgba(6,7,10,0.4) 60%, rgba(6,7,10,0.12) 100%);
-      }
-      .sp-inset { display: none; }
-      .scn-sp .copy {
-        position: absolute; z-index: 3; inset-inline: 0;
-        bottom: calc(104px + env(safe-area-inset-bottom, 0px));
-        padding-inline: 22px; color: #fff;
-        /* driven by its own reveal, not the shared copy transition */
-        opacity: 1; transform: none; transition: none;
-      }
-      .scn-sp .chap, .sp-kicker { color: rgba(255,255,255,0.62); }
-      .sp-h { color: #fff; text-shadow: 0 2px 40px rgba(0,0,0,0.4); }
-      .sp-kicker { margin: -4px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
-      .scn-sp .cta { background: #fff; color: #0d0e12; }
-      .scn-sp .cta-p { color: rgba(255,255,255,0.68); }
+      /* the rail's hand-off bands — invisible, never interactive, and the
+         anchor a #service link lands on */
+      .sv .sv-rmark { position: absolute; inset-inline: 0; visibility: hidden; }
 
-      /* ── 01 · the hero is scrubbed on EVERY device ──
-         ~190vh: 100 of it is the pin, 90 is travel — at a typical swipe that
-         is about a swipe and a half from crushed ball to reviewed CV, with no
-         stretch of it that produces nothing. */
-      .scn-hero { height: 190vh; }
-      .scn-hero .pin { position: sticky; top: 0; height: 100svh; padding: 0; display: block; }
-      .scn-hero .stage {
-        position: absolute; inset: 0; max-width: none; margin: 0;
-        aspect-ratio: auto; overflow: hidden;
-      }
-      .scn-hero .copy-hero {
-        position: absolute; z-index: 42; inset-inline: 0; margin-inline: auto;
-        bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-        width: min(460px, calc(100% - 36px)); padding: 0; gap: 12px;
-        /* driven by the scrub, never by the reveal class */
-        opacity: 1; transform: none; transition: none;
-      }
-      /* On an 844px screen those two extra lines are the difference between
-         the buy button being on screen and being under the navigation. */
-      .scn-hero .copy-hero .lede { display: none; }
-      .scn-hero .copy-hero .big { font-size: clamp(24px, 7vw, 32px); }
-      .hero-paper { transform-origin: center; }
-      .hp-weak { position: relative; }
-      .hp-marks { position: absolute; inset: 0; }
+      /* The activation marker: zero-height, invisible, and placed directly
+         above the visual it starts. See "useReveal". */
+      /* Absolute, always: it marks the top edge of the visual it starts and
+         must never be a box in its parent's layout. It was briefly an
+         in-flow child of the pin, which made it a third grid item in the
+         two-column scenes and pushed the copy into a second row. */
+      .sv .sv-trigger { position: absolute; top: 0; inset-inline: 0; height: 1px; }
+      .sv .sv-trigger-abs { top: 46%; }
 
-      /* reduced motion: the same scene at its end state, nothing running */
-      .scn-hero.is-still { height: auto; }
-      .scn-hero.is-still .pin { position: static; height: 88vh; }
-
-      /* ═══════════════ 2 · THE FILM (pointer devices) ═══════════════ */
-      @media (hover: hover) and (pointer: fine) {
-        .scn .pin {
-          position: sticky; top: 0; height: 100vh; display: block; padding: 0; min-height: 0;
-        }
-        .stage {
-          position: absolute; inset: 0; max-width: none; margin: 0;
-          aspect-ratio: auto; overflow: hidden;
-        }
-        /* The per-scene proportions and widths above are the PHONE's, and they
-           are written with a two-class selector, so the one-class reset just
-           above cannot undo them. Restated here at matching specificity — and
-           later in the sheet, which is what decides it — so a laptop gets a
-           stage that fills the pin rather than a 240px phone box. */
-        .scn-rw .stage, .scn-li .stage, .scn-wk .stage,
-        .scn-db .stage, .scn-bd .stage { --ar: auto; max-width: none; }
-
-        /* scene lengths — the film's runway */
-        .scn-hero { height: 480vh; }
-        .scn-rw   { height: 300vh; }
-        .scn-sp   { height: 260vh; }
-        .scn-li   { height: 280vh; }
-        .scn-wk   { height: 400vh; }
-        .scn-db   { height: 380vh; }
-        .scn-bd   { height: 320vh; }
-
-        /* Nothing waits for a reveal class here: the film owns these channels
-           and writes them every frame. A transition left switched on would be
-           a second animation fighting the first. */
-        .fo-e, .scn > .pin > .copy, .rw-cl, .ba-strike, .ba-before, .ba-why,
-        .hl-weak, .hl-strong, .lk-card-over, .lk-rank-over, .sp-shot, .db-vars {
-          transition: none;
-        }
-        .fo-e { transform: none; opacity: 1; }
-        .scn > .pin > .copy { opacity: 1; transform: none; }
-
-        /* the copy blocks, lifted into the stage */
-        .copy {
-          position: absolute; z-index: 42; align-items: flex-start; text-align: start;
-          gap: clamp(18px, 2.2vw, 28px); max-width: none; padding: 0;
-        }
-        .copy .ck { width: auto; }
-        .ctaw { display: inline-flex; align-items: flex-start; width: auto; }
-        .copy-center {
-          inset-inline: 0; margin-inline: auto; bottom: clamp(74px, 11vh, 122px);
-          width: min(760px, calc(100% - 44px)); align-items: center; text-align: center;
-        }
-        .copy-center::before {
-          content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-          width: 128%; height: 240%; z-index: -1; border-radius: 50%;
-          background: radial-gradient(closest-side, rgba(251,251,249,0.94) 0%, rgba(251,251,249,0.6) 56%, rgba(251,251,249,0) 100%);
-        }
-        [data-theme="dark"] .copy-center::before {
-          background: radial-gradient(closest-side, rgba(13,14,18,0.94) 0%, rgba(13,14,18,0.6) 56%, rgba(13,14,18,0) 100%);
-        }
-
-        .scn-hero .copy-hero {
-          inset-inline-start: max(24px, calc((100vw - 1300px) / 2));
-          top: 50%; translate: 0 -50%; bottom: auto;
-          width: min(500px, 44vw); align-items: flex-start; text-align: start;
-        }
-        .scn-hero .copy-hero .lede { display: block; }
-        .scn-hero .copy-hero .big { font-size: clamp(28px, 3.9vw, 58px); }
-
-        /* 02 and 04 are two-column scenes rather than pinned stages */
-        .scn-rw .pin, .scn-li .pin {
-          display: flex; flex-direction: row; align-items: center;
-          height: auto; min-height: 100vh;
-        }
-        .scn-rw .stage-doc, .scn-li .lk-stage {
-          position: relative; inset: auto; overflow: visible; aspect-ratio: auto;
-          width: 42%; margin-inline: max(24px, calc((100vw - 1240px) / 2)) 0;
-        }
-        .scn-li .lk-stage { aspect-ratio: 4 / 3.5; }
-        .scn-rw .copy, .scn-li .copy {
-          position: relative; z-index: 1; inset: auto; translate: none;
-          width: 48%; margin-inline: clamp(44px, 7vw, 110px) 0;
-        }
-        .scn-rw .scn-rw-doc { width: min(370px, 88%); }
-
-        .scn-sp .pin { min-height: 0; height: 100vh; overflow: hidden; }
-        .scn-sp .copy {
-          inset-inline-start: max(24px, calc((100vw - 1320px) / 2));
-          bottom: clamp(90px, 14vh, 150px); padding-inline: 0;
-          width: min(720px, calc(100% - 48px));
-        }
-        .sp-inset {
-          display: block; position: absolute; z-index: 3;
-          inset-inline-end: clamp(24px, 5vw, 96px); bottom: clamp(90px, 16vh, 170px);
-          width: clamp(150px, 17vw, 250px);
-        }
-        .sp-inset .ph-img { object-position: 45% 42%; scale: 1.35; }
-        .sp-shot { inset: -6%; }
-
-        .db-hero {
-          position: absolute; z-index: 20; left: 50%; top: 50%; translate: -50% -50%;
-        }
-        .db-tag { display: block; }
-        .scn-db .copy-center { bottom: auto; top: 58%; width: min(780px, calc(100% - 44px)); }
-        .wk-kick {
-          position: absolute; z-index: 40; top: clamp(78px, 12vh, 118px); inset-inline: 0;
-          text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.2em;
-          text-transform: uppercase; color: var(--text-muted, #8b8b8b);
-        }
-        .bd-foot { bottom: clamp(104px, 15vh, 152px); width: min(600px, calc(100% - 40px)); }
-      }
-
-      /* ═══════════════ shared object & typography rules ═══════════════ */
-
-      .fo { position: absolute; left: 50%; top: 50%; translate: -50% -50%; }
-      .fo-e { width: 100%; }
-      .ft { width: min(1100px, 88vw); text-align: center; pointer-events: none; }
-      .ft-mid::before {
+      .sv .sv-obj { position: absolute; left: 50%; top: 50%; translate: -50% -50%; }
+      .sv .sv-obj-e { width: 100%; }
+      .sv .sv-fx { width: min(1100px, 88vw); text-align: center; }
+      .sv .sv-fx-mid::before {
         content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
         width: 112%; height: 210%; z-index: -1; border-radius: 50%;
         background: radial-gradient(closest-side, rgba(251,251,249,0.86) 0%, rgba(251,251,249,0.52) 58%, rgba(251,251,249,0) 100%);
       }
-      [data-theme="dark"] .ft-mid::before {
+      [data-theme="dark"] .sv .sv-fx-mid::before {
         background: radial-gradient(closest-side, rgba(13,14,18,0.86) 0%, rgba(13,14,18,0.52) 58%, rgba(13,14,18,0) 100%);
       }
-      .sv-phone .ft-bd { width: 100%; }
-
-      /* the rail's hand-off bands — invisible, never interactive, and the
-         anchor a #service link lands on */
-      .rmark { position: absolute; inset-inline: 0; pointer-events: none; visibility: hidden; }
 
       /* Every slot an object can occupy is a size container, so the objects'
          own cqw-based typography scales to the slot, not to the viewport. */
-      .fo, .fo-e, .obj-abs, .obj-stack, .obj-cv, .scn-rw-doc, .srow figure,
-      .lk-card, .lk-card-over, .lk-rank, .lk-rank-over, .rw-stack, .rw-abs,
-      .db-vars, .bd-dash, .db-hero { container-type: inline-size; }
-      .obj-stack, .obj-cv { position: relative; width: 100%; }
-      .obj-abs { position: absolute; inset: 0; }
+      .sv .sv-obj, .sv .sv-obj-e, .sv .sv-rwdoc, .sv .sv-lk-card,
+      .sv .sv-lk-card-over, .sv .sv-lk-rank, .sv .sv-lk-rank-over,
+      .sv .sv-rw-stack, .sv .sv-rw-abs, .sv .sv-db-vars, .sv .sv-bd-dash,
+      .sv .sv-db-hero { container-type: inline-size; }
 
       /* 02 · the document */
-      .scn-rw-doc { width: 100%; margin-inline: auto; }
-      .rw-stack { position: relative; }
-      .rw-abs { position: absolute; inset: 0; }
-      .rw-sweep { position: absolute; z-index: 4; inset-inline: -2%; height: 2px; translate: 0 -1px; background: linear-gradient(90deg, rgba(20,149,255,0) 0%, rgba(20,149,255,0.85) 18%, rgba(20,149,255,0.85) 82%, rgba(20,149,255,0) 100%); box-shadow: 0 0 18px rgba(20,149,255,0.55); }
-      /* Film-only: the sweep is the visual form of a scrub, and there is no
-         scrub here to be the form of. */
-      .sv-phone .rw-sweep { display: none; }
-      /* …so on a phone the weak sheet simply is not stacked over the strong
-         one; the rewrite is told by the sentences instead. */
-      .sv-phone .rw-abs { display: none; }
+      .sv .sv-rwdoc { width: 100%; margin-inline: auto; }
+      .sv .sv-rw-stack { position: relative; }
+      .sv .sv-rw-abs { position: absolute; inset: 0; }
+      .sv .sv-rw-sweep { position: absolute; z-index: 4; inset-inline: -2%; height: 2px; translate: 0 -1px; background: linear-gradient(90deg, rgba(20,149,255,0) 0%, rgba(20,149,255,0.85) 18%, rgba(20,149,255,0.85) 82%, rgba(20,149,255,0) 100%); box-shadow: 0 0 18px rgba(20,149,255,0.55); }
 
       /* 04 · the profile */
-      .lk-stage { position: relative; }
-      .lk-card { position: absolute; inset-inline-start: 0; top: 2%; width: 74%; }
-      .lk-card-over { position: absolute; inset: 0; }
-      .lk-rank { position: absolute; inset-inline-end: 0; bottom: 6%; width: 56%; z-index: 3; }
-      .lk-rank-over { position: absolute; inset: 0; }
-      .hl { display: flex; flex-direction: column; gap: 10px; }
-      .hl-weak { font-size: clamp(14px, 1.6vw, 20px); font-weight: 600; color: var(--text-muted, #9aa0aa); }
-      .hl-strong { font-size: clamp(17px, 2.2vw, 29px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.3; }
+      .sv .sv-lk-stage { position: relative; }
+      .sv .sv-lk-card { position: absolute; inset-inline-start: 0; top: 2%; width: 74%; }
+      .sv .sv-lk-card-over { position: absolute; inset: 0; }
+      .sv .sv-lk-rank { position: absolute; inset-inline-end: 0; bottom: 6%; width: 56%; z-index: 3; }
+      .sv .sv-lk-rank-over { position: absolute; inset: 0; }
+      .sv .sv-hl { display: flex; flex-direction: column; gap: 10px; }
+      .sv .sv-hl-weak { font-size: clamp(14px, 1.6vw, 20px); font-weight: 600; color: var(--text-muted, #9aa0aa); }
+      .sv .sv-hl-strong { font-size: clamp(17px, 2.2vw, 29px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.3; }
 
       /* 05 · the stack */
-      .wk-layer { position: absolute; inset: 0; }
+      .sv .sv-wk-layer { position: absolute; inset: 0; }
 
       /* 06 · the dashboard */
-      .db-vars { width: 100%; }
-      .db-tag { position: absolute; z-index: 30; inset-inline: 0; text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted, #8b8b8b); }
-      .db-tag-raw { top: clamp(80px, 13vh, 130px); }
-      .db-tag-out { top: clamp(80px, 13vh, 130px); color: var(--accent, #1495ff); }
-      .db-acts { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 22px; }
+      .sv .sv-db-vars { width: 100%; }
+      .sv .sv-db-tag { position: absolute; z-index: 30; inset-inline: 0; text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted, #8b8b8b); }
+      .sv .sv-db-tag-out { color: var(--accent, #1495ff); }
+      .sv .sv-db-acts { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 22px; }
 
       /* 07 · the package */
-      .bd-dash { width: 100%; }
-      .bd-name { font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted, #8b8b8b); }
-      .bd-price { display: inline-flex; align-items: baseline; flex-wrap: wrap; justify-content: center; gap: 12px; }
-      .bd-price em { font-size: 12.5px; font-style: normal; color: var(--text-muted, #8b8b8b); }
-      .bd-price s { text-decoration-thickness: 1px; }
+      .sv .sv-bd-dash { width: 100%; }
+      .sv .sv-bd-name { font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted, #8b8b8b); }
+      .sv .sv-bd-price { display: inline-flex; align-items: baseline; flex-wrap: wrap; justify-content: center; gap: 12px; }
+      .sv .sv-bd-price em { font-size: 12.5px; font-style: normal; color: var(--text-muted, #8b8b8b); }
+      .sv .sv-bd-price s { text-decoration-thickness: 1px; }
+
+      /* ── the pre-rendered plate ──
+         An opaque, light surface in both themes, on purpose: the plate holds
+         a photograph OF the work — paper, profiles, browsers, a dark
+         dashboard — and re-baking every asset for a second theme would be
+         ten more files to keep in step with a film that only has one look. */
+      .sv .sv-plate {
+        position: relative; width: 100%; overflow: hidden;
+        /* --ar is the baked file's own ratio, handed down from PLATES, so
+           the box is reserved at exactly the shape the video will be. */
+        aspect-ratio: var(--ar, 620 / 720); border-radius: 18px;
+        background: #FBFBF9;
+        box-shadow: 0 1px 2px rgba(20,20,25,0.05), 0 18px 44px -20px rgba(20,20,25,0.18);
+      }
+      [data-theme="dark"] .sv .sv-plate {
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 18px 44px -20px rgba(0,0,0,0.7);
+      }
+      .sv .sv-plate-v {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        object-fit: cover; display: block;
+      }
 
       /* typography */
-      .mega { margin: 0; font-size: clamp(34px, 10.5vw, 116px); font-weight: 900; letter-spacing: -0.045em; line-height: 0.95; white-space: pre-line; }
-      .mega-2 { font-size: clamp(28px, 8.6vw, 86px); letter-spacing: -0.04em; line-height: 1.0; }
-      .mega-sub { max-width: 34ch; margin: clamp(16px, 2vw, 28px) auto 0; font-size: clamp(14px, 1.25vw, 18px); line-height: 1.55; color: var(--text-secondary); }
-      .big { margin: 0; font-size: clamp(25px, 7.2vw, 58px); font-weight: 900; letter-spacing: -0.04em; line-height: 1.04; white-space: pre-line; }
-      .lede { margin: 0; max-width: 42ch; font-size: clamp(14px, 1.15vw, 17px); line-height: 1.55; color: var(--text-secondary); }
-      @media (hover: hover) and (pointer: fine) {
-        .mega { font-size: clamp(38px, 7.6vw, 116px); }
-        .mega-2 { font-size: clamp(32px, 5.6vw, 86px); }
-        .big { font-size: clamp(28px, 3.9vw, 58px); }
-      }
+      .sv .sv-mega { margin: 0; font-size: clamp(34px, 10.5vw, 116px); font-weight: 900; letter-spacing: -0.045em; line-height: 0.95; white-space: pre-line; }
+      .sv .sv-mega2 { font-size: clamp(28px, 8.6vw, 86px); letter-spacing: -0.04em; line-height: 1.0; }
+      .sv .sv-sub { max-width: 34ch; margin: clamp(16px, 2vw, 28px) auto 0; font-size: clamp(14px, 1.25vw, 18px); line-height: 1.55; color: var(--text-secondary); }
+      .sv .sv-big { margin: 0; font-size: clamp(25px, 7.2vw, 58px); font-weight: 900; letter-spacing: -0.04em; line-height: 1.04; white-space: pre-line; }
+      .sv .sv-lede { margin: 0; max-width: 42ch; font-size: clamp(14px, 1.15vw, 17px); line-height: 1.55; color: var(--text-secondary); }
 
       /* chapter mark */
-      .chap { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted, #8b8b8b); }
-      .chap i { font-style: normal; padding-inline-end: 10px; border-inline-end: 1px solid currentColor; opacity: 0.5; }
+      .sv .sv-chap { display: inline-flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted, #8b8b8b); }
+      .sv .sv-chap i { font-style: normal; padding-inline-end: 10px; border-inline-end: 1px solid currentColor; opacity: 0.5; }
 
       /* prices */
-      .money { font-variant-numeric: tabular-nums; }
-      .money-xl { font-size: clamp(28px, 3.4vw, 44px); font-weight: 900; letter-spacing: -0.035em; }
-      .cta-p { font-size: 13px; color: var(--text-muted, #8b8b8b); }
-      .ghost { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 4px; }
-      .ghost:hover { color: var(--text-primary); }
+      .sv .sv-money { font-variant-numeric: tabular-nums; }
+      .sv .sv-money-xl { font-size: clamp(28px, 3.4vw, 44px); font-weight: 900; letter-spacing: -0.035em; }
+      .sv .sv-cta-p { font-size: 13px; color: var(--text-muted, #8b8b8b); }
+      .sv .sv-ghost { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 4px; }
+      .sv .sv-ghost:hover { color: var(--text-primary); }
 
       /* reviewer's margin notes, printed into the sheet's outer column */
-      .ann {
+      .sv .sv-ann {
         position: absolute; z-index: 12; inset-inline-end: 4%;
-        display: flex; align-items: center; gap: 5px; pointer-events: none;
+        display: flex; align-items: center; gap: 5px;
       }
-      .ann-line { flex: 0 0 auto; width: 15cqw; height: 1px; background: var(--accent, #1495ff); opacity: 0.5; transform-origin: right center; }
-      [dir="rtl"] .ann-line { transform-origin: left center; }
-      .ann-txt {
+      .sv .sv-ann-line { flex: 0 0 auto; width: 15cqw; height: 1px; background: var(--accent, #1495ff); opacity: 0.5; transform-origin: right center; }
+      [dir="rtl"] .sv .sv-ann-line { transform-origin: left center; }
+      .sv .sv-ann-txt {
         display: flex; flex-direction: column; gap: 1px; text-align: end; white-space: nowrap;
         padding: 0.5cqw 1.2cqw; border-radius: 2px; background: rgba(252,251,248,0.88);
       }
-      .ann-txt b { font-size: 2.9cqw; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #1495ff); }
-      .ann-txt i { font-size: 2.7cqw; font-style: italic; color: #6f6c66; }
-      @media (max-width: 900px) { .ann-txt i { display: none; } }
+      .sv .sv-ann-txt b { font-size: 2.9cqw; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent, #1495ff); }
+      .sv .sv-ann-txt i { font-size: 2.7cqw; font-style: italic; color: #6f6c66; }
+      @media (max-width: 900px) { .sv .sv-ann-txt i { display: none; } }
 
       /* before → after */
-      .ba { display: flex; flex-direction: column; gap: clamp(16px, 2.2vw, 28px); text-align: start; width: 100%; }
-      .ba-before, .ba-after { margin: 0; font-size: clamp(17px, 2.3vw, 31px); font-weight: 700; letter-spacing: -0.025em; line-height: 1.32; }
-      .ba-before { color: var(--text-muted, #a5a5a0); }
-      .ba-line-wrap { position: relative; display: inline; }
-      .ba-strike { position: absolute; left: 0; right: 0; top: 52%; height: 2px; background: currentColor; opacity: 0.6; }
-      .ba-after { color: var(--text-primary); }
-      .ba-k { display: block; margin-bottom: 8px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted, #a5a5a0); }
-      .ba-k-on { color: var(--accent, #1495ff); }
-      .ba-why { display: block; margin-top: 10px; font-size: clamp(12px, 1.05vw, 14px); font-weight: 600; letter-spacing: 0; line-height: 1.5; color: var(--text-muted, #a5a5a0); opacity: 0.85; }
+      .sv .sv-ba { display: flex; flex-direction: column; gap: clamp(16px, 2.2vw, 28px); text-align: start; width: 100%; }
+      .sv .sv-ba-before, .sv .sv-ba-after { margin: 0; font-size: clamp(17px, 2.3vw, 31px); font-weight: 700; letter-spacing: -0.025em; line-height: 1.32; }
+      .sv .sv-ba-before { color: var(--text-muted, #a5a5a0); }
+      .sv .sv-ba-wrap { position: relative; display: inline; }
+      .sv .sv-ba-strike { position: absolute; left: 0; right: 0; top: 52%; height: 2px; background: currentColor; opacity: 0.6; }
+      .sv .sv-ba-after { color: var(--text-primary); }
+      .sv .sv-ba-k { display: block; margin-bottom: 8px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted, #a5a5a0); }
+      .sv .sv-ba-k-on { color: var(--accent, #1495ff); }
+      .sv .sv-ba-why { display: block; margin-top: 10px; font-size: clamp(12px, 1.05vw, 14px); font-weight: 600; letter-spacing: 0; line-height: 1.5; color: var(--text-muted, #a5a5a0); opacity: 0.85; }
 
       /* the rewritten line, assembled clause by clause */
-      .rw-line { display: inline; }
+      .sv .sv-rw-line { display: inline; }
       /* inline-block, not inline: transforms do not apply to inline boxes,
          and each clause needs to lift as it lands */
-      .rw-cl { display: inline-block; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 0.04em 0.1em; margin-inline: -0.1em; }
-      .rw-note { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: clamp(11px, 1vw, 13px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent, #1495ff); }
-      .rw-note b { font-weight: 700; display: inline-block; }
-      .rw-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #1495ff); box-shadow: 0 0 0 4px rgba(20,149,255,0.16); }
+      .sv .sv-rw-cl { display: inline-block; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 0.04em 0.1em; margin-inline: -0.1em; }
+      .sv .sv-rw-note { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: clamp(11px, 1vw, 13px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent, #1495ff); }
+      .sv .sv-rw-note b { font-weight: 700; display: inline-block; }
+      .sv .sv-rw-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent, #1495ff); box-shadow: 0 0 0 4px rgba(20,149,255,0.16); }
 
-      /* ── GPU LAYER DISCIPLINE ──
-         will-change is a promise to the compositor that costs a texture per
-         element. On a laptop, promoting objects that genuinely all move at
-         once is a good trade. On a phone the same declaration asks for
-         twenty-plus full-size layers, and past a certain count the compositor
-         spends longer managing them than it saved — which is why "add
-         will-change" can make a page slower. So the phone promotes ONE thing:
-         the hero paper, the only object it animates per frame. Everything
-         else moves on transform and opacity for half a second, and the
-         compositor promotes those on demand perfectly well. */
-      .sv-phone .hero-paper { will-change: transform; }
-      @media (hover: hover) and (pointer: fine) {
-        .fo { will-change: transform, opacity; }
-        .wk-layer { will-change: transform, opacity, filter; }
-        .rw-cl { will-change: opacity, transform, filter; }
+      /* 03 · the speaking scene keeps its dark, full-bleed frame on both */
+      .sv .sv-sp { background: #08090c; color: #fff; }
+      .sv .sv-sp-shot { position: absolute; inset: 0; }
+      .sv .sv-sp-img { object-fit: cover; object-position: 46% 36%; }
+      .sv .sv-sp-scrim {
+        position: absolute; inset: 0; opacity: 0.88;
+        background: linear-gradient(to top, rgba(6,7,10,0.97) 0%, rgba(6,7,10,0.86) 24%, rgba(6,7,10,0.4) 60%, rgba(6,7,10,0.12) 100%);
       }
+      .sv .sv-sp .sv-chap, .sv .sv-sp-kicker { color: rgba(255,255,255,0.62); }
+      .sv .sv-sp-h { color: #fff; text-shadow: 0 2px 40px rgba(0,0,0,0.4); }
+      .sv .sv-sp-kicker { margin: -4px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+      .sv .sv-sp .cta { background: #fff; color: #0d0e12; }
+      .sv .sv-sp .sv-cta-p { color: rgba(255,255,255,0.68); }
 
-      /* The closing section is genuinely independent — no sticky, no scrubbed
-         value, nothing measured against the viewport — so it can be skipped
-         until it is near. Deliberately NOT applied to the scenes:
+      .sv .sv-hero-paper { transform-origin: center; }
+      .sv .sv-hp-weak { position: relative; }
+      .sv .sv-hp-marks { position: absolute; inset: 0; }
+
+      /* The closing sections are genuinely independent — no sticky, no
+         scrubbed value, nothing measured against the viewport — so they can
+         be skipped until near. Deliberately NOT applied to the scenes:
          content-visibility establishes containment, and containment breaks
          sticky positioning. */
-      .fin { content-visibility: auto; contain-intrinsic-size: auto 620px; }
+      .sv .sv-fin { content-visibility: auto; contain-intrinsic-size: auto 620px; }
 
       /* ── no placeholders, ever ──
          Every stage reserves its box through aspect-ratio and every object is
          sized as a percentage of that box, so an image that has not decoded
          yet leaves the composition it is going to occupy, never a grey
          skeleton and never a gap that collapses and re-expands. */
-      .stage img { background: transparent; }
+      .sv .sv-stage img { background: transparent; }
+
+      /* ═════════════════ 2 · THE PHONE (and only the phone) ═════════════════
+
+         Nothing in this block is reachable on a pointer device. */
+      ${PHONE_ONLY} {
+        .sv .sv-pin {
+          display: flex; flex-direction: column; justify-content: center;
+          gap: clamp(26px, 6vw, 40px);
+          /* The dock is gone from this page (see ServicesClient), so the only
+             thing left to clear at the bottom is the device's own home
+             indicator. */
+          padding: clamp(56px, 12vw, 84px) 22px calc(40px + env(safe-area-inset-bottom, 0px));
+        }
+        /* Deliberately min-height, and deliberately NOT the same number twice.
+           A page where all seven panels are exactly 100vh reads as a slideshow
+           you are being marched through; content allowed its own height reads
+           as a page. */
+        .sv .sv-rw .sv-pin { min-height: 92vh; }
+        .sv .sv-li .sv-pin { min-height: 96vh; }
+        .sv .sv-wk .sv-pin { min-height: 96vh; }
+        .sv .sv-db .sv-pin { min-height: 96vh; }
+        .sv .sv-bd .sv-pin { min-height: 104vh; }
+
+        /* The plate IS the stage on a phone — one element, one decode. The
+           stage adds no box of its own: the plate reserves its height from
+           its own baked aspect ratio, so nothing reflows when the video
+           decodes and nothing is letterboxed. */
+        .sv .sv-stage {
+          position: relative; width: 100%; max-width: 430px; margin-inline: auto;
+        }
+
+        .sv .sv-copy {
+          display: flex; flex-direction: column; align-items: center; text-align: center;
+          gap: clamp(14px, 3.4vw, 20px);
+          width: 100%; max-width: 480px; margin-inline: auto;
+        }
+        .sv .sv-copy .ck { width: 100%; }
+        .sv .sv-ctaw { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+        .sv .sv-cta-slot { display: contents; }
+        .sv .sv-bd-h { text-align: center; }
+
+        /* ── the entrance ──
+           ONE class, added once by IntersectionObserver from a sentinel
+           beside the visual, never removed. What follows is CSS: a transform
+           and an opacity for well under a second, and then the section is
+           inert DOM for the rest of the session. No filter, no blur, no
+           backdrop-filter, no animated box-shadow, no spring, no scroll
+           listener and no rAF — those are what turn a "premium" entrance
+           into a dropped frame. */
+        .sv .sv-scene > .sv-pin > .sv-copy,
+        .sv .sv-scene > .sv-pin > .sv-stage,
+        .sv .sv-scene > .sv-pin > .sv-bd-h {
+          opacity: 0; transform: translate3d(0, 16px, 0);
+          transition: opacity 460ms ease, transform 560ms cubic-bezier(0.22,1,0.36,1);
+        }
+        .sv .sv-scene > .sv-pin > .sv-copy { transition-delay: 160ms; }
+        .sv .sv-scene.sv-in > .sv-pin > .sv-copy,
+        .sv .sv-scene.sv-in > .sv-pin > .sv-stage,
+        .sv .sv-scene.sv-in > .sv-pin > .sv-bd-h { opacity: 1; transform: none; }
+
+        /* ── 02 · the rewrite sentence, played once ──
+           Four clauses, 150ms apart, 380ms each — a ~750ms sentence that
+           assembles and then stops. The plate above it plays the same beat. */
+        .sv .sv-rw-cl {
+          opacity: 0; transform: translate3d(0, 8px, 0);
+          transition: opacity 380ms ease, transform 380ms cubic-bezier(0.22,1,0.36,1);
+          transition-delay: calc(560ms + var(--i, 0) * 150ms);
+        }
+        .sv .sv-in .sv-rw-cl { opacity: 1; transform: none; }
+        /* The weak line is struck through just before the strong one starts. */
+        .sv .sv-ba-strike {
+          transform: scaleX(0); transform-origin: left center;
+          transition: transform 420ms cubic-bezier(0.22,1,0.36,1) 300ms;
+        }
+        [dir="rtl"] .sv .sv-ba-strike { transform-origin: right center; }
+        .sv .sv-in .sv-ba-strike { transform: scaleX(1); }
+        .sv .sv-ba-before { transition: opacity 400ms ease 720ms; }
+        .sv .sv-in .sv-ba-before { opacity: 0.45; }
+        .sv .sv-ba-why { opacity: 0; transition: opacity 380ms ease 480ms; }
+        .sv .sv-in .sv-ba-why { opacity: 0.85; }
+        /* The film-only devices: a travelling sweep is the visual form of a
+           scrub, and there is no scrub here to be the form of. */
+        .sv .sv-rw-sweep, .sv .sv-rw-note { display: none; }
+
+        /* ── 04 · the LinkedIn headline, transformed ──
+           The weak headline is struck and dimmed and the strong one arrives
+           behind it — the same hand-off the plate above plays. */
+        .sv .sv-hl-weak { transition: opacity 360ms ease 560ms; }
+        .sv .sv-in .sv-hl-weak { opacity: 0.4; text-decoration: line-through; }
+        .sv .sv-hl-strong {
+          opacity: 0; transform: translate3d(0, 10px, 0);
+          transition: opacity 420ms ease 560ms, transform 520ms cubic-bezier(0.22,1,0.36,1) 560ms;
+        }
+        .sv .sv-in .sv-hl-strong { opacity: 1; transform: none; }
+
+        /* ── 05 · the kicker rides above the plate ──
+           It is written after the plate in the DOM, where the film wants it
+           (the film positions it absolutely). Here the stage is a column and
+           "order: -1" lifts it without reordering the markup. */
+        .sv .sv-wk .sv-stage { display: flex; flex-direction: column; }
+        .sv .sv-wk-kick {
+          order: -1; display: block; text-align: center; margin-bottom: 10px;
+          font-size: 10px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+          color: var(--text-muted, #a5a5a0);
+        }
+        /* 06 · the two chapter tags are a film device: they cross-fade across
+           a scrub that does not exist here, and the copy says both. */
+        .sv .sv-db-tag { display: none; }
+
+        /* ── 03 · the photograph, revealed ──
+           Scale 1.04 → 1, a small lift, and a clip that opens from the
+           bottom. ~560ms, then it is a photograph and nothing more. */
+        .sv .sv-sp .sv-pin {
+          position: relative; min-height: 94vh; padding: 0; overflow: hidden; display: block;
+        }
+        .sv .sv-sp-shot {
+          transform: scale(1.04) translate3d(0, 10px, 0);
+          clip-path: inset(0 0 12% 0);
+          transition:
+            transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+            clip-path 560ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .sv .sv-in .sv-sp-shot { transform: none; clip-path: inset(0 0 0 0); }
+        .sv .sv-sp .sv-copy {
+          position: absolute; z-index: 3; inset-inline: 0;
+          bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+          padding-inline: 22px; color: #fff;
+          /* driven by its own reveal, not the shared copy transition */
+          opacity: 1; transform: none; transition: none;
+        }
+
+        /* ── 01 · the hero is scrubbed on EVERY device ──
+           ~190vh: 100 of it is the pin, 90 is travel — at a typical swipe
+           that is about a swipe and a half from crushed ball to reviewed CV,
+           with no stretch of it that produces nothing. */
+        .sv .sv-hero { height: 190vh; }
+        .sv .sv-hero .sv-pin { position: sticky; top: 0; height: 100svh; padding: 0; display: block; }
+        .sv .sv-hero .sv-stage {
+          position: absolute; inset: 0; max-width: none; margin: 0; overflow: hidden;
+          opacity: 1; transform: none; transition: none;
+        }
+        .sv .sv-hero .sv-copy-hero {
+          position: absolute; z-index: 42; inset-inline: 0; margin-inline: auto;
+          bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+          width: min(460px, calc(100% - 36px)); padding: 0; gap: 12px;
+          /* driven by the scrub, never by the reveal class */
+          opacity: 1; transform: none; transition: none;
+        }
+        /* On an 844px screen those two extra lines are the difference between
+           the buy button being on screen and being off it. */
+        .sv .sv-hero .sv-copy-hero .sv-lede { display: none; }
+        .sv .sv-hero .sv-copy-hero .sv-big { font-size: clamp(24px, 7vw, 32px); }
+        /* The over-layer carries only the red pen here — there is no second
+           CV sheet under it to give it a box. */
+        .sv .sv-hp-weak { position: absolute; inset: 0; }
+
+        /* reduced motion: the same scene at its end state, nothing running */
+        .sv .sv-hero.sv-still { height: auto; }
+        .sv .sv-hero.sv-still .sv-pin { position: static; height: 88vh; }
+
+        /* ── GPU LAYER DISCIPLINE ──
+           will-change is a promise to the compositor that costs a texture per
+           element. On a phone, promoting many elements asks for many
+           full-size layers, and past a certain count the compositor spends
+           longer managing them than it saved — which is why "add will-change"
+           can make a page slower. So the phone promotes ONE thing: the hero
+           paper, the only object it animates per frame. Everything else is a
+           transform and an opacity for half a second, and a video, which the
+           compositor already owns. */
+        .sv .sv-hero-paper { will-change: transform; }
+      }
+
+      /* ═══════════════ 3 · THE FILM (pointer devices only) ═══════════════
+
+         Self-contained: every geometric property this block depends on is
+         stated here, because nothing above it in the sheet describes
+         geometry for a pointer device. */
+      ${FILM_ONLY} {
+        /* scene lengths — the film's runway */
+        .sv .sv-hero { height: 480vh; }
+        .sv .sv-rw   { height: 300vh; }
+        .sv .sv-sp   { height: 260vh; }
+        .sv .sv-li   { height: 280vh; }
+        .sv .sv-wk   { height: 400vh; }
+        .sv .sv-db   { height: 380vh; }
+        .sv .sv-bd   { height: 320vh; }
+
+        .sv .sv-pin {
+          position: sticky; top: 0; height: 100vh; display: block; padding: 0; min-height: 0;
+        }
+        .sv .sv-stage {
+          position: absolute; inset: 0; max-width: none; margin: 0; overflow: hidden;
+        }
+
+        /* the copy blocks, lifted into the stage */
+        .sv .sv-copy {
+          position: absolute; z-index: 42;
+          display: flex; flex-direction: column; align-items: flex-start; text-align: start;
+          gap: clamp(18px, 2.2vw, 28px); max-width: none; padding: 0;
+        }
+        .sv .sv-copy .ck { width: auto; }
+        .sv .sv-ctaw { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 10px; width: auto; }
+        .sv .sv-cta-slot { display: contents; }
+        .sv .sv-copy-center {
+          inset-inline: 0; margin-inline: auto; bottom: clamp(74px, 11vh, 122px);
+          width: min(760px, calc(100% - 44px)); align-items: center; text-align: center;
+        }
+        .sv .sv-copy-center::before {
+          content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+          width: 128%; height: 240%; z-index: -1; border-radius: 50%;
+          background: radial-gradient(closest-side, rgba(251,251,249,0.94) 0%, rgba(251,251,249,0.6) 56%, rgba(251,251,249,0) 100%);
+        }
+        [data-theme="dark"] .sv .sv-copy-center::before {
+          background: radial-gradient(closest-side, rgba(13,14,18,0.94) 0%, rgba(13,14,18,0.6) 56%, rgba(13,14,18,0) 100%);
+        }
+
+        /* 01 · the hero copy is EDGE-ALIGNED, and says so completely.
+           Both insets and both margins are stated, so this box cannot be
+           centred by anything that is not written here. This is the rule the
+           phone's "inset-inline: 0; margin-inline: auto" used to survive
+           into — see the note at the top of this stylesheet. */
+        .sv .sv-hero .sv-copy-hero {
+          position: absolute;
+          inset-inline-start: max(24px, calc((100vw - 1300px) / 2));
+          inset-inline-end: auto;
+          margin-inline: 0;
+          top: 50%; translate: 0 -50%; bottom: auto;
+          width: min(500px, 44vw); align-items: flex-start; text-align: start;
+        }
+        .sv .sv-hero .sv-copy-hero .sv-lede { display: block; }
+        .sv .sv-hero .sv-copy-hero .sv-big { font-size: clamp(28px, 3.9vw, 58px); }
+
+        /* 02 and 04 are two-column scenes, and the composition is a CENTRED
+           grid — a fixed max width with "margin: 0 auto" — not two
+           percentage columns pushed off one edge. The centred version is the
+           approved one; the percentage version drifted the whole composition
+           ~55px off centre and closed the gutter between document and copy. */
+        .sv .sv-rw .sv-pin, .sv .sv-li .sv-pin {
+          display: grid; align-items: center; align-content: center;
+          height: auto; min-height: 100vh; margin-inline: auto;
+        }
+        /* "minmax(0, …)" on both tracks is what stops a long Arabic headline
+           from forcing its column past its share — a grid item's default
+           min-width is auto, i.e. its longest word, and without this the
+           copy column wins the fight and squeezes the document to nothing. */
+        .sv .sv-rw .sv-pin {
+          width: min(1220px, calc(100% - 48px));
+          grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+          gap: clamp(44px, 8vw, 116px);
+        }
+        .sv .sv-li .sv-pin {
+          width: min(1240px, calc(100% - 48px));
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: clamp(44px, 7vw, 110px);
+        }
+        /* Both columns are ordinary in-flow grid items here — the absolute
+           positioning above belongs to the pinned single-stage scenes. */
+        .sv .sv-rw .sv-stagedoc, .sv .sv-rw .sv-copy,
+        .sv .sv-li .sv-lk-stage, .sv .sv-li .sv-copy {
+          position: relative; inset: auto; translate: none;
+          overflow: visible; width: auto; max-width: none; margin: 0;
+        }
+        .sv .sv-rw .sv-rwdoc { width: min(370px, 84%); margin-inline: auto; }
+        .sv .sv-li .sv-lk-stage { aspect-ratio: 4 / 3.5; }
+
+        .sv .sv-sp .sv-pin { min-height: 0; height: 100vh; overflow: hidden; }
+        .sv .sv-sp .sv-copy {
+          inset-inline-start: max(24px, calc((100vw - 1320px) / 2));
+          inset-inline-end: auto; margin-inline: 0;
+          bottom: clamp(90px, 14vh, 150px); padding-inline: 0;
+          width: min(720px, calc(100% - 48px));
+        }
+        .sv .sv-sp-inset {
+          display: block; position: absolute; z-index: 3;
+          inset-inline-end: clamp(24px, 5vw, 96px); bottom: clamp(90px, 16vh, 170px);
+          width: clamp(150px, 17vw, 250px);
+        }
+        .sv .sv-sp-inset .ph-img { object-position: 45% 42%; scale: 1.35; }
+        .sv .sv-sp-shot { inset: -6%; }
+
+        .sv .sv-db-hero {
+          position: absolute; z-index: 20; left: 50%; top: 50%; translate: -50% -50%;
+        }
+        .sv .sv-db-tag-raw { top: clamp(80px, 13vh, 130px); }
+        .sv .sv-db-tag-out { top: clamp(80px, 13vh, 130px); }
+        .sv .sv-db .sv-copy-center { bottom: auto; top: 58%; width: min(780px, calc(100% - 44px)); }
+        .sv .sv-wk-kick {
+          position: absolute; z-index: 40; top: clamp(78px, 12vh, 118px); inset-inline: 0;
+          text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.2em;
+          text-transform: uppercase; color: var(--text-muted, #8b8b8b);
+        }
+        .sv .sv-bd-foot { bottom: clamp(104px, 15vh, 152px); width: min(600px, calc(100% - 40px)); }
+
+        .sv .sv-mega { font-size: clamp(38px, 7.6vw, 116px); }
+        .sv .sv-mega2 { font-size: clamp(32px, 5.6vw, 86px); }
+        .sv .sv-big { font-size: clamp(28px, 3.9vw, 58px); }
+
+        .sv .sv-obj { will-change: transform, opacity; }
+        .sv .sv-wk-layer { will-change: transform, opacity, filter; }
+        .sv .sv-rw-cl { will-change: opacity, transform, filter; }
+
+        /* reduced motion, on a pointer device: unpin everything rather than
+           leaving a scrubbed scene frozen on one frame */
+        @media (prefers-reduced-motion: reduce) {
+          .sv .sv-scene { height: auto !important; }
+          .sv .sv-pin { position: static; height: auto; min-height: 100vh; padding-block: 96px; }
+        }
+      }
 
       @media (prefers-reduced-motion: reduce) {
-        .fo-e, .scn > .pin > .copy, .rw-cl, .ba-strike, .ba-why, .hl-strong,
-        .lk-card-over, .lk-rank-over, .sp-shot, .db-vars {
+        .sv .sv-obj-e, .sv .sv-copy, .sv .sv-stage, .sv .sv-rw-cl,
+        .sv .sv-ba-strike, .sv .sv-ba-why, .sv .sv-hl-strong,
+        .sv .sv-sp-shot, .sv .sv-bd-h {
           transition: none !important;
           transform: none !important;
           opacity: 1 !important;
           clip-path: none !important;
         }
-        .sv-phone .db-vars { --kpi: 1; --bars: 1; --ring: 1; }
-        .fo { will-change: auto; }
+        .sv .sv-obj { will-change: auto; }
       }
 
       /* ══════════════════ ARABIC PASS ══════════════════
@@ -2261,48 +2481,45 @@ function PageStyles() {
          through line-height so the pills stay the height they are in
          English. */
 
-      [dir="rtl"] .mega { line-height: 1.18; }
-      [dir="rtl"] .mega-2 { line-height: 1.22; }
-      [dir="rtl"] .big { line-height: 1.26; }
-      [dir="rtl"] .mega-sub,
-      [dir="rtl"] .lede { line-height: 1.8; max-width: 40ch; }
+      [dir="rtl"] .sv .sv-mega { line-height: 1.18; }
+      [dir="rtl"] .sv .sv-mega2 { line-height: 1.22; }
+      [dir="rtl"] .sv .sv-big { line-height: 1.26; }
+      [dir="rtl"] .sv .sv-sub,
+      [dir="rtl"] .sv .sv-lede { line-height: 1.8; max-width: 40ch; }
 
       /* Chapter marks and kickers: uppercase does nothing in Arabic, and the
          tracking is already neutralised globally — what they need is room. */
-      [dir="rtl"] .chap,
-      [dir="rtl"] .wk-kick,
-      [dir="rtl"] .db-tag,
-      [dir="rtl"] .bd-name,
-      [dir="rtl"] .sp-kicker { line-height: 1.7; }
+      [dir="rtl"] .sv .sv-chap,
+      [dir="rtl"] .sv .sv-wk-kick,
+      [dir="rtl"] .sv .sv-db-tag,
+      [dir="rtl"] .sv .sv-bd-name,
+      [dir="rtl"] .sv .sv-sp-kicker { line-height: 1.7; }
       /* "01 · مراجعة السيرة" — the divider rule belongs on the start side of
          the number in both directions; the number just needs isolating. */
-      [dir="rtl"] .chap i { unicode-bidi: isolate; }
+      [dir="rtl"] .sv .sv-chap i { unicode-bidi: isolate; }
 
-      [dir="rtl"] .cta-p,
-      [dir="rtl"] .ghost { line-height: 1.7; }
+      [dir="rtl"] .sv .sv-cta-p,
+      [dir="rtl"] .sv .sv-ghost { line-height: 1.7; }
 
-      [dir="rtl"] .ba-before,
-      [dir="rtl"] .ba-after { line-height: 1.6; }
+      [dir="rtl"] .sv .sv-ba-before,
+      [dir="rtl"] .sv .sv-ba-after { line-height: 1.6; }
       /* Reserves the two lines the Arabic "after" needs while it assembles,
          so the CTA below it doesn't jump — in em, so it tracks the font. */
-      [dir="rtl"] .ba-after { min-height: 3.2em; }
-      [dir="rtl"] .ba-k { line-height: 1.7; }
-      /* The strike sweeps from the start edge, which is the right in Arabic —
-         otherwise it crosses the sentence backwards. */
-      [dir="rtl"] .ba-strike { transform-origin: right center; }
+      [dir="rtl"] .sv .sv-ba-after { min-height: 3.2em; }
+      [dir="rtl"] .sv .sv-ba-k { line-height: 1.7; }
 
-      [dir="rtl"] .hl-strong { line-height: 1.45; }
-      [dir="rtl"] .hl-weak { line-height: 1.6; }
+      [dir="rtl"] .sv .sv-hl-strong { line-height: 1.45; }
+      [dir="rtl"] .sv .sv-hl-weak { line-height: 1.6; }
 
       /* Prices: the figure is Latin, the currency word is Arabic. Isolating
          the pair keeps "1,499 ريال" from reordering next to punctuation. */
-      [dir="rtl"] .money { unicode-bidi: isolate; }
-      [dir="rtl"] .money-xl { line-height: 1.35; }
-      [dir="rtl"] .bd-price em { font-style: normal; line-height: 1.7; }
+      [dir="rtl"] .sv .sv-money { unicode-bidi: isolate; }
+      [dir="rtl"] .sv .sv-money-xl { line-height: 1.35; }
+      [dir="rtl"] .sv .sv-bd-price em { font-style: normal; line-height: 1.7; }
 
-      [dir="rtl"] .ann-txt i { font-style: normal; }
-      [dir="rtl"] .ann-txt b,
-      [dir="rtl"] .ann-txt i { line-height: 1.55; }
+      [dir="rtl"] .sv .sv-ann-txt i { font-style: normal; }
+      [dir="rtl"] .sv .sv-ann-txt b,
+      [dir="rtl"] .sv .sv-ann-txt i { line-height: 1.55; }
     `}</style>
   );
 }

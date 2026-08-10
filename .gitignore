@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# transient frames from scripts/render-mobile-scenes.mjs
+.mobile-scene-frames/
