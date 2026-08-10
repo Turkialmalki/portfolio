@@ -25,7 +25,12 @@ import type { ServiceId } from "@/config/careerServices";
      third-party script to become correct. If every script on the page fails,
      checkout still works.
    · No preventDefault. No promise before navigation. Nothing is awaited.
-   · Same tab. A purchase is the destination, not a detour.
+   · New tab, via `target="_blank"` on the markup itself — not window.open,
+     not a click handler. The browser opens it, synchronously, from the user's
+     own gesture, so no popup blocker and no script is involved. /services
+     stays exactly as the visitor left it, so a slow Lemon Squeezy load costs
+     them a tab switch and not the experience they were in. `rel="noopener
+     noreferrer"` because the checkout has no business touching this page.
    · Feedback is `:active { transform: scale(.975) }` — a compositor-only
      style the browser applies on touch-down, before any JavaScript runs and
      regardless of how busy the main thread is.
@@ -59,6 +64,8 @@ export default function CheckoutButton({
   return (
     <a
       href={href}
+      target="_blank"
+      rel="noopener noreferrer"
       className={`ck cta${size === "lg" ? " cta-big" : ""} ${className}`}
       data-service={serviceId}
     >
