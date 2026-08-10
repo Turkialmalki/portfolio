@@ -53,6 +53,46 @@ Public Speaking prints **Coming soon** and carries no price, because it has no
 product. Post it to build interest; the link still goes to /services, where the
 only action on that service is a contact link.
 
+## Work cards — proof, not offers
+
+```bash
+node marketing/build-work.mjs        # → cards/work/
+```
+
+The service cards say what you sell; these say what you have already built.
+
+```
+01-alrajhi-bank … 05-lean-technologies   one poster per case study
+00-selected-work                         all five on one image
+folio-home / -projects / -services       REAL screenshots of the live site (Arabic)
+   …-en                                  the same three in English
+dashboard-executive / -product / -operations   sample dashboards
+```
+
+Titles, roles, years and tools are parsed out of `src/data/projects.ts`, so
+posters and case-study pages can't disagree. Project imagery is the same file
+the site serves. The `folio-*` cards actually navigate to
+`https://www.turkialmalki.com` and screenshot it — desktop at 1440×900 and
+phone at 390×780 — so they can never show a design that has been replaced.
+Point them somewhere else with `SITE=https://staging.example.com`.
+
+**Outcome figures are switched off, on purpose.** `src/data/projects.ts` does
+not currently line up: the entry titled "Alrajhi Bank" carries BaseBox's
+outcomes (`Setup Time −78%`, `Teams Onboarded 12+`, `Screens Delivered 40+`).
+Inside a case-study page that's a data bug; on a poster it would be a numeric
+claim printed under a real bank's name and sent to strangers. So the posters
+print only what is unambiguous — project, role, year, tools, real screenshot.
+Once those outcomes are verified per project:
+
+```bash
+SHOW_OUTCOMES=1 node marketing/build-work.mjs
+```
+
+**The three dashboards are demonstrations, not results.** Every figure in them
+is invented, which is why each carries a visible `SAMPLE DATA` mark. They show
+what the Report & Dashboard service produces. Never caption them as a client's
+numbers.
+
 ## Captions to start from
 
 Each card carries the price and the URL already, so a caption only has to do
@@ -90,4 +130,17 @@ the part the image can't.
 
 **00 All services**
 > Everything I offer, with prices, on one image. Pick what you need.
+> → turkialmalki.com/services
+
+**Work cards**
+
+> **Selected work** — Banking, fintech, open banking, enterprise. Five case
+> studies with the full working: problem, research, decisions, outcomes.
+> → turkialmalki.com/projects
+
+> **The portfolio** — I build the thing I'm asking you to trust me with. The
+> site itself is the sample. → turkialmalki.com
+
+> **Dashboards** — Your numbers already exist; they're just spread across six
+> spreadsheets. This is what one screen looks like. (Sample data.)
 > → turkialmalki.com/services
