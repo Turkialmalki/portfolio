@@ -1,0 +1,114 @@
+{
+  "generated": "2026-08-10",
+  "cards": [
+    {
+      "id": "resumeReview",
+      "name": {
+        "en": "Resume Review",
+        "ar": "مراجعة السيرة الذاتية"
+      },
+      "price": {
+        "usd": 5,
+        "sar": 19
+      },
+      "comingSoon": false,
+      "files": {
+        "en": "en/01-resume-review.png",
+        "ar": "ar/01-resume-review.png"
+      }
+    },
+    {
+      "id": "resumeWriting",
+      "name": {
+        "en": "Resume Writing",
+        "ar": "كتابة السيرة الذاتية"
+      },
+      "price": {
+        "usd": 30,
+        "sar": 113
+      },
+      "comingSoon": false,
+      "files": {
+        "en": "en/02-resume-writing.png",
+        "ar": "ar/02-resume-writing.png"
+      }
+    },
+    {
+      "id": "publicSpeaking",
+      "name": {
+        "en": "Public Speaking",
+        "ar": "الإلقاء والعروض"
+      },
+      "price": null,
+      "comingSoon": true,
+      "files": {
+        "en": "en/03-public-speaking.png",
+        "ar": "ar/03-public-speaking.png"
+      }
+    },
+    {
+      "id": "linkedinOptimization",
+      "name": {
+        "en": "LinkedIn Optimization",
+        "ar": "تحسين لينكدإن"
+      },
+      "price": {
+        "usd": 30,
+        "sar": 113
+      },
+      "comingSoon": false,
+      "files": {
+        "en": "en/04-linkedin-optimization.png",
+        "ar": "ar/04-linkedin-optimization.png"
+      }
+    },
+    {
+      "id": "mvpPortfolio",
+      "name": {
+        "en": "MVP / Portfolio",
+        "ar": "منتج أولي أو موقع شخصي"
+      },
+      "price": {
+        "usd": 250,
+        "sar": 939
+      },
+      "comingSoon": false,
+      "files": {
+        "en": "en/05-mvp-portfolio.png",
+        "ar": "ar/05-mvp-portfolio.png"
+      }
+    },
+    {
+      "id": "dashboardReporting",
+      "name": {
+        "en": "Report & Dashboard",
+        "ar": "التقارير ولوحات المتابعة"
+      },
+      "price": {
+        "usd": 100,
+        "sar": 376
+      },
+      "comingSoon": false,
+      "files": {
+        "en": "en/06-dashboard-reporting.png",
+        "ar": "ar/06-dashboard-reporting.png"
+      }
+    },
+    {
+      "id": "completeBundle",
+      "name": {
+        "en": "Complete Package",
+        "ar": "الباقة المتكاملة"
+      },
+      "price": {
+        "usd": 399,
+        "sar": 1499
+      },
+      "comingSoon": false,
+      "files": {
+        "en": "en/07-complete-package.png",
+        "ar": "ar/07-complete-package.png"
+      }
+    }
+  ]
+}
