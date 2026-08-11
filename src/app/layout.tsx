@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import LenisProvider from "@/providers/LenisProvider";
 import Analytics from "@/components/Analytics";
+import CareerHealthProbe from "@/components/CareerHealthProbe";
 import { LanguageProvider } from "@/i18n/LanguageProvider";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
@@ -98,6 +99,7 @@ export default function RootLayout({
           <LenisProvider>{children}</LenisProvider>
         </LanguageProvider>
         <Analytics />
+        <CareerHealthProbe />
       </body>
     </html>
   );

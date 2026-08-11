@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — everything ignored except the committed template, which must
+# contain variable NAMES ONLY, never a real value.
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -42,3 +44,8 @@ next-env.d.ts
 
 # transient frames from scripts/render-mobile-scenes.mjs
 .mobile-scene-frames/
+
+# transient compile output of `npm run test:methodology`
+.methodology-tests-build/
+.knowledge-tests-build/
+.analysis-tests-build/

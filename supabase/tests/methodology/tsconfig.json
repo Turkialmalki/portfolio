@@ -1,0 +1,14 @@
+{
+  "// why this exists": "The methodology modules are written Deno-style (.ts extension imports) so Edge Functions can use them later, but the test harness runs under plain Node with no Docker/Deno required. TS 5.7+'s rewriteRelativeImportExtensions makes one source tree serve both runtimes.",
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "rewriteRelativeImportExtensions": true,
+    "strict": true,
+    "types": ["node"],
+    "skipLibCheck": true,
+    "outDir": "../../../.methodology-tests-build"
+  },
+  "include": ["harness.ts", "fixtures.ts", "../../functions/_shared/methodology/**/*.ts", "../../functions/_shared/releaseGates.ts"]
+}

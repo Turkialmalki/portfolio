@@ -1,0 +1,204 @@
+/**
+ * THE ANALYSIS ENGINE'S TYPE SYSTEM (Command 05 §3, §7, §10, §30, §39).
+ *
+ * Three layers, kept structurally distinct:
+ *   - INPUT: `AnalyzeResumeRequest` — what a caller may ever submit.
+ *   - MID: `NormalizedResume` — the deterministic structural extraction
+ *     the AI provider evaluates against (§7).
+ *   - AI CONTRACT: `DimensionAIResult` / `RewriteCandidateResult` — the
+ *     ONLY shapes a `CareerAIProvider` may return (§10, §30). Notice
+ *     neither carries an overall score — see scoring.ts's hard rule.
+ *
+ * Dependency-free like methodology/knowledge, for the same reason: it
+ * must run identically under Deno (Edge Functions) and Node (tests).
+ */
+import type {
+  AnalysisContext,
+  CareerAnalysis,
+  DimensionId,
+  Evidence,
+  FactClassification,
+  SeniorityLevel,
+} from "../methodology/types.ts";
+import type { RetrievalExample } from "../knowledge/types.ts";
+
+// ── §3 input schema ───────────────────────────────────────────────────────
+export type SupportedLanguage = "ar" | "en" | "bilingual";
+export const SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = ["ar", "en", "bilingual"];
+
+export interface AnalyzeResumeRequest {
+  resumeText: string;
+  language: SupportedLanguage;
+  seniority: SeniorityLevel;
+  targetRole?: string;
+  roleFamily?: string;
+  industry?: string;
+  jobDescription?: string;
+}
+
+export interface ValidationError {
+  field: string;
+  reason: string;
+}
+export type ValidationResult =
+  | { ok: true; request: AnalyzeResumeRequest }
+  | { ok: false; errors: ValidationError[] };
+
+// ── §6 redaction ─────────────────────────────────────────────────────────
+export interface RedactionResult {
+  redactedText: string;
+  redactedEmailCount: number;
+  redactedPhoneCount: number;
+}
+
+// ── §7 normalized structure ─────────────────────────────────────────────
+export interface ResumeExperienceEntry {
+  title: string | null;
+  company: string | null;
+  dates: string | null;
+  bullets: string[];
+  /** True when the parser could not confidently split this block into title/company/dates. */
+  uncertain: boolean;
+}
+
+export interface NormalizedResume {
+  header: string | null;
+  summary: string | null;
+  experience: ResumeExperienceEntry[];
+  education: string[];
+  skills: string[];
+  certifications: string[];
+  projects: string[];
+  otherSections: Array<{ heading: string; text: string }>;
+  /** The exact preprocessed + redacted text every downstream stage evaluates and evidence is verified against (§11). */
+  rawTextReference: string;
+  /** True when section boundaries could not be confidently identified anywhere in the document (§7: never invent a missing section). */
+  structureUncertain: boolean;
+}
+
+// ── §9–§10 AI provider contract ──────────────────────────────────────────
+export type AIConfidence = "high" | "medium" | "low";
+
+/**
+ * What a `CareerAIProvider` returns per dimension. Deliberately has no
+ * `overallScore` field — if a provider implementation is tempted to add
+ * one, TypeScript gives it nowhere to put it. If raw provider JSON
+ * contains one anyway (a misbehaving model), schemaValidation.ts drops it
+ * before this type is ever constructed (§9 hard rule).
+ */
+export interface DimensionAIResult {
+  dimensionId: DimensionId;
+  score: number;
+  confidence: AIConfidence;
+  evidence: Evidence[];
+  reason: string;
+  recommendations: string[];
+}
+
+export interface AnalyzeDimensionsInput {
+  normalizedResume: NormalizedResume;
+  context: AnalysisContext;
+  dimensionIds: DimensionId[];
+  /** Composed, filtered methodology sections (compose.ts) — rendered to provider format by the provider adapter. */
+  methodologySections: unknown;
+  /** §14: 0–4 retrieved examples, already budgeted and ranked. */
+  examples: RetrievalExample[];
+}
+
+export interface RewriteGenerationInput {
+  normalizedResume: NormalizedResume;
+  context: AnalysisContext;
+  /** The exact CV text being considered for rewrite — must appear verbatim in rawTextReference. */
+  candidateBefore: string;
+  dimension: DimensionId;
+}
+
+export interface RewriteCandidateResult {
+  before: string;
+  after: string;
+  classification: FactClassification;
+  note: string;
+}
+
+/**
+ * §30: the methodology/scoring engine never knows which model is behind
+ * this. Two calls only, by design (§8 — documented in
+ * docs/career-analysis-engine.md): one dimension pass, one rewrite pass.
+ */
+export interface CareerAIProvider {
+  readonly name: string;
+  readonly model: string;
+  analyzeDimensions(input: AnalyzeDimensionsInput): Promise<DimensionAIResult[]>;
+  generateRewrite(input: RewriteGenerationInput): Promise<RewriteCandidateResult | null>;
+}
+
+// ── §0 knowledge mode ─────────────────────────────────────────────────────
+/** Never "all" — see knowledgeMode.ts. */
+export type KnowledgeMode = "approved" | "fixture";
+
+// ── §8 pipeline run ───────────────────────────────────────────────────────
+export interface AnalysisRunOptions {
+  provider: CareerAIProvider;
+  knowledgeMode: KnowledgeMode;
+  /**
+   * Must be `true` for every call in this command — real customer mode is
+   * blocked at both this layer and the Edge Function layer while
+   * PRIVACY_SECURITY_EXECUTION_VERIFIED is false (§2, §40).
+   */
+  isFixtureRun: boolean;
+}
+
+// ── §29 schema validation ─────────────────────────────────────────────────
+export interface SchemaIssue {
+  path: string;
+  issue: string;
+}
+
+// ── §13 fact conflicts ─────────────────────────────────────────────────────
+export interface MetricConflict {
+  /** The surrounding phrase the conflicting numbers share (normalized). */
+  context: string;
+  values: string[];
+}
+
+// ── §34 instrumentation (no raw content, ever) ────────────────────────────
+export interface AnalysisInstrumentation {
+  inputCharCount: number;
+  examplesRetrieved: number;
+  aiCallCount: number;
+  retryCount: number;
+  durationMs: number;
+  provider: string;
+  model: string;
+}
+
+// ── §39 reproducibility metadata ──────────────────────────────────────────
+export interface AnalysisEngineMetadata {
+  methodologyVersion: CareerAnalysis["methodologyVersion"];
+  analysisPipelineVersion: string;
+  knowledgeVersion: string;
+  provider: string;
+  model: string;
+  retrievedExampleIds: string[];
+  timestamp: string;
+}
+
+export interface AnalysisRunResult {
+  analysis: CareerAnalysis;
+  engineMetadata: AnalysisEngineMetadata;
+  instrumentation: AnalysisInstrumentation;
+  factConflicts: MetricConflict[];
+}
+
+// ── Pipeline failure — never leaks internals to the customer (§35) ────────
+export type AnalysisFailureCode = "ANALYSIS_FAILED" | "ANALYSIS_TIMEOUT";
+
+export class AnalysisPipelineError extends Error {
+  readonly code: AnalysisFailureCode;
+  readonly issues?: SchemaIssue[];
+  constructor(code: AnalysisFailureCode, message: string, issues?: SchemaIssue[]) {
+    super(message);
+    this.code = code;
+    this.issues = issues;
+  }
+}
