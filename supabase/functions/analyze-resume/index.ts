@@ -577,7 +577,22 @@ async function handleCustomerAnalysis(
       return respondError(diag.providerHttpStatus === 504 ? "ANALYSIS_TIMEOUT" : "ANALYSIS_FAILED", headers);
     }
     if (err instanceof AnalysisPipelineError) {
-      safeLogError({ event: "analyze_resume_customer_pipeline_error", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: err.code, duration_ms });
+      safeLogError({
+        event: "analyze_resume_customer_pipeline_error",
+        request_id: requestId,
+        resume_id: resumeId,
+        user_id: user.id,
+        error_code: err.code,
+        duration_ms,
+        // err.message is always a fixed, code-authored string from
+        // pipeline.ts (e.g. "AI output failed schema validation after
+        // one repair retry") — never AI output or CV content. issues[]
+        // (SchemaIssue) are structural violation descriptions
+        // (path/field names + a fixed phrase), not logged in full here —
+        // only their count, to stay conservative.
+        pipeline_error_message: err.message.slice(0, 200),
+        ...(err.issues ? { schema_issue_count: err.issues.length } : {}),
+      });
       return respondError(err.code, headers);
     }
     safeLogError({ event: "analyze_resume_customer_unexpected_error", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: "INTERNAL_ERROR", duration_ms });

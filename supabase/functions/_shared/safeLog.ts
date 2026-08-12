@@ -33,6 +33,10 @@ export type SafeLogFields = {
   warning_codes?: string[];
   /** Only a thrown value's TYPE NAME (e.g. "UnknownErrorException") on an unclassified PARSE_FAILED — never a message, never content. See parser/types.ts's ParseResult.debugErrorName. */
   debug_error_name?: string;
+  /** AnalysisPipelineError.message only — always a fixed, code-authored string (e.g. "AI output failed schema validation after one repair retry"), never AI output or CV text. Capped short by the caller. */
+  pipeline_error_message?: string;
+  /** SchemaIssue count from a failed AI-output validation — a number, not the issues themselves. */
+  schema_issue_count?: number;
 };
 
 export function safeLog(fields: SafeLogFields): void {
