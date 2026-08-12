@@ -107,7 +107,22 @@ function ScoreReveal({
       // reduced motion: no count-up — the number is simply there
       if (nRef.current) nRef.current.textContent = String(report.overallScore);
       onRevealed();
-      return;
+      // §0/§0 bugfix: this branch must reset `fired` on cleanup too — see
+      // the comment on the animated branch's cleanup below. Without this,
+      // React Strict Mode's dev-only mount→cleanup→mount double-invoke
+      // left `fired.current` permanently `true` after the FIRST (thrown
+      // away) mount, so the real mount's effect returned at the guard
+      // above and never wrote the score into the DOM at all — the score
+      // stayed at the literal "0" the JSX renders as its initial content,
+      // forever, while sibling components that read `report.overallScore`
+      // straight out of React state (ScoreLine, the visually-hidden
+      // status paragraph two lines below) rendered correctly. That
+      // mismatch — dimensions/labels correct, the one imperatively-
+      // written number stuck at 0 — was the entire bug; report.overallScore
+      // itself was never wrong.
+      return () => {
+        fired.current = false;
+      };
     }
     const ctrl = animate(0, report.overallScore, {
       duration: 1.4,
@@ -120,7 +135,14 @@ function ScoreReveal({
         onRevealed();
       },
     });
-    return () => ctrl.stop();
+    return () => {
+      // Reset the guard on EVERY cleanup, not just cancel the animation —
+      // a cleanup that runs without this (Strict Mode's fake unmount, or
+      // a genuine remount) leaves `fired.current` stuck `true` and the
+      // next real mount's effect no-ops at the guard above.
+      fired.current = false;
+      ctrl.stop();
+    };
   }, [report.overallScore, onRevealed, settled]);
 
   // the band ships in both languages from the backend — display the UI one
