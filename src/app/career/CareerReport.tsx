@@ -99,49 +99,81 @@ function ScoreReveal({
     () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const fired = useRef(false);
+  /* Prevents a late safety-net timer from overwriting a value that a
+     faster, normal completion already wrote — see `finalize` below. */
+  const finalized = useRef(false);
 
   useEffect(() => {
     if (fired.current) return;
     fired.current = true;
+    finalized.current = false;
+
+    // report.overallScore is the ONLY source of truth (§15 — never
+    // recomputed, never re-derived). Whatever happens to the count-up
+    // animation — it never starts, framer-motion throws, `onComplete`
+    // never fires, the tab is backgrounded and rAF stalls, reduced
+    // motion is on — this is the single place the DOM is allowed to
+    // settle, and it is always called with the real value. Idempotent
+    // via `finalized`, so it is safe to call from more than one path
+    // (the animation's own onComplete AND the safety timer below) —
+    // whichever gets there first wins, and the value is identical
+    // either way, so there is nothing to visually reconcile.
+    const finalize = () => {
+      if (finalized.current) return;
+      finalized.current = true;
+      if (nRef.current) nRef.current.textContent = String(Math.round(report.overallScore));
+      setSettled(true);
+      onRevealed();
+    };
+
+    const resetGuard = () => {
+      // Reset on EVERY cleanup, not just cancel the animation — a
+      // cleanup that runs without this (Strict Mode's dev-only fake
+      // unmount, or a genuine remount) leaves `fired.current` stuck
+      // `true` and the next real mount's effect no-ops at the guard
+      // above, which is the exact bug this whole file's history is
+      // about: the DOM never gets written and the literal JSX "0"
+      // below is what a visitor sees, forever.
+      fired.current = false;
+    };
+
     if (settled) {
       // reduced motion: no count-up — the number is simply there
-      if (nRef.current) nRef.current.textContent = String(report.overallScore);
-      onRevealed();
-      // §0/§0 bugfix: this branch must reset `fired` on cleanup too — see
-      // the comment on the animated branch's cleanup below. Without this,
-      // React Strict Mode's dev-only mount→cleanup→mount double-invoke
-      // left `fired.current` permanently `true` after the FIRST (thrown
-      // away) mount, so the real mount's effect returned at the guard
-      // above and never wrote the score into the DOM at all — the score
-      // stayed at the literal "0" the JSX renders as its initial content,
-      // forever, while sibling components that read `report.overallScore`
-      // straight out of React state (ScoreLine, the visually-hidden
-      // status paragraph two lines below) rendered correctly. That
-      // mismatch — dimensions/labels correct, the one imperatively-
-      // written number stuck at 0 — was the entire bug; report.overallScore
-      // itself was never wrong.
-      return () => {
-        fired.current = false;
-      };
+      finalize();
+      return resetGuard;
     }
-    const ctrl = animate(0, report.overallScore, {
-      duration: 1.4,
-      ease: [0.22, 1, 0.36, 1],
-      onUpdate: (v) => {
-        if (nRef.current) nRef.current.textContent = String(Math.round(v));
-      },
-      onComplete: () => {
-        setSettled(true);
-        onRevealed();
-      },
-    });
+
+    // Fail-safe: guarantees `finalize()` runs even if `animate()` never
+    // calls `onComplete` at all (a stalled/backgrounded rAF, a provider
+    // that silently no-ops) — set comfortably past the animation's own
+    // 1.4s duration, so in the normal/working case `onComplete` always
+    // wins this race and the timer fires into a no-op via `finalized`.
+    // Nothing about the visible animation changes; this only ever
+    // matters when the animation was already broken.
+    const safetyTimer = window.setTimeout(finalize, 2_200);
+
+    let ctrl: { stop: () => void } | undefined;
+    try {
+      ctrl = animate(0, report.overallScore, {
+        duration: 1.4,
+        ease: [0.22, 1, 0.36, 1],
+        onUpdate: (v) => {
+          // Never let a stray onUpdate after finalize() win the race —
+          // finalize() already wrote the true, rounded final value.
+          if (!finalized.current && nRef.current) nRef.current.textContent = String(Math.round(v));
+        },
+        onComplete: finalize,
+      });
+    } catch {
+      // animate() itself threw synchronously (Command 06A.5.1 follow-up
+      // — "JS animation fails") — the safety timer above still fires
+      // and finalize() still runs with the real score.
+    }
+
     return () => {
-      // Reset the guard on EVERY cleanup, not just cancel the animation —
-      // a cleanup that runs without this (Strict Mode's fake unmount, or
-      // a genuine remount) leaves `fired.current` stuck `true` and the
-      // next real mount's effect no-ops at the guard above.
-      fired.current = false;
-      ctrl.stop();
+      resetGuard();
+      window.clearTimeout(safetyTimer);
+      ctrl?.stop();
     };
   }, [report.overallScore, onRevealed, settled]);
 

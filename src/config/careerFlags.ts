@@ -71,7 +71,7 @@ export const CAREER_FLAGS = {
    * human yet — see Command 06A.5 §19. Do not flip until that's done,
    * independent of whether `analysisEnabled` is true.
    */
-  authEnabled: false,
+  authEnabled: true,
 
   syntheticDemoMode:
     process.env.NODE_ENV !== "production" ||
