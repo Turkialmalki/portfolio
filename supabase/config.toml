@@ -175,7 +175,16 @@ refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
 enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
-enable_anonymous_sign_ins = false
+# Career V2 UX fix: the free-analysis flow signs a visitor in anonymously
+# (no visible prompt, no email) so upload/analysis works immediately —
+# RLS is auth.uid()-scoped everywhere (see career_core.sql/
+# career_privacy_foundation.sql's own comments), which an anonymous
+# session already satisfies. A real email is only ever collected later,
+# via `auth.updateUser({ email })`, when the visitor actually wants the
+# report emailed or wants to pay — Supabase's own upgrade-in-place
+# flow, which keeps the same auth.uid() and therefore every resume/
+# analysis already created under it, no migration needed.
+enable_anonymous_sign_ins = true
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
@@ -223,13 +232,19 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# Restored to the hosted project's actual live value (true) — this local
+# file had a stale `false` that `supabase config push` (run only to
+# enable enable_anonymous_sign_ins above) would otherwise have
+# overwritten the hosted setting with. Not an intended change.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1s"
 # Number of characters used in the email OTP.
-otp_length = 6
+# Restored to the hosted project's actual live value (8) — see the
+# enable_confirmations note just above; same accidental-overwrite risk.
+otp_length = 8
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
