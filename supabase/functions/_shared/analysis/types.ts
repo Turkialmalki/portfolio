@@ -220,6 +220,30 @@ export interface SchemaIssue {
   issue: string;
 }
 
+/**
+ * A safe, structured breakdown of WHY a dimension-results batch failed —
+ * counts plus the actual dimension ids involved. Dimension ids are
+ * fixed, closed methodology identifiers (methodology/types.ts's
+ * `DIMENSION_IDS`), not customer/CV content, so listing them (missing/
+ * duplicate/unknown) is safe to log and — fixture/admin mode, same
+ * discipline as `stage`/`stopReason` — safe to return in a diagnostic
+ * response, unlike `SchemaIssue.issue` strings, which stay count-only in
+ * the safe-log allowlist. Computed by schemaValidation.ts, carried on
+ * `AnalysisPipelineError.dimensionSummary` below.
+ */
+export interface DimensionValidationSummary {
+  expectedDimensionCount: number;
+  /** Raw item count before per-item validation — for a keyed-object provider response this is `Object.keys(results).length` (see anthropicProvider.ts's `keyedResultsToArray`). */
+  returnedResultCount: number;
+  returnedUniqueDimensionCount: number;
+  missingDimensionCount: number;
+  missingDimensionIds: DimensionId[];
+  duplicateDimensionCount: number;
+  duplicateDimensionIds: DimensionId[];
+  unknownDimensionCount: number;
+  unknownDimensionIds: string[];
+}
+
 // ── §13 fact conflicts ─────────────────────────────────────────────────────
 export interface MetricConflict {
   /** The surrounding phrase the conflicting numbers share (normalized). */
@@ -294,6 +318,8 @@ export interface AnalysisPipelineErrorOptions {
   providerAttempts?: number;
   /** `instrumentation.retryCount` at the moment of failure — 0 (no repair attempted) or 1 (the one repair retry fired). */
   schemaRepairCount?: number;
+  /** schemaValidation.ts's safe count/id breakdown of a dimension-results failure — undefined for failures unrelated to dimension validation (e.g. the language gate, the release gate). */
+  dimensionSummary?: DimensionValidationSummary;
 }
 
 export class AnalysisPipelineError extends Error {
@@ -303,6 +329,7 @@ export class AnalysisPipelineError extends Error {
   readonly stage?: AnalysisFailureStage;
   readonly providerAttempts?: number;
   readonly schemaRepairCount?: number;
+  readonly dimensionSummary?: DimensionValidationSummary;
   constructor(code: AnalysisFailureCode, message: string, options: AnalysisPipelineErrorOptions = {}) {
     super(message);
     this.code = code;
@@ -311,5 +338,6 @@ export class AnalysisPipelineError extends Error {
     this.stage = options.stage;
     this.providerAttempts = options.providerAttempts;
     this.schemaRepairCount = options.schemaRepairCount;
+    this.dimensionSummary = options.dimensionSummary;
   }
 }

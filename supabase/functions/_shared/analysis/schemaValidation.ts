@@ -32,7 +32,7 @@
  * entire dimension result over.
  */
 import { DIMENSION_IDS, EVIDENCE_QUALITIES, SIGNAL_LEVELS, type DimensionId } from "../methodology/types.ts";
-import { AI_CONFIDENCE_VALUES, type DimensionAIResult, type SchemaIssue } from "./types.ts";
+import { AI_CONFIDENCE_VALUES, type DimensionAIResult, type DimensionValidationSummary, type SchemaIssue } from "./types.ts";
 
 // `CONFIDENCE_VALUES` is derived from the same `AI_CONFIDENCE_VALUES`
 // anthropicProvider.ts's tool schema enum uses (types.ts) — was two
@@ -105,21 +105,53 @@ function validateOne(raw: unknown, index: number, expected: Set<DimensionId>): {
 
 export type ValidateDimensionsResult =
   | { ok: true; value: DimensionAIResult[] }
-  | { ok: false; issues: SchemaIssue[] };
+  /** `partial` carries every INDIVIDUALLY well-formed, correctly-scoped item found even though the batch as a whole failed — kept for diagnostics (see `summary`) even though the keyed-object schema (anthropicProvider.ts) now makes the undersupply case that originally motivated this structurally rare. */
+  | { ok: false; issues: SchemaIssue[]; partial: DimensionAIResult[]; summary: DimensionValidationSummary };
 
 export function validateDimensionAIResults(raw: unknown, expectedIds: DimensionId[]): ValidateDimensionsResult {
   if (!Array.isArray(raw)) {
-    return { ok: false, issues: [{ path: "$", issue: "expected an array of dimension results" }] };
+    return {
+      ok: false,
+      issues: [{ path: "$", issue: "expected an array of dimension results" }],
+      partial: [],
+      summary: {
+        expectedDimensionCount: expectedIds.length,
+        returnedResultCount: 0,
+        returnedUniqueDimensionCount: 0,
+        missingDimensionCount: expectedIds.length,
+        missingDimensionIds: [...expectedIds],
+        duplicateDimensionCount: 0,
+        duplicateDimensionIds: [],
+        unknownDimensionCount: 0,
+        unknownDimensionIds: [],
+      },
+    };
   }
 
   const expected = new Set(expectedIds);
   const issues: SchemaIssue[] = [];
   const values: DimensionAIResult[] = [];
   const seen = new Set<string>();
+  const duplicateIds: DimensionId[] = [];
+  const unknownIds: string[] = [];
 
   raw.forEach((item, i) => {
     const { value, issues: itemIssues } = validateOne(item, i, expected);
     issues.push(...itemIssues);
+    // Track duplicate/unknown dimensionIds for the safe summary below,
+    // independent of whether the ITEM otherwise validated — a duplicate
+    // or unrecognized id is itself the interesting signal, even if other
+    // fields on that same item also happened to be malformed.
+    if (item && typeof item === "object") {
+      const rawId = (item as Record<string, unknown>).dimensionId;
+      if (typeof rawId === "string") {
+        if (DIMENSION_ID_SET.has(rawId)) {
+          if (seen.has(rawId)) duplicateIds.push(rawId as DimensionId);
+        } else {
+          unknownIds.push(rawId);
+        }
+      }
+    }
     if (value) {
       if (seen.has(value.dimensionId)) {
         issues.push({ path: `[${i}].dimensionId`, issue: `duplicate dimension result for ${value.dimensionId}` });
@@ -130,10 +162,28 @@ export function validateDimensionAIResults(raw: unknown, expectedIds: DimensionI
     }
   });
 
-  for (const id of expectedIds) {
-    if (!seen.has(id)) issues.push({ path: "$", issue: `missing dimension result for ${id}` });
+  const missingIds = expectedIds.filter((id) => !seen.has(id));
+  for (const id of missingIds) {
+    issues.push({ path: "$", issue: `missing dimension result for ${id}` });
   }
 
-  if (issues.length > 0) return { ok: false, issues };
+  if (issues.length > 0) {
+    return {
+      ok: false,
+      issues,
+      partial: values,
+      summary: {
+        expectedDimensionCount: expectedIds.length,
+        returnedResultCount: raw.length,
+        returnedUniqueDimensionCount: seen.size,
+        missingDimensionCount: missingIds.length,
+        missingDimensionIds: missingIds,
+        duplicateDimensionCount: duplicateIds.length,
+        duplicateDimensionIds: duplicateIds,
+        unknownDimensionCount: unknownIds.length,
+        unknownDimensionIds: unknownIds,
+      },
+    };
+  }
   return { ok: true, value: values };
 }

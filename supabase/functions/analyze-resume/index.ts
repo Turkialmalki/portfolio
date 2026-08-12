@@ -304,6 +304,7 @@ Deno.serve(async (req) => {
         ...(err.stage ? { stage: err.stage } : {}),
         ...(err.providerAttempts !== undefined ? { provider_attempts: err.providerAttempts } : {}),
         ...(err.schemaRepairCount !== undefined ? { schema_repair_count: err.schemaRepairCount } : {}),
+        ...(err.dimensionSummary ? dimensionSummaryLogFields(err.dimensionSummary) : {}),
       });
       return jsonResponse(diag, safeError(err.code).status, headers);
     }
@@ -341,6 +342,25 @@ function buildPipelineErrorDiagnosticBody(err: AnalysisPipelineError, elapsedMs:
     overallBudgetMs,
     elapsedMs,
     remainingBudgetMs: Math.max(0, overallBudgetMs - elapsedMs),
+    // schemaValidation.ts's safe count/id breakdown (types.ts's
+    // DimensionValidationSummary) — undefined for a failure unrelated to
+    // dimension validation (e.g. the language/release gates).
+    dimensionSummary: err.dimensionSummary ?? null,
+  };
+}
+
+/** Shared by both the fixture/admin and customer log calls below — DimensionValidationSummary's fields, flattened to safeLog.ts's snake_case allowlist. Dimension ids are fixed, closed methodology identifiers (see that type's own doc), safe to log in full. */
+function dimensionSummaryLogFields(s: NonNullable<AnalysisPipelineError["dimensionSummary"]>) {
+  return {
+    expected_dimension_count: s.expectedDimensionCount,
+    returned_result_count: s.returnedResultCount,
+    returned_unique_dimension_count: s.returnedUniqueDimensionCount,
+    missing_dimension_count: s.missingDimensionCount,
+    missing_dimension_ids: s.missingDimensionIds,
+    duplicate_dimension_count: s.duplicateDimensionCount,
+    duplicate_dimension_ids: s.duplicateDimensionIds,
+    unknown_dimension_count: s.unknownDimensionCount,
+    unknown_dimension_ids: s.unknownDimensionIds,
   };
 }
 
@@ -724,6 +744,7 @@ async function handleCustomerAnalysis(
         ...(err.stage ? { stage: err.stage } : {}),
         ...(err.providerAttempts !== undefined ? { provider_attempts: err.providerAttempts } : {}),
         ...(err.schemaRepairCount !== undefined ? { schema_repair_count: err.schemaRepairCount } : {}),
+        ...(err.dimensionSummary ? dimensionSummaryLogFields(err.dimensionSummary) : {}),
         // A capped sample (first 6) of "path: issue" — both are fixed,
         // code-authored vocabulary (see SchemaIssue's own doc + safeLog.ts's
         // schema_issue_sample field for exactly why this is safe to log,

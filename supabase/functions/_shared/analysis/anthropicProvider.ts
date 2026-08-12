@@ -30,7 +30,7 @@
  * `analyzeDimensions` again with the same input on a validation failure;
  * this adapter is stateless per call).
  */
-import { DIMENSION_IDS, EVIDENCE_QUALITIES, SIGNAL_LEVELS } from "../methodology/types.ts";
+import { DIMENSION_IDS, EVIDENCE_QUALITIES, SIGNAL_LEVELS, type DimensionId } from "../methodology/types.ts";
 import {
   AI_CONFIDENCE_VALUES,
   type AnalyzeDimensionsInput,
@@ -66,81 +66,139 @@ import { callAnthropic } from "./anthropicClient.ts";
  * `strict: true` (set where this schema is attached to a tool, below) is
  * Anthropic's grammar-constrained-sampling guarantee that a `tool_use`
  * block's `input` structurally matches this schema exactly — required
- * fields present, enums respected, types correct — closing the actual
- * gap a real production CV hit (Career V2 email-test verification):
- * `stop_reason: "tool_use"` (a clean, non-truncated completion) with a
- * `results` array that still failed our runtime validator on all 13
- * expected dimensions. Without `strict`, the tool schema below was only
- * ever a STRONG HINT to the model, never an enforced contract — exactly
- * the gap that let a schema-shaped-but-invalid (or empty) `results`
- * array through as a "successful" tool call.
+ * fields present, enums respected, types correct.
  *
- * Strict mode's supported JSON Schema subset (see Anthropic's structured
- * outputs docs) requires `additionalProperties: false` on every object
- * (top-level and nested — `evidence` below included) and supports array
- * `minItems` only as 0 or 1 (never an exact/large count, and `maxItems`
- * isn't supported at all) — so `minItems: 1` below is the strongest
- * structural guarantee available that `results` is non-empty; it cannot
- * force exactly `dimensionIds.length` items with exactly the requested
- * ids. That part remains schemaValidation.ts's job (checking `expected`
- * membership + "missing dimension result" per id) — a semantic
- * constraint no JSON Schema dialect expresses, by design left to the
- * runtime validator, not silently loosened to fit the schema.
+ * TWO real production incidents (Career V2 email-test verification),
+ * both `stop_reason: "tool_use"` (clean, non-truncated completions) that
+ * still failed schemaValidation.ts:
+ *  1. Before `strict` existed at all: a schema-shaped-but-EMPTY `results`
+ *     array (nothing forbade it).
+ *  2. After `strict`/`minItems:1` were live: a well-formed but
+ *     INCOMPLETE `results` array (2 of 13 requested dimensions present,
+ *     11 simply omitted) — `minItems: 1` was satisfied, just not what
+ *     was asked for. A JSON Schema **array** genuinely cannot express
+ *     "exactly these N specific items, each exactly once" — strict
+ *     mode's supported subset only allows array `minItems` of 0 or 1
+ *     (never an exact/large count), and `maxItems` isn't supported at
+ *     all there.
+ *
+ * The fix is a different SHAPE, not a tighter array constraint: `results`
+ * is now an OBJECT keyed by dimension id, not an array of items each
+ * carrying their own `dimensionId`. JSON Schema's `required` on an
+ * object DOES support an exact, named list of keys — combined with
+ * `additionalProperties: false`, this makes "return exactly these
+ * dimensions, each exactly once, nothing else" a real structural
+ * guarantee instead of a runtime-validator-only check:
+ *   - every id in `dimensionIds` is a `required` property → omitting one
+ *     violates the schema itself (closes incident #2's exact gap).
+ *   - an id outside `dimensionIds` can't exist as a property at all
+ *     (`additionalProperties: false`) → no "chose a dimension nobody
+ *     asked for" case.
+ *   - a JSON object cannot carry two properties with the same key →
+ *     duplicate dimension results are impossible BY CONSTRUCTION, not
+ *     just checked for.
+ * `dimensionId` is therefore no longer repeated inside each value at
+ * all — the object KEY is the dimension's identity. `analyzeDimensions`
+ * below (the adapter boundary) converts this keyed object back into the
+ * `DimensionAIResult[]` array every downstream stage (scoring.ts,
+ * findings.ts, schemaValidation.ts) already consumes unchanged, deriving
+ * `dimensionId` from the key — see `keyedResultsToArray`.
+ *
+ * schemaValidation.ts's array-shaped validator remains in place
+ * unchanged as defense-in-depth (§9/§29: never trust AI JSON, even
+ * strict-mode JSON) — it now runs against the ADAPTED array, and its
+ * "missing dimension result"/"was not requested" checks become expected
+ * to essentially never fire post-fix rather than routinely catching a
+ * schema that was too loose to prevent them.
  */
-export const DIMENSION_RESULT_SCHEMA = {
-  type: "object",
-  properties: {
-    results: {
-      type: "array",
-      minItems: 1,
-      items: {
-        type: "object",
+export function buildDimensionResultSchema(dimensionIds: readonly DimensionId[]) {
+  const resultValueSchema = {
+    type: "object",
+    properties: {
+      signalLevel: {
+        type: "string",
+        enum: SIGNAL_LEVELS as unknown as string[],
+        description:
+          "Which rubric anchor band this dimension's evidence supports, from very_weak (matches the rubric's lowest anchor) to very_strong (matches its top anchor). Judge against the rubric's own anchor descriptions, not a felt sense of 0-100.",
+      },
+      evidencePresent: {
+        type: "boolean",
+        description: "Whether at least one concrete, checkable quote from the resume supports this classification.",
+      },
+      evidenceQuality: {
+        type: "string",
+        enum: EVIDENCE_QUALITIES as unknown as string[],
+        description:
+          "How strong the supporting evidence is: none (no checkable quote), limited (present but thin/generic), specific (a clear, concrete instance), strong (multiple or highly concrete instances). Use 'none' whenever evidencePresent is false.",
+      },
+      confidence: { type: "string", enum: AI_CONFIDENCE_VALUES as unknown as string[] },
+      evidence: {
+        type: ["object", "null"],
+        description: "At most ONE verbatim excerpt from the resume, or null if none applies. Never more than one.",
         properties: {
-          dimensionId: { type: "string", enum: DIMENSION_IDS as unknown as string[] },
-          signalLevel: {
-            type: "string",
-            enum: SIGNAL_LEVELS as unknown as string[],
-            description:
-              "Which rubric anchor band this dimension's evidence supports, from very_weak (matches the rubric's lowest anchor) to very_strong (matches its top anchor). Judge against the rubric's own anchor descriptions, not a felt sense of 0-100.",
-          },
-          evidencePresent: {
-            type: "boolean",
-            description: "Whether at least one concrete, checkable quote from the resume supports this classification.",
-          },
-          evidenceQuality: {
-            type: "string",
-            enum: EVIDENCE_QUALITIES as unknown as string[],
-            description:
-              "How strong the supporting evidence is: none (no checkable quote), limited (present but thin/generic), specific (a clear, concrete instance), strong (multiple or highly concrete instances). Use 'none' whenever evidencePresent is false.",
-          },
-          confidence: { type: "string", enum: AI_CONFIDENCE_VALUES as unknown as string[] },
-          evidence: {
-            type: ["object", "null"],
-            description: "At most ONE verbatim excerpt from the resume, or null if none applies. Never more than one.",
-            properties: {
-              section: { type: "string" },
-              excerpt: { type: "string", description: "A short verbatim quote, ideally under ~120 characters." },
-            },
-            required: ["section", "excerpt"],
-            additionalProperties: false,
-          },
-          reasonCode: {
-            type: "string",
-            description: "A short bucket label for why this classification, e.g. STRONG_ROLE_IDENTITY, RESPONSIBILITY_WITHOUT_OUTCOME, INSUFFICIENT_EVIDENCE. Pick the closest fit or OTHER.",
-          },
-          shortReason: {
-            type: "string",
-            description: "ONE short sentence of nuance, under ~160 characters. Never a paragraph.",
-          },
+          section: { type: "string" },
+          excerpt: { type: "string", description: "A short verbatim quote, ideally under ~120 characters." },
         },
-        required: ["dimensionId", "signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"],
+        required: ["section", "excerpt"],
+        additionalProperties: false,
+      },
+      reasonCode: {
+        type: "string",
+        description: "A short bucket label for why this classification, e.g. STRONG_ROLE_IDENTITY, RESPONSIBILITY_WITHOUT_OUTCOME, INSUFFICIENT_EVIDENCE. Pick the closest fit or OTHER.",
+      },
+      shortReason: {
+        type: "string",
+        description: "ONE short sentence of nuance, under ~160 characters. Never a paragraph.",
+      },
+    },
+    required: ["signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"],
+    additionalProperties: false,
+  } as const;
+
+  const resultsProperties: Record<string, typeof resultValueSchema> = {};
+  for (const id of dimensionIds) resultsProperties[id] = resultValueSchema;
+
+  return {
+    type: "object",
+    properties: {
+      results: {
+        type: "object",
+        description: "Keyed by dimension id — one property per requested dimension, each holding that dimension's classification. No other keys.",
+        properties: resultsProperties,
+        required: [...dimensionIds],
         additionalProperties: false,
       },
     },
-  },
-  required: ["results"],
-  additionalProperties: false,
-} as const;
+    required: ["results"],
+    additionalProperties: false,
+  };
+}
+
+/** The full-dimension-set schema — used by the contract-drift test suite as the "canonical" shape to diff against. Real calls always use `buildDimensionResultSchema(input.dimensionIds)` (the per-call-scoped version) above. */
+export const DIMENSION_RESULT_SCHEMA = buildDimensionResultSchema(DIMENSION_IDS);
+
+/**
+ * Adapter boundary: converts the strict tool's `{results: {dimensionId:
+ * {...}}}` keyed-object shape into the flat `DimensionAIResult`-ish
+ * array shape every downstream stage already consumes — `dimensionId`
+ * comes from the object KEY (the very thing `required`/
+ * `additionalProperties:false` above structurally enforce), never
+ * re-declared inside the value, so it can never disagree with its own
+ * key. Exported standalone so it's unit-testable without a real
+ * Anthropic call (see supabase/tests/analysis/harness.ts). Deliberately
+ * returns `unknown[]`, not `DimensionAIResult[]` — schemaValidation.ts
+ * remains the sole authority on whether each entry is actually
+ * well-formed (§13/§29); this function does not pre-filter or "fix"
+ * anything, so a malformed value still surfaces as a validation failure,
+ * never a silently-repaired one.
+ */
+export function keyedResultsToArray(resultsObj: unknown): unknown[] {
+  if (!resultsObj || typeof resultsObj !== "object" || Array.isArray(resultsObj)) return [];
+  return Object.entries(resultsObj as Record<string, unknown>).map(([dimensionId, value]) => ({
+    dimensionId,
+    ...(value && typeof value === "object" ? (value as Record<string, unknown>) : {}),
+  }));
+}
 
 const REWRITE_RESULT_SCHEMA = {
   type: "object",
@@ -225,7 +283,9 @@ export const SYSTEM_PROMPT =
   "sizes, titles, technologies, or achievements not present in the source text. If the " +
   "resume does not support a dimension, say so with low confidence and evidencePresent: " +
   "false rather than inventing evidence. You never compute or return an overall score — " +
-  "only per-dimension classifications. BE CONCISE: at most one evidence excerpt per " +
+  "only per-dimension classifications. The tool's schema requires a classification for " +
+  "EVERY dimension in dimensionIds, keyed by that dimension's id — never fewer, never " +
+  "more, never one you weren't asked for. BE CONCISE: at most one evidence excerpt per " +
   "dimension (or none), one short reasonCode bucket, and one short sentence " +
   "(shortReason, under ~160 characters) — never a paragraph, never a list of " +
   "recommendations. This budget is deliberately tight so every requested dimension " +
@@ -292,22 +352,22 @@ export function createAnthropicCareerAIProvider(apiKey: string): CareerAIProvide
     model: CAREER_AI_CONFIG.model,
 
     async analyzeDimensions(input: AnalyzeDimensionsInput): Promise<DimensionAIResult[]> {
+      // Schema is built PER CALL, scoped to exactly this call's requested
+      // dimensions (input.dimensionIds) — the single source of truth
+      // already shared with the prompt (buildDimensionsPrompt below) and
+      // with pipeline.ts's own `expected` set passed to
+      // schemaValidation.ts. No second, independently-maintained
+      // dimension list exists anywhere in this path.
       const { input: raw, usage, stopReason } = await callAnthropicTool(
         apiKey,
         SYSTEM_PROMPT,
         buildDimensionsPrompt(input),
         "submit_dimension_analysis",
-        DIMENSION_RESULT_SCHEMA,
+        buildDimensionResultSchema(input.dimensionIds),
         "dimension_analysis",
       );
       lastUsage = usage ? { inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, stopReason } : { inputTokens: 0, outputTokens: 0, stopReason };
-      const results = (raw as { results?: unknown }).results;
-      // Deliberately returned as-is, untyped-cast at the boundary only —
-      // schemaValidation.ts (§13/§29) is the sole authority on whether
-      // this is actually well-formed; this adapter does not pre-filter or
-      // "fix" it, so a misbehaving model surfaces as a validation failure,
-      // not a silently-repaired one.
-      return (Array.isArray(results) ? results : []) as DimensionAIResult[];
+      return keyedResultsToArray((raw as { results?: unknown }).results) as DimensionAIResult[];
     },
 
     async generateRewrite(input: RewriteGenerationInput): Promise<RewriteCandidateResult | null> {

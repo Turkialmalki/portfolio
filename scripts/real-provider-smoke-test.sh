@@ -32,9 +32,16 @@
 #     pipeline/schema/language/timeout logic): ERROR_CODE, MESSAGE,
 #     STAGE, STOP_REASON, SCHEMA_ISSUE_COUNT, PROVIDER_ATTEMPTS,
 #     SCHEMA_REPAIR_COUNT, OVERALL_BUDGET_MS, ELAPSED_MS,
-#     REMAINING_BUDGET_MS. This is the shape a schema-validation or
-#     language-gate failure returns — `diagnosticCode` is absent, which
-#     is exactly how the two shapes are told apart below.
+#     REMAINING_BUDGET_MS — plus, only for a dimension-validation failure,
+#     EXPECTED_DIMENSION_COUNT, RETURNED_RESULT_COUNT,
+#     RETURNED_UNIQUE_DIMENSION_COUNT, MISSING_DIMENSION_COUNT,
+#     MISSING_DIMENSION_IDS, DUPLICATE_DIMENSION_COUNT,
+#     DUPLICATE_DIMENSION_IDS, UNKNOWN_DIMENSION_COUNT,
+#     UNKNOWN_DIMENSION_IDS (dimension ids are fixed methodology
+#     identifiers, not customer data — safe to print in full). This is
+#     the shape a schema-validation or language-gate failure returns —
+#     `diagnosticCode` is absent, which is exactly how the two shapes are
+#     told apart below.
 # Never prints: the CV text, the prompt, any AI-generated prose
 # (reasonCode/shortReason/evidence/dimension content), the API key, or
 # the Authorization/x-admin-key header.
@@ -137,6 +144,18 @@ node -e '
       line("OVERALL_BUDGET_MS", json.overallBudgetMs ?? null);
       line("ELAPSED_MS", json.elapsedMs ?? null);
       line("REMAINING_BUDGET_MS", json.remainingBudgetMs ?? null);
+      const s = json.dimensionSummary;
+      if (s) {
+        line("EXPECTED_DIMENSION_COUNT", s.expectedDimensionCount ?? null);
+        line("RETURNED_RESULT_COUNT", s.returnedResultCount ?? null);
+        line("RETURNED_UNIQUE_DIMENSION_COUNT", s.returnedUniqueDimensionCount ?? null);
+        line("MISSING_DIMENSION_COUNT", s.missingDimensionCount ?? null);
+        line("MISSING_DIMENSION_IDS", Array.isArray(s.missingDimensionIds) ? s.missingDimensionIds.map(clip).join(",") : null);
+        line("DUPLICATE_DIMENSION_COUNT", s.duplicateDimensionCount ?? null);
+        line("DUPLICATE_DIMENSION_IDS", Array.isArray(s.duplicateDimensionIds) ? s.duplicateDimensionIds.map(clip).join(",") : null);
+        line("UNKNOWN_DIMENSION_COUNT", s.unknownDimensionCount ?? null);
+        line("UNKNOWN_DIMENSION_IDS", Array.isArray(s.unknownDimensionIds) ? s.unknownDimensionIds.map(clip).join(",") : null);
+      }
     }
   }
 

@@ -8,8 +8,10 @@
 import {
   AI_CONFIDENCE_VALUES,
   AnalysisPipelineError,
+  buildDimensionResultSchema,
   createMockCareerAIProvider,
   DIMENSION_RESULT_SCHEMA,
+  keyedResultsToArray,
   runAnalysis,
   validateAnalyzeResumeRequest,
   validateDimensionAIResults,
@@ -290,59 +292,57 @@ async function main() {
 
   console.log("\n[7] Contract-drift guard — TS type / Anthropic tool schema / runtime validator must agree");
   {
-    // A real production CV (Career V2 email-test verification) hit
-    // ANALYSIS_FAILED with schema_issue_count=13 despite stop_reason
-    // "tool_use" (a clean, non-truncated completion) — the tool schema
-    // was never actually enforced (`strict` wasn't set), so it could
-    // silently drift from what schemaValidation.ts requires without any
-    // test ever catching it. This section pins that the three contracts
-    // (DimensionAIResult, DIMENSION_RESULT_SCHEMA, validateOne) agree,
-    // so a future field/enum added to only one of them fails HERE, not
-    // in production against a real customer's CV.
-    const item = DIMENSION_RESULT_SCHEMA.properties.results.items as {
-      required: readonly string[];
-      properties: Record<string, { enum?: readonly string[]; additionalProperties?: boolean }>;
-      additionalProperties: boolean;
-    };
-
-    check(
-      "results array requires at least one item (minItems:1 — the strongest non-empty guarantee strict mode's JSON Schema subset supports; see DIMENSION_RESULT_SCHEMA's own comment on why an exact count isn't expressible there)",
-      (DIMENSION_RESULT_SCHEMA.properties.results as { minItems?: number }).minItems === 1,
-    );
-    // Strict mode requires additionalProperties:false on EVERY object,
-    // top-level and nested — a single missed level silently opts that
-    // level out of grammar-constrained enforcement.
-    check("top-level schema sets additionalProperties:false", DIMENSION_RESULT_SCHEMA.additionalProperties === false);
-    check("each result item sets additionalProperties:false", item.additionalProperties === false);
-    check("nested evidence object sets additionalProperties:false", item.properties.evidence?.additionalProperties === false);
-
-    // Every field validateOne() (schemaValidation.ts) treats as REQUIRED
-    // must be in the tool schema's own `required` list — the exact class
-    // of drift ("runtime validator requires field X, tool schema forgot
-    // it") that caused the production incident this test exists for.
-    const runtimeRequiredFields = ["dimensionId", "signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"];
-    for (const field of runtimeRequiredFields) {
-      check(`tool schema requires "${field}" (runtime validator also requires it)`, item.required.includes(field));
-    }
-
-    // Enum membership must match exactly, not just overlap — a schema
-    // enum missing one runtime-accepted value would let the model never
-    // legally produce it; an extra schema value not in the runtime set
-    // would let a "valid per Anthropic" call still fail our validator.
+    // TWO real production CVs (Career V2 email-test verification) hit
+    // ANALYSIS_FAILED despite stop_reason "tool_use" (a clean,
+    // non-truncated completion): first an empty `results`, then — after
+    // `strict`/`minItems:1` on an ARRAY schema were already live — an
+    // INCOMPLETE one (2 of 13 requested dimensions present, 11 omitted).
+    // A JSON Schema array genuinely cannot express "exactly these N
+    // items, each exactly once" (strict mode's array `minItems` only
+    // supports 0/1). `results` is now an OBJECT keyed by dimension id
+    // instead — `required` on an object DOES support an exact, named key
+    // list. This section proves that shape actually delivers what an
+    // array never could: every expected dimension REQUIRED, no others
+    // ALLOWED, duplicates IMPOSSIBLE by construction — for several
+    // differently-sized dimension sets, not just the default 13.
     function sameSet(a: readonly string[], b: readonly string[]): boolean {
       return a.length === b.length && a.every((v) => b.includes(v));
     }
-    check("dimensionId enum matches DIMENSION_IDS exactly", sameSet(item.properties.dimensionId.enum ?? [], DIMENSION_IDS));
-    check("signalLevel enum matches SIGNAL_LEVELS exactly", sameSet(item.properties.signalLevel.enum ?? [], SIGNAL_LEVELS));
-    check("evidenceQuality enum matches EVIDENCE_QUALITIES exactly", sameSet(item.properties.evidenceQuality.enum ?? [], EVIDENCE_QUALITIES));
-    check("confidence enum matches AI_CONFIDENCE_VALUES exactly (single shared constant — see types.ts)", sameSet(item.properties.confidence.enum ?? [], AI_CONFIDENCE_VALUES));
+    const valueRequiredFields = ["signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"];
 
-    // A canonical, fully-valid payload (one item per requested dimension,
-    // every runtime-required field present, real enum values) must pass
-    // the runtime validator — proves the "happy path" the schema is
-    // supposed to guarantee is actually accepted end to end.
-    const canonicalItem = (dimensionId: DimensionId): DimensionAIResult => ({
-      dimensionId,
+    for (const ids of [DIMENSION_IDS.slice(0, 1), DIMENSION_IDS.slice(0, 5), DIMENSION_IDS.slice(0, 13), [...DIMENSION_IDS]]) {
+      const schema = buildDimensionResultSchema(ids) as {
+        properties: { results: { properties: Record<string, { properties: Record<string, { enum?: readonly string[] }>; required: readonly string[]; additionalProperties: boolean }>; required: readonly string[]; additionalProperties: boolean } };
+        additionalProperties: boolean;
+      };
+      const results = schema.properties.results;
+      const label = `${ids.length} dimension(s)`;
+
+      check(`${label}: results.required is EXACTLY the requested dimension set (the exact array-schema gap this design closes)`, sameSet(results.required, ids));
+      check(`${label}: results sets additionalProperties:false (no dimension outside the requested set is a valid key)`, results.additionalProperties === false);
+      check(`${label}: top-level schema sets additionalProperties:false`, schema.additionalProperties === false);
+
+      for (const id of ids) {
+        const valueSchema = results.properties[id];
+        check(`${label}: "${id}" is a property of results (its own object, not an array item)`, !!valueSchema);
+        if (!valueSchema) continue;
+        check(`${label}: "${id}"'s value sets additionalProperties:false`, valueSchema.additionalProperties === false);
+        for (const field of valueRequiredFields) {
+          check(`${label}: "${id}"'s value requires "${field}"`, valueSchema.required.includes(field));
+        }
+        check(`${label}: "${id}"'s value has NO "dimensionId" property (the object KEY is the identity — never repeated inside)`, !("dimensionId" in valueSchema.properties));
+        check(`${label}: "${id}"'s signalLevel enum matches SIGNAL_LEVELS exactly`, sameSet(valueSchema.properties.signalLevel?.enum ?? [], SIGNAL_LEVELS));
+        check(`${label}: "${id}"'s evidenceQuality enum matches EVIDENCE_QUALITIES exactly`, sameSet(valueSchema.properties.evidenceQuality?.enum ?? [], EVIDENCE_QUALITIES));
+        check(`${label}: "${id}"'s confidence enum matches AI_CONFIDENCE_VALUES exactly (single shared constant — see types.ts)`, sameSet(valueSchema.properties.confidence?.enum ?? [], AI_CONFIDENCE_VALUES));
+      }
+    }
+
+    // The adapter boundary (keyedResultsToArray) + runtime validator,
+    // exercised directly with hand-built payloads — no Anthropic call,
+    // simulating exactly what a (hypothetical non-strict, or buggy)
+    // provider response would produce at each failure class.
+    const dims13 = DIMENSION_IDS.slice(0, 13) as DimensionId[];
+    const canonicalValue = {
       signalLevel: "mixed",
       evidencePresent: true,
       evidenceQuality: "specific",
@@ -350,27 +350,45 @@ async function main() {
       evidence: { section: "experience", excerpt: "Led a team of 5 engineers." },
       reasonCode: "TEST_CANONICAL_OK",
       shortReason: "Synthetic canonical payload for the contract-drift guard.",
-    });
-    const canonicalResult = validateDimensionAIResults(DIMENSION_IDS.map(canonicalItem), [...DIMENSION_IDS]);
-    check("a canonical valid payload (every requested dimension, every required field) passes the runtime validator", canonicalResult.ok, canonicalResult.ok ? "" : JSON.stringify(canonicalResult.issues));
+    };
+    const keyedComplete = Object.fromEntries(dims13.map((id) => [id, canonicalValue]));
 
-    // Negative control: dropping one required field from one item must be
-    // caught (proves the validator isn't accidentally permissive).
-    const brokenItems = DIMENSION_IDS.map(canonicalItem).map((r, i) => (i === 0 ? ({ ...r, signalLevel: undefined } as unknown as DimensionAIResult) : r));
-    const brokenResult = validateDimensionAIResults(brokenItems, [...DIMENSION_IDS]);
-    check("a payload missing one required field is rejected, not silently accepted", !brokenResult.ok);
+    const completeResult = validateDimensionAIResults(keyedResultsToArray(keyedComplete), dims13);
+    check("A. complete 13-of-13 keyed object → PASS", completeResult.ok, completeResult.ok ? "" : JSON.stringify(completeResult.issues));
 
-    // Pins the EXACT shape of the real production failure: a schema-
-    // shaped-but-EMPTY results array. This is what minItems:1 + strict
-    // now prevents Anthropic from returning at all; this check documents
-    // that if it ever did slip through again, our validator still
-    // catches it deterministically as "missing dimension result" per
-    // expected id, not as a confusing generic failure.
-    const emptyResult = validateDimensionAIResults([], [...DIMENSION_IDS]);
+    const twoOfThirteen = Object.fromEntries(dims13.slice(0, 2).map((id) => [id, canonicalValue]));
+    const partialResult = validateDimensionAIResults(keyedResultsToArray(twoOfThirteen), dims13);
     check(
-      "an empty results array is rejected with exactly one 'missing dimension result' issue per expected dimension (the real production failure's exact shape)",
-      !emptyResult.ok && emptyResult.issues.length === DIMENSION_IDS.length,
-      !emptyResult.ok ? String(emptyResult.issues.length) : "ok:true",
+      "B. 2-of-13 keyed object → FAIL with exactly 11 'missing dimension result' issues (the real production failure's exact shape, now caught deterministically)",
+      !partialResult.ok && partialResult.issues.length === 11 && partialResult.summary.missingDimensionCount === 11,
+      partialResult.ok ? "ok:true" : `${partialResult.issues.length} issues, summary.missing=${partialResult.summary.missingDimensionCount}`,
+    );
+    check("B. summary lists the exact 11 missing dimension ids", !partialResult.ok && sameSet(partialResult.summary.missingDimensionIds, dims13.slice(2)));
+
+    const twelveOfThirteen = Object.fromEntries(dims13.slice(0, 12).map((id) => [id, canonicalValue]));
+    const almostResult = validateDimensionAIResults(keyedResultsToArray(twelveOfThirteen), dims13);
+    check("C. 12-of-13 keyed object → FAIL with exactly 1 missing", !almostResult.ok && almostResult.issues.length === 1, almostResult.ok ? "ok:true" : String(almostResult.issues.length));
+
+    const withExtra = { ...keyedComplete, not_a_real_dimension: canonicalValue };
+    const extraResult = validateDimensionAIResults(keyedResultsToArray(withExtra), dims13);
+    check("D. an extra/unknown dimension key → FAIL (defense-in-depth: additionalProperties:false already makes this impossible for a real strict-mode call)", !extraResult.ok);
+
+    const malformed = { ...keyedComplete, [dims13[0]]: { ...canonicalValue, signalLevel: "not_a_real_level" } };
+    const malformedResult = validateDimensionAIResults(keyedResultsToArray(malformed), dims13);
+    check("E. a malformed dimension value (bad enum) → FAIL", !malformedResult.ok);
+
+    // Duplicate dimension ids are impossible BY CONSTRUCTION once results
+    // are keyed properties, not array entries — not just "checked for".
+    // Demonstrated with real JSON.parse, not assumed: a literal duplicate
+    // key in JSON text silently collapses to one value (the JS/JSON
+    // object model has no way to represent two properties with the same
+    // name), so the adapter can only ever see ONE entry for it.
+    const duplicateJson = `{"${dims13[0]}": ${JSON.stringify({ ...canonicalValue, reasonCode: "FIRST" })}, "${dims13[0]}": ${JSON.stringify({ ...canonicalValue, reasonCode: "SECOND" })}}`;
+    const parsedDuplicate = JSON.parse(duplicateJson);
+    check(
+      "F. duplicate dimension ids are impossible by construction — a repeated JSON key collapses to one entry, proven via real JSON.parse",
+      keyedResultsToArray(parsedDuplicate).length === 1,
+      String(keyedResultsToArray(parsedDuplicate).length),
     );
   }
 

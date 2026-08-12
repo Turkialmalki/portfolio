@@ -245,6 +245,7 @@ async function runStages(
           stage: "repair_schema_validation",
           providerAttempts: instrumentation.aiCallCount,
           schemaRepairCount: instrumentation.retryCount,
+          dimensionSummary: validation.summary,
         },
       );
     }

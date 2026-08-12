@@ -61,6 +61,21 @@ export type SafeLogFields = {
   provider_attempts?: number;
   /** instrumentation.retryCount at the moment of failure — 0 or 1. */
   schema_repair_count?: number;
+  // ── DimensionValidationSummary (types.ts) — a dimension-results
+  // failure's safe count/id breakdown. Dimension ids are fixed, closed
+  // methodology identifiers (methodology/types.ts's DIMENSION_IDS), not
+  // customer/CV content, so listing them is safe — unlike the free-form
+  // AI content this file otherwise never permits. ─────────────────────
+  expected_dimension_count?: number;
+  returned_result_count?: number;
+  returned_unique_dimension_count?: number;
+  missing_dimension_count?: number;
+  missing_dimension_ids?: string[];
+  duplicate_dimension_count?: number;
+  duplicate_dimension_ids?: string[];
+  unknown_dimension_count?: number;
+  /** Unlike the other *_ids fields, these did NOT match a known DIMENSION_IDS member — still just a short identifier-shaped token the model emitted for the field, never CV content, but capped defensively since it's not from a closed vocabulary. */
+  unknown_dimension_ids?: string[];
 };
 
 export function safeLog(fields: SafeLogFields): void {
