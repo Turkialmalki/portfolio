@@ -76,6 +76,10 @@ export type SafeLogFields = {
   unknown_dimension_count?: number;
   /** Unlike the other *_ids fields, these did NOT match a known DIMENSION_IDS member — still just a short identifier-shaped token the model emitted for the field, never CV content, but capped defensively since it's not from a closed vocabulary. */
   unknown_dimension_ids?: string[];
+  /** AnalysisPipelineError.operation — instrumentation.currentOperation at the moment an UNANTICIPATED exception escaped (e.g. "primary_provider_call", "result_build") — fixed vocabulary, set only alongside error_type below. */
+  operation?: string;
+  /** The escaped exception's constructor NAME only (e.g. "TypeError") — never its `.message`, which could echo request/response content this module can't pre-verify as safe. */
+  error_type?: string;
 };
 
 export function safeLog(fields: SafeLogFields): void {

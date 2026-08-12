@@ -265,6 +265,17 @@ export interface AnalysisInstrumentation {
   totalOutputTokens: number;
   /** Anthropic's own stop_reason from the MOST RECENT dimension call (real provider only) — a short fixed-vocabulary string, never model output. Command 05D.3. */
   stopReason: string | null;
+  /**
+   * Fixed-vocabulary label for the pipeline stage currently executing —
+   * updated by pipeline.ts at each stage boundary, read by runAnalysis's
+   * outer catch when a PLAIN (non-AnalysisPipelineError) exception
+   * escapes, so the resulting `AnalysisPipelineError` carries WHERE it
+   * happened even when the exception itself was never anticipated. A
+   * real production incident (Career V2 email-test verification) hit
+   * `stage: "unexpected_error"` with no further detail at all — this
+   * closes that gap. See `AnalysisPipelineErrorOptions.operation`.
+   */
+  currentOperation: string;
 }
 
 // ── §39 reproducibility metadata ──────────────────────────────────────────
@@ -320,6 +331,10 @@ export interface AnalysisPipelineErrorOptions {
   schemaRepairCount?: number;
   /** schemaValidation.ts's safe count/id breakdown of a dimension-results failure — undefined for failures unrelated to dimension validation (e.g. the language gate, the release gate). */
   dimensionSummary?: DimensionValidationSummary;
+  /** `instrumentation.currentOperation` at the moment of failure — a finer-grained fixed-vocabulary label than `stage` (e.g. "preprocessing", "retrieval", "primary_provider_call") set ONLY by runAnalysis's outer catch when a PLAIN exception escapes an unanticipated spot; undefined for the classified throw sites above (their `stage` is already precise). */
+  operation?: string;
+  /** The escaped exception's constructor NAME only (e.g. "TypeError", "RangeError") — never `.message`, which could echo request/response content. Set only alongside `operation`. */
+  errorType?: string;
 }
 
 export class AnalysisPipelineError extends Error {
@@ -330,6 +345,8 @@ export class AnalysisPipelineError extends Error {
   readonly providerAttempts?: number;
   readonly schemaRepairCount?: number;
   readonly dimensionSummary?: DimensionValidationSummary;
+  readonly operation?: string;
+  readonly errorType?: string;
   constructor(code: AnalysisFailureCode, message: string, options: AnalysisPipelineErrorOptions = {}) {
     super(message);
     this.code = code;
@@ -339,5 +356,7 @@ export class AnalysisPipelineError extends Error {
     this.providerAttempts = options.providerAttempts;
     this.schemaRepairCount = options.schemaRepairCount;
     this.dimensionSummary = options.dimensionSummary;
+    this.operation = options.operation;
+    this.errorType = options.errorType;
   }
 }

@@ -31,9 +31,13 @@ const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 /** 529 (overloaded) and 429 (rate limited) are Anthropic-documented
  *  transient conditions, not request problems — every other non-2xx
  *  (400/401/402/403/404/5xx-other) reflects something about our request
- *  or account and retrying it changes nothing. */
+ *  or account and retrying it changes nothing. Status 0 is this module's
+ *  own sentinel (never a real HTTP status) for "fetch() itself failed,
+ *  no response was ever received" (DNS/connection/TLS) — plausibly as
+ *  transient as a 529, so retried the same way. See callAnthropicRaw's
+ *  own comment for the production incident this closes. */
 function isRetryableStatus(status: number): boolean {
-  return status === 429 || status === 529;
+  return status === 429 || status === 529 || status === 0;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -73,6 +77,8 @@ interface RawAnthropicCallResult {
   requestId: string | null;
   /** Parsed JSON body — internal to this module only; never returned to a caller as-is. */
   json: unknown;
+  /** Set only when `fetch()` itself failed before any HTTP response existed (DNS/connection-refused/TLS/etc.) — see callAnthropicRaw's own comment. Safe: the thrown value's constructor NAME only (e.g. "TypeError"), never its message. */
+  networkErrorType?: string;
 }
 
 /**
@@ -81,15 +87,37 @@ interface RawAnthropicCallResult {
  * this, so there is exactly one fetch call to audit for that guarantee.
  */
 async function callAnthropicRaw(apiKey: string, body: Record<string, unknown>): Promise<RawAnthropicCallResult> {
-  const res = await fetch(ANTHROPIC_MESSAGES_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": CAREER_AI_CONFIG.apiVersion,
-    },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(ANTHROPIC_MESSAGES_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": CAREER_AI_CONFIG.apiVersion,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (networkErr) {
+    // `fetch()` itself failed — no HTTP response was ever received
+    // (DNS failure, connection refused, TLS handshake failure, etc.).
+    // Previously UNCAUGHT here: it propagated as a plain, unclassified
+    // exception all the way to pipeline.ts's outer catch, arriving as
+    // `stage: "unexpected_error"` with zero diagnostics — no
+    // stop_reason, no schema data, no provider telemetry at all — a
+    // real production incident (Career V2 email-test verification,
+    // ANALYSIS_FAILED after only 621ms). Status 0 is this module's own
+    // sentinel (never a real Anthropic status) so the existing
+    // status-based classification/retry logic below handles this
+    // uniformly with a real HTTP error, instead of needing a second
+    // parallel error path.
+    return {
+      status: 0,
+      requestId: null,
+      json: null,
+      networkErrorType: networkErr instanceof Error ? networkErr.constructor.name : typeof networkErr,
+    };
+  }
   const requestId = res.headers.get("request-id");
   let json: unknown = null;
   try {
@@ -102,6 +130,14 @@ async function callAnthropicRaw(apiKey: string, body: Record<string, unknown>): 
 }
 
 function diagnosticsFromResult(result: RawAnthropicCallResult): AnthropicCallDiagnostics {
+  if (result.networkErrorType) {
+    return {
+      providerHttpStatus: 0,
+      providerErrorType: `network_error:${result.networkErrorType}`,
+      providerRequestId: null,
+      providerErrorMessageSanitized: "no_http_response_received",
+    };
+  }
   const body = result.json && typeof result.json === "object" ? (result.json as Record<string, unknown>) : {};
   const errorObj = body.error && typeof body.error === "object" ? (body.error as Record<string, unknown>) : {};
   const errorType = typeof errorObj.type === "string" ? errorObj.type : "unknown_error";
@@ -158,6 +194,7 @@ export type AnthropicDiagnosticCode =
   | "ANTHROPIC_MODEL_OR_RESOURCE_NOT_FOUND"
   | "ANTHROPIC_RATE_LIMITED"
   | "ANTHROPIC_PROVIDER_ERROR"
+  | "ANTHROPIC_NETWORK_ERROR"
   | "ANTHROPIC_UNKNOWN_ERROR";
 
 export function mapAnthropicStatusToDiagnosticCode(status: number): AnthropicDiagnosticCode {
@@ -174,6 +211,9 @@ export function mapAnthropicStatusToDiagnosticCode(status: number): AnthropicDia
       return "ANTHROPIC_MODEL_OR_RESOURCE_NOT_FOUND";
     case 429:
       return "ANTHROPIC_RATE_LIMITED";
+    // This module's own sentinel — fetch() itself failed, no HTTP status ever existed (see callAnthropicRaw).
+    case 0:
+      return "ANTHROPIC_NETWORK_ERROR";
     default:
       return status >= 500 ? "ANTHROPIC_PROVIDER_ERROR" : "ANTHROPIC_UNKNOWN_ERROR";
   }

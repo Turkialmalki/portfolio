@@ -305,6 +305,8 @@ Deno.serve(async (req) => {
         ...(err.providerAttempts !== undefined ? { provider_attempts: err.providerAttempts } : {}),
         ...(err.schemaRepairCount !== undefined ? { schema_repair_count: err.schemaRepairCount } : {}),
         ...(err.dimensionSummary ? dimensionSummaryLogFields(err.dimensionSummary) : {}),
+        ...(err.operation ? { operation: err.operation } : {}),
+        ...(err.errorType ? { error_type: err.errorType } : {}),
       });
       return jsonResponse(diag, safeError(err.code).status, headers);
     }
@@ -346,6 +348,10 @@ function buildPipelineErrorDiagnosticBody(err: AnalysisPipelineError, elapsedMs:
     // DimensionValidationSummary) — undefined for a failure unrelated to
     // dimension validation (e.g. the language/release gates).
     dimensionSummary: err.dimensionSummary ?? null,
+    // Set only when `stage` fell back to "unexpected_error" — see
+    // AnalysisPipelineErrorOptions.operation's own doc.
+    operation: err.operation ?? null,
+    errorType: err.errorType ?? null,
   };
 }
 
@@ -745,6 +751,8 @@ async function handleCustomerAnalysis(
         ...(err.providerAttempts !== undefined ? { provider_attempts: err.providerAttempts } : {}),
         ...(err.schemaRepairCount !== undefined ? { schema_repair_count: err.schemaRepairCount } : {}),
         ...(err.dimensionSummary ? dimensionSummaryLogFields(err.dimensionSummary) : {}),
+        ...(err.operation ? { operation: err.operation } : {}),
+        ...(err.errorType ? { error_type: err.errorType } : {}),
         // A capped sample (first 6) of "path: issue" — both are fixed,
         // code-authored vocabulary (see SchemaIssue's own doc + safeLog.ts's
         // schema_issue_sample field for exactly why this is safe to log,

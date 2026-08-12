@@ -8,6 +8,7 @@
 import {
   AI_CONFIDENCE_VALUES,
   AnalysisPipelineError,
+  assertGeneratedAnalysisToolSchema,
   buildDimensionResultSchema,
   createMockCareerAIProvider,
   DIMENSION_RESULT_SCHEMA,
@@ -390,6 +391,119 @@ async function main() {
       keyedResultsToArray(parsedDuplicate).length === 1,
       String(keyedResultsToArray(parsedDuplicate).length),
     );
+  }
+
+  console.log("\n[7B] Schema preflight (assertGeneratedAnalysisToolSchema) — local, $0, no Anthropic call");
+  {
+    // A production incident (Career V2 email-test verification) hit an
+    // opaque `stage: "unexpected_error"` after only 621ms — no
+    // stop_reason, no schema data, no provider telemetry at all. Most
+    // likely explained separately (anthropicClient.ts: an uncaught
+    // `fetch()` failure), but this section proves the OTHER plausible
+    // culprit — our own schema-building code throwing before any network
+    // call — is not it: buildDimensionResultSchema + the preflight it
+    // now runs on every real call must not throw for any realistic
+    // dimension-set size, and must catch a deliberately corrupted schema
+    // before a single token is spent.
+    for (const n of [1, 5, 13, 15]) {
+      const ids = DIMENSION_IDS.slice(0, n) as DimensionId[];
+      let threw: unknown;
+      try {
+        assertGeneratedAnalysisToolSchema(buildDimensionResultSchema(ids), ids);
+      } catch (e) {
+        threw = e;
+      }
+      check(`${n} dimension(s): buildDimensionResultSchema + preflight does NOT throw`, threw === undefined, threw instanceof Error ? threw.message : String(threw));
+    }
+
+    const validIds = DIMENSION_IDS.slice(0, 13) as DimensionId[];
+    const validSchema = buildDimensionResultSchema(validIds);
+
+    function expectPreflightToThrow(label: string, corrupt: (s: ReturnType<typeof buildDimensionResultSchema>) => unknown): void {
+      let threw = false;
+      try {
+        assertGeneratedAnalysisToolSchema(corrupt(validSchema), validIds);
+      } catch {
+        threw = true;
+      }
+      check(`preflight rejects: ${label}`, threw);
+    }
+    expectPreflightToThrow("a missing dimension property", (s) => {
+      const clone = JSON.parse(JSON.stringify(s));
+      delete clone.properties.results.properties[validIds[0]];
+      return clone;
+    });
+    expectPreflightToThrow("required not matching properties (extra required id)", (s) => {
+      const clone = JSON.parse(JSON.stringify(s));
+      clone.properties.results.required.push("not_a_real_dimension");
+      return clone;
+    });
+    expectPreflightToThrow("results.additionalProperties true instead of false", (s) => {
+      const clone = JSON.parse(JSON.stringify(s));
+      clone.properties.results.additionalProperties = true;
+      return clone;
+    });
+    expectPreflightToThrow("a per-dimension value missing a required field", (s) => {
+      const clone = JSON.parse(JSON.stringify(s));
+      delete clone.properties.results.properties[validIds[0]].properties.signalLevel;
+      return clone;
+    });
+    expectPreflightToThrow("a circular reference (not JSON-serializable)", (s) => {
+      const clone: Record<string, unknown> = { ...s };
+      clone.selfRef = clone;
+      return clone;
+    });
+    expectPreflightToThrow("an undefined value silently dropped by JSON.stringify (round-trip mismatch)", (s) => {
+      const clone = JSON.parse(JSON.stringify(s));
+      clone.properties.results.properties[validIds[0]] = undefined;
+      return clone;
+    });
+
+    // Real schema build must survive its own JSON round trip unchanged —
+    // this is exactly what a real Messages API request body goes through
+    // (JSON.stringify in anthropicClient.ts's callAnthropicRaw).
+    let roundTripOk = true;
+    try {
+      JSON.parse(JSON.stringify(validSchema));
+    } catch {
+      roundTripOk = false;
+    }
+    check("a real generated schema survives JSON.stringify → JSON.parse without throwing", roundTripOk);
+  }
+
+  console.log("\n[7C] keyedResultsToArray adapter — direct tests, no Anthropic call");
+  {
+    const canonicalValue = {
+      signalLevel: "mixed" as const,
+      evidencePresent: true,
+      evidenceQuality: "specific" as const,
+      confidence: "medium" as const,
+      evidence: null,
+      reasonCode: "TEST",
+      shortReason: "Synthetic value for adapter tests.",
+    };
+    for (const n of [1, 5, 13, 15]) {
+      const ids = DIMENSION_IDS.slice(0, n) as DimensionId[];
+      const keyed = Object.fromEntries(ids.map((id) => [id, canonicalValue]));
+      const arr = keyedResultsToArray(keyed) as Array<{ dimensionId: string } & typeof canonicalValue>;
+      check(`${n} dimension(s): array length equals dimension count`, arr.length === n);
+      check(`${n} dimension(s): every dimensionId is restored from its key`, ids.every((id) => arr.some((r) => r.dimensionId === id)));
+      check(`${n} dimension(s): all required fields retained on each entry`, arr.every((r) => r.signalLevel === "mixed" && r.evidenceQuality === "specific" && r.confidence === "medium" && r.reasonCode === "TEST"));
+      check(`${n} dimension(s): source object not mutated`, !("dimensionId" in keyed[ids[0]]));
+    }
+    // Ordering is whatever Object.entries/Object.keys yields for
+    // string-keyed properties — for our non-numeric-looking dimension
+    // ids (methodology/types.ts's DIMENSION_IDS, e.g. "positioning",
+    // never a bare integer string) that is INSERTION order, which is
+    // exactly the order they were requested in (dimensionIds.map(...) in
+    // buildDimensionResultSchema). Verified directly rather than assumed.
+    const orderedIds = DIMENSION_IDS.slice(0, 5) as DimensionId[];
+    const orderedKeyed = Object.fromEntries(orderedIds.map((id) => [id, canonicalValue]));
+    const orderedArr = keyedResultsToArray(orderedKeyed) as Array<{ dimensionId: string }>;
+    check("ordering is deterministic and matches insertion/request order", orderedArr.map((r) => r.dimensionId).join(",") === orderedIds.join(","));
+
+    check("a non-object input (e.g. an array, mimicking the OLD contract) returns []", keyedResultsToArray(["not", "an", "object"]).length === 0);
+    check("null/undefined input returns []", keyedResultsToArray(null).length === 0 && keyedResultsToArray(undefined).length === 0);
   }
 
   console.log("\n[8] Pipeline failure-path diagnostics — mocked providers only, no real Anthropic call");

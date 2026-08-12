@@ -67,6 +67,7 @@ export function newInstrumentation(inputCharCount: number, provider: string, mod
     totalInputTokens: 0,
     totalOutputTokens: 0,
     stopReason: null,
+    currentOperation: "init",
   };
 }
 

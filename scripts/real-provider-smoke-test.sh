@@ -38,8 +38,12 @@
 #     MISSING_DIMENSION_IDS, DUPLICATE_DIMENSION_COUNT,
 #     DUPLICATE_DIMENSION_IDS, UNKNOWN_DIMENSION_COUNT,
 #     UNKNOWN_DIMENSION_IDS (dimension ids are fixed methodology
-#     identifiers, not customer data — safe to print in full). This is
-#     the shape a schema-validation or language-gate failure returns —
+#     identifiers, not customer data — safe to print in full), and — only
+#     when STAGE is "unexpected_error" (a plain exception no classified
+#     throw site anticipated) — OPERATION (fixed vocabulary, e.g.
+#     "primary_provider_call") and ERROR_TYPE (the exception's
+#     constructor name only, e.g. "TypeError", never its message). This
+#     is the shape a schema-validation or language-gate failure returns —
 #     `diagnosticCode` is absent, which is exactly how the two shapes are
 #     told apart below.
 # Never prints: the CV text, the prompt, any AI-generated prose
@@ -156,6 +160,13 @@ node -e '
         line("UNKNOWN_DIMENSION_COUNT", s.unknownDimensionCount ?? null);
         line("UNKNOWN_DIMENSION_IDS", Array.isArray(s.unknownDimensionIds) ? s.unknownDimensionIds.map(clip).join(",") : null);
       }
+      // Only set when STAGE fell back to "unexpected_error" — a plain
+      // exception the classified throw sites never anticipated.
+      // OPERATION is fixed vocabulary (instrumentation.currentOperation);
+      // ERROR_TYPE is the exception constructor NAME only, never its
+      // message.
+      line("OPERATION", json.operation ? clip(json.operation) : null);
+      line("ERROR_TYPE", json.errorType ? clip(json.errorType) : null);
     }
   }
 

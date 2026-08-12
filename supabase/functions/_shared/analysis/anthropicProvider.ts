@@ -178,6 +178,106 @@ export function buildDimensionResultSchema(dimensionIds: readonly DimensionId[])
 export const DIMENSION_RESULT_SCHEMA = buildDimensionResultSchema(DIMENSION_IDS);
 
 /**
+ * SCHEMA PREFLIGHT — a pure, local, $0 self-check that our OWN generated
+ * schema is actually well-formed BEFORE spending a real Anthropic
+ * request on it. Anthropic's `strict: true` guarantees the MODEL's
+ * output conforms to whatever schema we hand it — it says nothing about
+ * whether the schema we built is itself sane. Called from
+ * `analyzeDimensions` on every real call (negligible cost — pure
+ * synchronous object traversal over ≤15 small objects).
+ *
+ * Throws a plain `Error` (never `AnalysisPipelineError` — this module
+ * has no opinion on `AnalysisFailureCode`/`stage`; that classification
+ * stays pipeline.ts's job) with a short, fixed, code-authored message
+ * identifying exactly which invariant failed — never any dimension-
+ * specific content beyond the id itself (a closed methodology
+ * identifier, not customer data).
+ */
+export function assertGeneratedAnalysisToolSchema(schema: unknown, expectedDimensionIds: readonly DimensionId[]): void {
+  const fail = (reason: string): never => {
+    throw new Error(`schema_preflight_failed: ${reason}`);
+  };
+  if (!schema || typeof schema !== "object") fail("schema is not an object");
+  const top = schema as Record<string, unknown>;
+  if (top.type !== "object") fail("top-level type must be 'object'");
+  if (top.additionalProperties !== false) fail("top-level additionalProperties must be false");
+  if (!Array.isArray(top.required) || !top.required.includes("results")) fail("top-level required must include 'results'");
+
+  const props = top.properties as Record<string, unknown> | undefined;
+  const results = (props?.results ?? undefined) as Record<string, unknown> | undefined;
+  if (!results || typeof results !== "object") fail("properties.results is missing");
+  const resultsObj = results!;
+  if (resultsObj.type !== "object") fail("results.type must be 'object' (keyed-by-dimension, not an array)");
+  if (resultsObj.additionalProperties !== false) fail("results.additionalProperties must be false");
+
+  const resultsProps = resultsObj.properties as Record<string, unknown> | undefined;
+  if (!resultsProps || typeof resultsProps !== "object") fail("results.properties is missing");
+  const resultsPropsObj = resultsProps!;
+  const actualKeys = Object.keys(resultsPropsObj);
+  const expectedSet = new Set<string>(expectedDimensionIds);
+  const actualSet = new Set<string>(actualKeys);
+  if (actualKeys.length !== expectedDimensionIds.length || ![...expectedSet].every((id) => actualSet.has(id))) {
+    fail(`results.properties keys must exactly equal the expected dimension set (expected ${expectedDimensionIds.length}, got ${actualKeys.length})`);
+  }
+  const requiredKeys: unknown[] = Array.isArray(resultsObj.required) ? resultsObj.required : [];
+  if (!Array.isArray(resultsObj.required) || requiredKeys.length !== expectedDimensionIds.length || !expectedDimensionIds.every((id) => requiredKeys.includes(id))) {
+    fail("results.required must exactly equal the expected dimension set");
+  }
+  // No duplicates possible in `properties` (object keys are inherently
+  // unique) or in `expectedDimensionIds` itself (methodology invariant,
+  // checked here defensively rather than assumed).
+  if (new Set(expectedDimensionIds).size !== expectedDimensionIds.length) fail("expectedDimensionIds itself contains a duplicate");
+
+  const requiredValueFields = ["signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"];
+  for (const id of expectedDimensionIds) {
+    const valueSchema = resultsPropsObj[id] as Record<string, unknown> | undefined;
+    if (!valueSchema || typeof valueSchema !== "object") fail(`results.properties["${id}"] is missing`);
+    const valueSchemaObj = valueSchema!;
+    if (valueSchemaObj.type !== "object") fail(`results.properties["${id}"].type must be 'object'`);
+    if (valueSchemaObj.additionalProperties !== false) fail(`results.properties["${id}"].additionalProperties must be false`);
+    const valueProps = valueSchemaObj.properties as Record<string, unknown> | undefined;
+    const valueRequired: unknown[] = Array.isArray(valueSchemaObj.required) ? valueSchemaObj.required : [];
+    if (!valueProps || typeof valueProps !== "object") fail(`results.properties["${id}"].properties is missing`);
+    if (!Array.isArray(valueSchemaObj.required)) fail(`results.properties["${id}"].required is missing`);
+    const valuePropsObj = valueProps!;
+    for (const field of requiredValueFields) {
+      if (!(field in valuePropsObj)) fail(`results.properties["${id}"] is missing property "${field}"`);
+      if (!valueRequired.includes(field)) fail(`results.properties["${id}"].required is missing "${field}"`);
+    }
+    // Every `required` entry must actually exist in `properties` — the
+    // general form of the check above, catches a future field rename
+    // that updates one list but not the other.
+    for (const field of valueRequired) {
+      if (typeof field !== "string" || !(field in valuePropsObj)) fail(`results.properties["${id}"].required lists "${String(field)}" which is not in its properties`);
+    }
+  }
+
+  // No non-JSON-serializable value (undefined/NaN/function/Set/Map) and
+  // no circular reference can be hiding anywhere in the tree — a single
+  // stringify+parse+diff proves both at once. JSON.stringify silently
+  // DROPS `undefined`/function values (rather than throwing), so an
+  // object-key-count comparison after a round trip catches that class
+  // too, not just the circular-reference case (which throws directly).
+  let json: string;
+  try {
+    json = JSON.stringify(schema);
+  } catch (e) {
+    fail(`schema is not JSON-serializable (${e instanceof Error ? e.constructor.name : typeof e} — likely a circular reference)`);
+    return;
+  }
+  const roundTripped = JSON.parse(json) as Record<string, unknown>;
+  const roundTrippedResults = (roundTripped.properties as Record<string, unknown>)?.results as Record<string, unknown> | undefined;
+  const roundTrippedKeys = roundTrippedResults && typeof roundTrippedResults.properties === "object" ? Object.keys(roundTrippedResults.properties as object) : [];
+  if (!sameStringSet(roundTrippedKeys, actualKeys)) fail("results.properties keys did not survive a JSON round trip unchanged");
+  const roundTrippedRequired = Array.isArray(roundTrippedResults?.required) ? (roundTrippedResults!.required as unknown[]) : [];
+  if (!sameStringSet(roundTrippedRequired as string[], requiredKeys as string[])) fail("results.required did not survive a JSON round trip unchanged");
+}
+
+function sameStringSet(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && new Set(a).size === a.length && a.every((v) => b.includes(v));
+}
+
+/**
  * Adapter boundary: converts the strict tool's `{results: {dimensionId:
  * {...}}}` keyed-object shape into the flat `DimensionAIResult`-ish
  * array shape every downstream stage already consumes — `dimensionId`
@@ -358,12 +458,18 @@ export function createAnthropicCareerAIProvider(apiKey: string): CareerAIProvide
       // with pipeline.ts's own `expected` set passed to
       // schemaValidation.ts. No second, independently-maintained
       // dimension list exists anywhere in this path.
+      const schema = buildDimensionResultSchema(input.dimensionIds);
+      // $0 local self-check BEFORE spending a real request on it —
+      // `strict:true` guarantees the MODEL's output matches whatever
+      // schema we send; it says nothing about whether WE built that
+      // schema correctly. See the function's own doc.
+      assertGeneratedAnalysisToolSchema(schema, input.dimensionIds);
       const { input: raw, usage, stopReason } = await callAnthropicTool(
         apiKey,
         SYSTEM_PROMPT,
         buildDimensionsPrompt(input),
         "submit_dimension_analysis",
-        buildDimensionResultSchema(input.dimensionIds),
+        schema,
         "dimension_analysis",
       );
       lastUsage = usage ? { inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, stopReason } : { inputTokens: 0, outputTokens: 0, stopReason };

@@ -17,7 +17,13 @@ export { isEnglishLeak, validateReportLanguage, type LanguageLeak, type Language
 export { buildUiFreeReport, looksLikeCareerAnalysis } from "./reportFormat.ts";
 export { resolveProvider, type ProviderResolution } from "./provider.ts";
 export { createMockCareerAIProvider } from "./mockProvider.ts";
-export { buildDimensionResultSchema, createAnthropicCareerAIProvider, DIMENSION_RESULT_SCHEMA, keyedResultsToArray } from "./anthropicProvider.ts";
+export {
+  assertGeneratedAnalysisToolSchema,
+  buildDimensionResultSchema,
+  createAnthropicCareerAIProvider,
+  DIMENSION_RESULT_SCHEMA,
+  keyedResultsToArray,
+} from "./anthropicProvider.ts";
 export { CAREER_AI_CONFIG } from "./config.ts";
 export { evidenceIsVerifiable, verifyDimensionEvidence } from "./evidenceValidation.ts";
 export { detectMetricConflicts, enforceRewriteFactPreservation } from "./factCheck.ts";

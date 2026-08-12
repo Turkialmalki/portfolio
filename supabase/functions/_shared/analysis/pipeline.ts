@@ -183,7 +183,23 @@ export async function runAnalysis(request: AnalyzeResumeRequest, opts: AnalysisR
         : message.includes("dimension analysis")
           ? "primary_provider_call"
           : "unexpected_error";
-    throw new AnalysisPipelineError(timedOut ? "ANALYSIS_TIMEOUT" : "ANALYSIS_FAILED", message, { stage });
+    // A production incident (Career V2 email-test verification) hit this
+    // exact fallback with NOTHING further to go on: `stage:
+    // "unexpected_error"`, no stop_reason, no schema data, no provider
+    // telemetry, at only 621ms. Most likely candidate, closed separately
+    // in anthropicClient.ts: `fetch()` itself failing (DNS/connection/
+    // TLS) was previously uncaught there and propagated as a plain
+    // exception all the way here. `operation`/`errorType` below are the
+    // general-purpose version of that fix — captured for ANY unforeseen
+    // exception, not just that one, so a future occurrence never again
+    // arrives this bare. `errorType` is the constructor NAME only (e.g.
+    // "TypeError") — never `.message`, which could echo request/response
+    // content this module has no way to pre-verify as safe.
+    throw new AnalysisPipelineError(timedOut ? "ANALYSIS_TIMEOUT" : "ANALYSIS_FAILED", message, {
+      stage,
+      operation: instrumentation.currentOperation,
+      errorType: err instanceof Error ? err.constructor.name : typeof err,
+    });
   }
 }
 
@@ -194,12 +210,14 @@ async function runStages(
   start: number,
 ): Promise<AnalysisRunResult> {
   // Stage A: deterministic structure extraction.
+  instrumentation.currentOperation = "preprocessing";
   const preprocessed = preprocessResumeText(request.resumeText);
   const redaction = redactContactFields(preprocessed);
   const normalized = extractNormalizedResume(redaction.redactedText);
 
   // Retrieval + context assembly (roleFamily detection informs both the
   // industry-fallback context and the retrieval call).
+  instrumentation.currentOperation = "retrieval";
   const retrieval = buildAndRunRetrieval(normalized, buildContext(request, request.industry), request.roleFamily, undefined, opts.knowledgeMode);
   instrumentation.examplesRetrieved = retrieval.examples.length;
   const context = buildContext(request, request.industry);
@@ -211,12 +229,14 @@ async function runStages(
   // call. composeMethodologyContext()/compose.ts are unchanged and still
   // used elsewhere (documentation, tests); this pipeline's live AI call
   // no longer sends full rubric prose.
+  instrumentation.currentOperation = "methodology_compile";
   const runtimeMethodology = compileRuntimeMethodology(context, dimensionIds);
 
   // Stage B+C: ONE compact dimension-evaluation call, with one controlled
   // repair retry (§29) — unchanged safety net, now expected to be rare
   // (Command 05D.2 §21: a system that routinely needs repair isn't
   // production-ready).
+  instrumentation.currentOperation = "primary_provider_call";
   let aiRaw = await withTimeout(
     opts.provider.analyzeDimensions({ normalizedResume: normalized, context, dimensionIds, methodologySections: runtimeMethodology, examples: retrieval.examples }),
     DEFAULT_TIMEOUTS.providerCallMs,
@@ -224,9 +244,11 @@ async function runStages(
   );
   instrumentation.aiCallCount += 1;
   accumulateUsage(instrumentation, opts.provider);
+  instrumentation.currentOperation = "primary_schema_validation";
   let validation = validateDimensionAIResults(aiRaw, dimensionIds);
   if (!validation.ok) {
     instrumentation.retryCount += 1;
+    instrumentation.currentOperation = "repair_provider_call";
     aiRaw = await withTimeout(
       opts.provider.analyzeDimensions({ normalizedResume: normalized, context, dimensionIds, methodologySections: runtimeMethodology, examples: retrieval.examples }),
       DEFAULT_TIMEOUTS.providerCallMs,
@@ -234,6 +256,7 @@ async function runStages(
     );
     instrumentation.aiCallCount += 1;
     accumulateUsage(instrumentation, opts.provider);
+    instrumentation.currentOperation = "repair_schema_validation";
     validation = validateDimensionAIResults(aiRaw, dimensionIds);
     if (!validation.ok) {
       throw new AnalysisPipelineError(
@@ -266,6 +289,7 @@ async function runStages(
   // `evidencePresent`/`evidenceQuality` down to reflect an evidence quote
   // that failed to verify, so scoring MUST read the verified result, not
   // the raw AI one.
+  instrumentation.currentOperation = "evidence_verification";
   const verifiedResults: DimensionResult[] = validation.value.map((r) => {
     const { result } = verifyDimensionEvidence(r, normalized.rawTextReference);
     return {
@@ -279,6 +303,7 @@ async function runStages(
   });
 
   // Stage F: deterministic scoring — the ONLY source of overallScore (§9).
+  instrumentation.currentOperation = "scoring";
   const overall = computeOverallScore(verifiedResults, context);
   const confidence = aggregateConfidence(verifiedResults, overall.weightPlan);
   const scoreBand = bandForScore(overall.overallScore);
@@ -287,6 +312,7 @@ async function runStages(
   const factConflicts = detectMetricConflicts(normalized.rawTextReference);
 
   // §21–§26 deterministic findings.
+  instrumentation.currentOperation = "findings";
   const { issues, strengths, quickWins, missingEvidenceQuestions, atsAnalysis } = buildFindings(verifiedResults, context, factConflicts);
   const actionPlan = buildActionPlan(issues);
 
@@ -307,6 +333,7 @@ async function runStages(
   const targetRoleResult = verifiedResults.find((r) => r.dimension === "target_role_alignment");
   const targetRoleAnalysis = buildTargetRoleAnalysis(request, normalized, targetRoleResult);
 
+  instrumentation.currentOperation = "result_build";
   const analysis: CareerAnalysis = {
     methodologyVersion: CAREER_METHODOLOGY_VERSION,
     overallScore: overall.overallScore,
@@ -346,6 +373,7 @@ async function runStages(
   // to have. The real Anthropic provider IS instructed (SYSTEM_PROMPT) to
   // write shortReason in outputLanguage, so this gate is meaningful there.
   if (opts.provider.name !== "mock") {
+    instrumentation.currentOperation = "language_validation";
     const languageCheck = validateReportLanguage(analysis);
     if (!languageCheck.ok) {
       throw new AnalysisPipelineError(
