@@ -389,6 +389,20 @@ allow_dynamic_registration = false
 [functions.career-health]
 verify_jwt = false
 
+# Pre-existing gap fixed here (Command 05B): the comment above already
+# documented this as the intended pattern for analyze-resume, but the
+# actual [functions.analyze-resume] entry was never added in Command 05 —
+# gateway-level JWT verification would have rejected its legitimate
+# admin-key fixture_test calls outright, since they carry no Supabase JWT.
+[functions.analyze-resume]
+verify_jwt = false
+
+# parse-resume follows the exact same pattern: ADMIN_API_KEY validated
+# in-function (index.ts), no Supabase JWT involved while
+# PRIVACY_SECURITY_EXECUTION_VERIFIED is false.
+[functions.parse-resume]
+verify_jwt = false
+
 [functions.request-payment-verification]
 verify_jwt = false
 

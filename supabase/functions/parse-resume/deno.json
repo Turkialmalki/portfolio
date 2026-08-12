@@ -1,0 +1,7 @@
+{
+  "// why this exists": "Command 05B: the shared parser modules (_shared/parser/pdfExtract.ts, docxExtract.ts) import 'mammoth' and 'pdfjs-dist/legacy/build/pdf.mjs' as bare specifiers so the exact same .ts source compiles and runs under this repo's Node test harness (npm run test:parser, using node_modules) as well as here, under Deno. This import map is what makes the bare specifiers resolve under Deno — to the pinned npm packages, matching package.json exactly. Deno 2 (see supabase/config.toml's edge_runtime.deno_version) picks up a deno.json colocated with a function's entry point automatically.",
+  "imports": {
+    "mammoth": "npm:mammoth@1.12.1",
+    "pdfjs-dist/legacy/build/pdf.mjs": "npm:pdfjs-dist@4.10.38/legacy/build/pdf.mjs"
+  }
+}

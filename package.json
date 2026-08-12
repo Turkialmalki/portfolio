@@ -11,13 +11,16 @@
     "generate:methodology-seed": "tsc -p supabase/tests/methodology && node scripts/generate-methodology-seed.mjs",
     "test:knowledge": "tsc -p supabase/tests/knowledge && node .knowledge-tests-build/tests/knowledge/harness.js",
     "generate:cv-knowledge-seed": "tsc -p supabase/tests/knowledge && node scripts/generate-cv-knowledge-seed.mjs",
-    "test:analysis": "tsc -p supabase/tests/analysis && node .analysis-tests-build/tests/analysis/harness.js"
+    "test:analysis": "tsc -p supabase/tests/analysis && node .analysis-tests-build/tests/analysis/harness.js",
+    "test:parser": "tsc -p supabase/tests/parser && node .parser-tests-build/tests/parser/harness.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
     "framer-motion": "^12.38.0",
     "lenis": "^1.3.23",
+    "mammoth": "1.12.1",
     "next": "16.2.6",
+    "pdfjs-dist": "4.10.38",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-icons": "^5.6.0"

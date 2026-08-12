@@ -31,7 +31,14 @@ export type SafeErrorCode =
   | "NOT_FOUND"
   | "METHOD_NOT_ALLOWED"
   | "INVALID_REQUEST"
-  | "INTERNAL_ERROR";
+  | "INTERNAL_ERROR"
+  // ── Command 05B: resume file ingestion + PDF/DOCX parser ────────────────
+  | "FILE_CORRUPTED"
+  | "FILE_ENCRYPTED"
+  | "PDF_NO_EXTRACTABLE_TEXT"
+  | "SCAN_REQUIRES_TEXT_PDF"
+  | "PARSE_FAILED"
+  | "PARSE_TIMEOUT";
 
 const SAFE_MESSAGES: Record<SafeErrorCode, string> = {
   INVALID_FILE: "The uploaded file could not be processed.",
@@ -45,6 +52,12 @@ const SAFE_MESSAGES: Record<SafeErrorCode, string> = {
   METHOD_NOT_ALLOWED: "This request method isn't supported.",
   INVALID_REQUEST: "The request was invalid.",
   INTERNAL_ERROR: "Something went wrong. Please try again.",
+  FILE_CORRUPTED: "This file appears to be corrupted and couldn't be read.",
+  FILE_ENCRYPTED: "This file is password-protected. Please upload an unprotected copy.",
+  PDF_NO_EXTRACTABLE_TEXT: "No readable text could be found in this PDF.",
+  SCAN_REQUIRES_TEXT_PDF: "This looks like a scanned image, not selectable text. Please upload a text-based PDF or DOCX.",
+  PARSE_FAILED: "This file could not be parsed. Please try a different file.",
+  PARSE_TIMEOUT: "This file took too long to process. Please try a smaller file.",
 };
 
 const STATUS_BY_CODE: Record<SafeErrorCode, number> = {
@@ -59,6 +72,12 @@ const STATUS_BY_CODE: Record<SafeErrorCode, number> = {
   METHOD_NOT_ALLOWED: 405,
   INVALID_REQUEST: 400,
   INTERNAL_ERROR: 500,
+  FILE_CORRUPTED: 422,
+  FILE_ENCRYPTED: 422,
+  PDF_NO_EXTRACTABLE_TEXT: 422,
+  SCAN_REQUIRES_TEXT_PDF: 422,
+  PARSE_FAILED: 422,
+  PARSE_TIMEOUT: 504,
 };
 
 /** Builds the exact, safe JSON body + status for a given code — no other fields ever added. */

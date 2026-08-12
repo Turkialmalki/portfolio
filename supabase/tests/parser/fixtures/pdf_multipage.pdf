@@ -1,0 +1,72 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >>  >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >>  >> /Contents 7 0 R >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >>  >> /Contents 8 0 R >>
+endobj
+6 0 obj
+<<  /Length 139 >>
+stream
+BT /F1 11 Tf 72 740 Td 16 TL
+(Test User Alpha) Tj
+T*
+(Page 1  Summary) Tj
+T*
+(Backend engineer with distributed systems experience.) Tj
+ET
+endstream
+endobj
+7 0 obj
+<<  /Length 152 >>
+stream
+BT /F1 11 Tf 72 740 Td 16 TL
+(Experience) Tj
+T*
+(Senior Backend Engineer - Fictional Payments Inc) Tj
+T*
+(- Led the settlement pipeline redesign.) Tj
+ET
+endstream
+endobj
+8 0 obj
+<<  /Length 159 >>
+stream
+BT /F1 11 Tf 72 740 Td 16 TL
+(Education) Tj
+T*
+(BSc Computer Science, Fictional Institute of Technology, 2019) Tj
+T*
+(Skills: Go, Kubernetes, PostgreSQL) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000254 00000 n 
+0000000381 00000 n 
+0000000508 00000 n 
+0000000699 00000 n 
+0000000903 00000 n 
+0000001114 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+1184
+%%EOF

@@ -1,0 +1,22 @@
+{
+  "// why this exists": "Same pattern as tests/analysis, tests/methodology, tests/knowledge: the parser modules are written Deno-style (.ts extension imports, bare 'mammoth'/'pdfjs-dist' specifiers resolved for Deno via supabase/functions/parse-resume/deno.json) for the future Edge Function, but tests run under plain Node — no Docker, no Deno, no network — using this repo's own node_modules for mammoth/pdfjs-dist.",
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "rewriteRelativeImportExtensions": true,
+    "strict": true,
+    "types": ["node"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "outDir": "../../../.parser-tests-build"
+  },
+  "include": [
+    "harness.ts",
+    "../../functions/_shared/parser/**/*.ts",
+    "../../functions/_shared/analysis/**/*.ts",
+    "../../functions/_shared/methodology/**/*.ts",
+    "../../functions/_shared/knowledge/**/*.ts",
+    "../../functions/_shared/releaseGates.ts"
+  ]
+}

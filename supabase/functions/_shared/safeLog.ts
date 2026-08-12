@@ -22,6 +22,15 @@ export type SafeLogFields = {
   error_code?: string;
   duration_ms?: number;
   status?: number;
+  // ── Command 05B: parser operational fields (never raw content) ──────────
+  /** e.g. "resume_parser_v1" — traces which parser build produced a result. */
+  parser_version?: string;
+  /** "pdf" | "docx" — never the filename (may contain a real name). */
+  format?: string;
+  /** Length of extracted/normalized text — a count, never the text itself. */
+  character_count?: number;
+  /** Non-fatal parser warning codes, e.g. ["MULTI_COLUMN_ORDER_UNCERTAIN"] — codes only. */
+  warning_codes?: string[];
 };
 
 export function safeLog(fields: SafeLogFields): void {

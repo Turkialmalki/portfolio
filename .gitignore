@@ -49,3 +49,4 @@ next-env.d.ts
 .methodology-tests-build/
 .knowledge-tests-build/
 .analysis-tests-build/
+.parser-tests-build/
