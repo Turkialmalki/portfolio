@@ -1,25 +1,27 @@
 /**
- * AI PROVIDER ABSTRACTION (Command 05 §30–§31).
+ * AI PROVIDER ABSTRACTION (Command 05 §30–§31, Command 05C §10–§11).
  *
  * `CareerAIProvider` (defined in types.ts) is the only surface the
- * pipeline (pipeline.ts) is allowed to call. Nothing in this directory
- * imports an OpenAI/Anthropic/Gemini SDK directly — a concrete adapter for
- * a real provider is a separate module that implements this interface,
- * reads its API key from an Edge Function secret (§31: never
- * `NEXT_PUBLIC_*`, never bundled into the browser), and is selected here
- * only if that secret is actually configured.
+ * pipeline (pipeline.ts) is allowed to call. Nothing outside this file
+ * and anthropicProvider.ts imports an Anthropic/OpenAI/Gemini SDK or
+ * touches `fetch` for a model call — a concrete adapter for a real
+ * provider is a separate module that implements this interface, reads
+ * its API key from an Edge Function secret (§11: never `NEXT_PUBLIC_*`,
+ * never bundled into the browser), and is selected here only if that
+ * secret is actually configured.
  *
- * This command ships exactly one concrete provider — mockProvider.ts —
- * because a real provider adapter needs real credentials this environment
- * does not have (§32: "do not invent credentials"). `resolveProvider()`
- * is the single place a future real adapter gets wired in.
+ * Two concrete providers exist: mockProvider.ts (always available, no
+ * credentials) and anthropicProvider.ts (real, selected only when
+ * `AI_PROVIDER_API_KEY` is present). `resolveProvider()` is the single
+ * place either gets wired in — nothing else in the pipeline chooses.
  */
 import type { CareerAIProvider } from "./types.ts";
 import { createMockCareerAIProvider } from "./mockProvider.ts";
+import { createAnthropicCareerAIProvider } from "./anthropicProvider.ts";
 
 export interface ProviderResolution {
   provider: CareerAIProvider;
-  /** True once AI_PROVIDER_API_KEY is read from env and a real adapter exists — always false today (§33). */
+  /** True once AI_PROVIDER_API_KEY is read from env and the real adapter is actually selected. */
   realProviderConfigured: boolean;
 }
 
@@ -33,12 +35,5 @@ export function resolveProvider(readEnv: (name: string) => string | undefined): 
   if (!apiKey) {
     return { provider: createMockCareerAIProvider(), realProviderConfigured: false };
   }
-  // NOT IMPLEMENTED (§33): no real provider adapter exists yet. The key's
-  // presence is reported so a caller can log "REAL AI PROVIDER: NOT
-  // CONFIGURED" vs "...CONFIGURED (adapter pending)" without this module
-  // silently pretending a real integration exists. Falling back to the
-  // mock here — rather than throwing — keeps the engine runnable in every
-  // environment; wiring a real adapter is a deliberate follow-up, not a
-  // side effect of an env var appearing.
-  return { provider: createMockCareerAIProvider(), realProviderConfigured: false };
+  return { provider: createAnthropicCareerAIProvider(apiKey), realProviderConfigured: true };
 }

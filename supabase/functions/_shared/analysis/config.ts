@@ -1,0 +1,33 @@
+/**
+ * CENTRALIZED MODEL/PIPELINE CONFIG (Command 05C §12).
+ *
+ * The single place a provider name, model id, timeout, or retry budget
+ * is written down. `anthropicProvider.ts` (and any future adapter) reads
+ * from here — nothing scatters a model string through the analysis
+ * functions themselves. Timeouts/retries stay defined once, in
+ * `instrumentation.ts` (`DEFAULT_TIMEOUTS`, pre-dating this file); this
+ * module re-exports them alongside the provider/model choice so callers
+ * have one import for "how does an analysis run behave."
+ *
+ * Changing the model or timeout is a one-line edit here, not a grep
+ * across the pipeline.
+ */
+import { DEFAULT_TIMEOUTS } from "./instrumentation.ts";
+
+export const CAREER_AI_CONFIG = {
+  /** Selected only when AI_PROVIDER_API_KEY is set — see provider.ts. */
+  provider: "anthropic" as const,
+  model: "claude-sonnet-5",
+  /** Anthropic Messages API version header (not a package version). */
+  apiVersion: "2023-06-01",
+  /** Per-call token ceiling for a dimension-analysis or rewrite response — generous but bounded; real output is a few KB of JSON. */
+  maxOutputTokens: 4096,
+  /** analyzeDimensions/generateRewrite are structured-extraction tasks, not creative writing — kept low and deterministic-leaning on purpose. */
+  temperature: 0.2,
+  /** Per-provider-call budget (§35) — reused from instrumentation.ts so there is exactly one number. */
+  analysisTimeoutMs: DEFAULT_TIMEOUTS.providerCallMs,
+  /** Pipeline retries its own single repair attempt (pipeline.ts §29) by calling the provider again with the same input — the adapter itself does not loop. */
+  maxRepairAttempts: DEFAULT_TIMEOUTS.maxSchemaRepairRetries,
+  /** Bumped whenever the provider adapter, prompt shape, or output contract changes — logged in instrumentation so a run's behavior is traceable to a version, not just a model string. */
+  pipelineVersion: "career-ai-pipeline-v1",
+} as const;

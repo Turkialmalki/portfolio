@@ -7,6 +7,8 @@ export { redactContactFields } from "./redact.ts";
 export { extractNormalizedResume } from "./structure.ts";
 export { resolveProvider, type ProviderResolution } from "./provider.ts";
 export { createMockCareerAIProvider } from "./mockProvider.ts";
+export { createAnthropicCareerAIProvider } from "./anthropicProvider.ts";
+export { CAREER_AI_CONFIG } from "./config.ts";
 export { evidenceIsVerifiable, verifyDimensionEvidence } from "./evidenceValidation.ts";
 export { detectMetricConflicts, enforceRewriteFactPreservation } from "./factCheck.ts";
 export { buildAndRunRetrieval, type RetrievalOutcome } from "./retrievalContext.ts";
