@@ -571,9 +571,12 @@ async function main() {
       check("A. issues records one 'missing dimension result' per expected dimension", (err?.issues?.length ?? 0) > 0);
     }
 
-    // B. The Arabic-output language-leak gate (pipeline.ts, skipped only
-    // for provider.name === "mock" — this stub deliberately uses a
-    // different name so the gate actually runs against it).
+    // B. NON-FATAL as of a real production incident (Career V2 Part 9
+    // redesign): an English-leaking provider under outputLanguage:ar
+    // must NOT fail the analysis — sanitizeDimensionReason substitutes a
+    // deterministic Arabic fallback at the source, languageFallbackCount
+    // records how many, and the analysis completes successfully. No
+    // second AI call anywhere in this path (providerAttempts stays 1).
     {
       const englishLeakProvider = makeStubProvider({
         name: "test-stub-real-like",
@@ -589,18 +592,56 @@ async function main() {
             shortReason: "This is a plain English sentence that must never appear in an Arabic-language report.",
           })),
       });
-      const arabicRequest = { ...baseRequest, language: "ar" as const, outputLanguage: "ar" as const };
+      const arabicRequest = { ...baseRequest, language: "ar" as const, outputLanguage: "ar" as const, targetRole: undefined, jobDescription: undefined };
       let thrown: unknown;
+      let result: AnalysisRunResult | undefined;
       try {
-        await runAnalysis(arabicRequest, { provider: englishLeakProvider, knowledgeMode: "fixture", isFixtureRun: true });
+        result = await runAnalysis(arabicRequest, { provider: englishLeakProvider, knowledgeMode: "fixture", isFixtureRun: true });
       } catch (e) {
         thrown = e;
       }
-      const err = thrown instanceof AnalysisPipelineError ? thrown : null;
-      check("B. English-leaking provider under outputLanguage:ar: runAnalysis throws AnalysisPipelineError", !!err);
-      check("B. code is ANALYSIS_FAILED", err?.code === "ANALYSIS_FAILED");
-      check("B. stage is language_validation", err?.stage === "language_validation", String(err?.stage));
-      check("B. providerAttempts is 1 (no repair retry — this is a post-scoring gate, not a schema failure)", err?.providerAttempts === 1, String(err?.providerAttempts));
+      check("B. an English-leaking provider under outputLanguage:ar does NOT fail the analysis", thrown === undefined, thrown instanceof AnalysisPipelineError ? `${thrown.stage}: ${thrown.message}` : String(thrown));
+      check("B. providerAttempts is 1 (no second AI call — fallback is deterministic, not a repair retry)", result?.instrumentation.aiCallCount === 1, String(result?.instrumentation.aiCallCount));
+      check("B. languageFallbackCount equals the number of dimensions (every one leaked English)", !!result && result.instrumentation.languageFallbackCount === result.analysis.dimensions.length, String(result?.instrumentation.languageFallbackCount));
+      check("B. no dimension reason contains the leaked English sentence anymore", !!result && result.analysis.dimensions.every((d) => !d.reason.includes("plain English sentence")));
+      check("B. dimension reasons are genuinely Arabic after the fallback", !!result && result.analysis.dimensions.every((d) => /[؀-ۿ]/.test(d.reason)));
+    }
+
+    // D. CONFIRMED real bug (real customer CV, Arabic output): a provider
+    // whose EVERY field is genuinely, correctly Arabic must NOT still
+    // fail the language gate — the actual bug was findings.ts's
+    // buildStrengths/buildQuickWins/buildMissingEvidenceQuestions
+    // building CODE-TEMPLATED English text that never consulted
+    // outputLanguage at all, regardless of what the AI returned. This is
+    // the mirror image of test B: B proves the gate catches a genuine AI
+    // leak; D proves the gate does NOT fire on a fully-compliant AI
+    // response just because of code the AI never touched.
+    {
+      const fullyArabicProvider = makeStubProvider({
+        name: "test-stub-real-like",
+        analyzeDimensions: async (input): Promise<DimensionAIResult[]> =>
+          input.dimensionIds.map((dimensionId) => ({
+            dimensionId,
+            signalLevel: "strong",
+            evidencePresent: true,
+            evidenceQuality: "specific",
+            confidence: "high",
+            evidence: { section: "الخبرة", excerpt: "قاد فريقاً من 5 مهندسين." },
+            reasonCode: "STRONG_EVIDENCE",
+            shortReason: "السيرة تُظهر دليلاً واضحاً ومحدداً في هذا المجال.",
+          })),
+      });
+      const arabicRequest = { ...baseRequest, language: "ar" as const, outputLanguage: "ar" as const, targetRole: undefined, jobDescription: undefined };
+      let thrown: unknown;
+      let result: AnalysisRunResult | undefined;
+      try {
+        result = await runAnalysis(arabicRequest, { provider: fullyArabicProvider, knowledgeMode: "fixture", isFixtureRun: true });
+      } catch (e) {
+        thrown = e;
+      }
+      check("D. a fully-Arabic AI response does NOT fail the language gate (the actual bug, now fixed)", thrown === undefined, thrown instanceof AnalysisPipelineError ? `${thrown.stage}: ${thrown.message}` : String(thrown));
+      check("D. strengths summaries are genuinely Arabic (titleAr-based, not titleEn)", !!result && result.analysis.strengths.every((s) => /[؀-ۿ]/.test(s.summary)));
+      check("D. quick-win action/why are genuinely Arabic", !!result && result.analysis.quickWins.every((q) => /[؀-ۿ]/.test(q.action) && /[؀-ۿ]/.test(q.why)));
     }
 
     // C. CONFIRMED real bug (real-provider smoke test): an

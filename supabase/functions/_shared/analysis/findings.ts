@@ -72,42 +72,89 @@ export function buildIssues(results: DimensionResult[]): Omit<Issue, "priorityRa
 }
 
 /**
+ * Career V2 Part 9 bug (found via a real Arabic-output production
+ * failure — "Arabic report failed language validation: 5 field(s)
+ * contained English prose leakage"): `buildStrengths`/`buildQuickWins`/
+ * `buildMissingEvidenceQuestions` below built their customer-facing text
+ * from CODE TEMPLATES that never consulted `outputLanguage` at all —
+ * always English, 100% reproducible for every Arabic-output report, not
+ * an AI compliance issue (the AI's own `reason`/`shortReason` text,
+ * which flows straight into `issues[].summary`, was already correctly
+ * Arabic in that same failing run; only the code-templated fields
+ * leaked). `rubricFor(dimension).titleAr` already exists and is used
+ * here; `.purpose`/`.recommendationRules[].recommend` do NOT have an
+ * Arabic counterpart in the methodology data yet, so rather than ship
+ * a fresh, unreviewed Arabic translation of ~15 dimensions' worth of
+ * methodology prose, the Arabic path below reuses content that's
+ * ALREADY correctly localized and CV-specific — the AI's own per-
+ * dimension `reason` (via `issue.summary`) — instead of the generic
+ * English-only rubric prose, which arguably reads better anyway (specific
+ * to this CV, not a generic dimension blurb).
+ */
+const STRENGTH_PHRASE: Record<"ar" | "en", Record<"high" | "mid" | "low", string>> = {
+  en: { high: "clearly demonstrates", mid: "shows solid signal in", low: "shows some signal in" },
+  ar: { high: "تُظهر سيرتك بوضوح", mid: "تُظهر سيرتك إشارة جيدة في", low: "تُظهر سيرتك بعض الإشارة في" },
+};
+
+/**
  * §22: minimum 2, evidence-based, never manufactured. Takes the
  * highest-scoring dimensions with at least one verified evidence item,
  * phrased proportionally to how strong the signal actually is — a modest,
  * precise strength on a weak CV rather than inflated praise.
  */
-export function buildStrengths(results: DimensionResult[]): Strength[] {
+export function buildStrengths(results: DimensionResult[], outputLanguage: "ar" | "en" = "en"): Strength[] {
   const withEvidence = results.filter((r) => r.evidence.length > 0);
   const pool = (withEvidence.length >= 2 ? withEvidence : results).slice();
   pool.sort((a, b) => b.score - a.score);
   return pool.slice(0, Math.max(2, Math.min(3, pool.length))).map((r) => {
     const rubric = rubricFor(r.dimension);
-    const phrase = r.score >= 80 ? "clearly demonstrates" : r.score >= 60 ? "shows solid signal in" : "shows some signal in";
+    const tier = r.score >= 80 ? "high" : r.score >= 60 ? "mid" : "low";
+    const summary =
+      outputLanguage === "ar"
+        ? `${STRENGTH_PHRASE.ar[tier]} ${rubric.titleAr}.`
+        : `The document ${STRENGTH_PHRASE.en[tier]} ${rubric.titleEn.toLowerCase()}.`;
     return {
       dimension: r.dimension,
-      summary: `The document ${phrase} ${rubric.titleEn.toLowerCase()}.`,
+      summary,
       evidence: r.evidence.slice(0, 2),
     };
   });
 }
 
 /** §23: low-effort, high-visibility fixes drawn from quick-effort issues. */
-export function buildQuickWins(issues: Omit<Issue, "priorityRank">[]): QuickWin[] {
+export function buildQuickWins(issues: Omit<Issue, "priorityRank">[], outputLanguage: "ar" | "en" = "en"): QuickWin[] {
   return issues
     .filter((i) => i.effort === "quick")
     .slice(0, 3)
-    .map((i) => ({
-      dimension: i.dimension,
-      action: i.recommendations[0] ?? `Improve ${rubricFor(i.dimension).titleEn.toLowerCase()}.`,
-      why: rubricFor(i.dimension).purpose,
-    }));
+    .map((i) => {
+      const rubric = rubricFor(i.dimension);
+      if (outputLanguage === "ar") {
+        // `i.recommendations[0]` is always the English-only
+        // `rubricFor().recommendationRules[0].recommend` fallback here in
+        // practice (pipeline.ts never populates AI recommendations — see
+        // its own comment) — never used for Arabic. `why` reuses the
+        // issue's own already-Arabic, CV-specific `summary` rather than
+        // the English-only `rubric.purpose`.
+        return { dimension: i.dimension, action: `ابدأ بتحسين ${rubric.titleAr}.`, why: i.summary };
+      }
+      return {
+        dimension: i.dimension,
+        action: i.recommendations[0] ?? `Improve ${rubric.titleEn.toLowerCase()}.`,
+        why: rubric.purpose,
+      };
+    });
 }
+
+const MISSING_EVIDENCE_QUESTION_TEXT: Record<"ar" | "en", string> = {
+  en: "This section describes work without a checkable outcome. What changed, roughly how much, or over what scope — approximate answers and 'I'm not sure' are fine.",
+  ar: "هذا القسم يصف عملاً بدون نتيجة يمكن التحقق منها. وش تغيّر بالضبط، وبأي مقدار تقريبي، أو على أي نطاق؟ إجابة تقريبية أو 'مو متأكد' تكفي.",
+};
 
 /** §25 + §13: missing-evidence questions from evidence-thin dimensions and detected metric conflicts. */
 export function buildMissingEvidenceQuestions(
   results: DimensionResult[],
   factConflicts: MetricConflict[],
+  outputLanguage: "ar" | "en" = "en",
 ): MissingEvidenceQuestion[] {
   const questions: MissingEvidenceQuestion[] = [];
 
@@ -116,8 +163,7 @@ export function buildMissingEvidenceQuestions(
       questions.push({
         dimension: r.dimension,
         context: r.evidence[0],
-        question:
-          "This section describes work without a checkable outcome. What changed, roughly how much, or over what scope — approximate answers and 'I'm not sure' are fine.",
+        question: MISSING_EVIDENCE_QUESTION_TEXT[outputLanguage],
       });
     }
   }
@@ -126,7 +172,10 @@ export function buildMissingEvidenceQuestions(
     questions.push({
       dimension: "evidence_specificity",
       context: { section: "Experience", text: `"${conflict.context}" reported as ${conflict.values.join(" and ")}` },
-      question: `POSSIBLE_FACT_CONFLICT: "${conflict.context}" appears with different values (${conflict.values.join(", ")}) in this document. Which is correct, or has this changed over time?`,
+      question:
+        outputLanguage === "ar"
+          ? `تعارض محتمل في الأرقام: "${conflict.context}" ورد بقيم مختلفة (${conflict.values.join(" و")}) في هذه السيرة. وش الصح، أو تغيّر الرقم مع الوقت؟`
+          : `POSSIBLE_FACT_CONFLICT: "${conflict.context}" appears with different values (${conflict.values.join(", ")}) in this document. Which is correct, or has this changed over time?`,
     });
   }
 
@@ -166,11 +215,12 @@ export function buildFindings(
   context: AnalysisContext,
   factConflicts: MetricConflict[],
 ) {
+  const outputLanguage = context.outputLanguage ?? (context.language === "ar" ? "ar" : "en");
   const rawIssues = buildIssues(results);
   const issues = prioritizeIssues(rawIssues);
-  const strengths = buildStrengths(results);
-  const quickWins = buildQuickWins(rawIssues);
-  const missingEvidenceQuestions = buildMissingEvidenceQuestions(results, factConflicts);
-  const atsAnalysis = buildAtsAnalysis(results, context.outputLanguage ?? (context.language === "ar" ? "ar" : "en"));
+  const strengths = buildStrengths(results, outputLanguage);
+  const quickWins = buildQuickWins(rawIssues, outputLanguage);
+  const missingEvidenceQuestions = buildMissingEvidenceQuestions(results, factConflicts, outputLanguage);
+  const atsAnalysis = buildAtsAnalysis(results, outputLanguage);
   return { issues, strengths, quickWins, missingEvidenceQuestions, atsAnalysis };
 }

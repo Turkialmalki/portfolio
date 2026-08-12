@@ -46,6 +46,7 @@ import {
   compileRuntimeMethodology,
   computeOverallScore,
   planWeights,
+  rubricFor,
   rubricScoreFor,
   type AnalysisContext,
   type CareerAnalysis,
@@ -66,7 +67,7 @@ import { validateDimensionAIResults } from "./schemaValidation.ts";
 import { verifyDimensionEvidence } from "./evidenceValidation.ts";
 import { detectMetricConflicts, enforceRewriteFactPreservation } from "./factCheck.ts";
 import { buildFindings } from "./findings.ts";
-import { validateReportLanguage } from "./languageValidator.ts";
+import { sanitizeDimensionReason, validateReportLanguage } from "./languageValidator.ts";
 import { DEFAULT_TIMEOUTS, newInstrumentation, withTimeout } from "./instrumentation.ts";
 import type { AnalyzeResumeRequest, AnalysisRunOptions, AnalysisRunResult, AnalysisInstrumentation, CareerAIProvider, NormalizedResume } from "./types.ts";
 import { AnalysisPipelineError } from "./types.ts";
@@ -107,10 +108,16 @@ function buildContext(request: AnalyzeResumeRequest, industry: string | undefine
  * classify matches. No JD → no keyword findings at all (never a zero-fill
  * penalty). No target role → no target-role analysis at all.
  */
+const NO_TARGET_ROLE_DIMENSION_RESULT_TEXT: Record<"ar" | "en", string> = {
+  en: "The resume currently demonstrates some, but not conclusive, alignment with the stated target role.",
+  ar: "سيرتك تُظهر حالياً بعض التوافق مع الوظيفة المستهدفة، لكن ليس بشكل قاطع.",
+};
+
 function buildTargetRoleAnalysis(
   request: AnalyzeResumeRequest,
   normalized: NormalizedResume,
   targetRoleResult: DimensionResult | undefined,
+  outputLanguage: "ar" | "en",
 ): TargetRoleAnalysis | undefined {
   if (!request.targetRole) return undefined;
 
@@ -130,16 +137,19 @@ function buildTargetRoleAnalysis(
       };
     });
     for (const f of keywordFindings) {
-      if (f.match === "not_demonstrated") gaps.push(`${f.keyword} not demonstrated in any bullet`);
+      // Bilingual template around the keyword itself — the keyword/term
+      // is taken verbatim from the job description (could be in either
+      // language) and is never translated, only the surrounding phrase.
+      if (f.match === "not_demonstrated") {
+        gaps.push(outputLanguage === "ar" ? `"${f.keyword}" غير موثّق في أي نقطة من سيرتك` : `${f.keyword} not demonstrated in any bullet`);
+      }
     }
   }
 
   return {
     targetRole: request.targetRole,
     hasJobDescription: !!request.jobDescription,
-    positioningVerdict:
-      targetRoleResult?.reason ??
-      "The resume currently demonstrates some, but not conclusive, alignment with the stated target role.",
+    positioningVerdict: targetRoleResult?.reason ?? NO_TARGET_ROLE_DIMENSION_RESULT_TEXT[outputLanguage],
     keywordFindings,
     gaps,
   };
@@ -306,14 +316,25 @@ async function runStages(
   // that failed to verify, so scoring MUST read the verified result, not
   // the raw AI one.
   instrumentation.currentOperation = "evidence_verification";
+  const outputLanguageForVerification = context.outputLanguage ?? (context.language === "ar" ? "ar" : "en");
   const verifiedResults: DimensionResult[] = validation.value.map((r) => {
-    const { result } = verifyDimensionEvidence(r, normalized.rawTextReference);
+    const { result } = verifyDimensionEvidence(r, normalized.rawTextReference, outputLanguageForVerification);
+    // Non-fatal language fallback, applied at the SOURCE (real production
+    // incident: an otherwise-valid, structurally-sound analysis was
+    // failing outright over English prose in this one AI-authored field
+    // — see languageValidator.ts's header). `dimensions.*.reason`,
+    // `issues.*.summary`, and `atsAnalysis.*.detail` are all literally
+    // this same string downstream, so sanitizing it once here covers all
+    // three without a second AI call — there is no "language repair"
+    // call anywhere in this codebase.
+    const { text: sanitizedReason, fellBack } = sanitizeDimensionReason(result.shortReason, rubricFor(result.dimensionId).titleAr, outputLanguageForVerification);
+    if (fellBack) instrumentation.languageFallbackCount += 1;
     return {
       dimension: result.dimensionId,
       score: rubricScoreFor(result.signalLevel, result.evidencePresent, result.evidenceQuality),
       confidence: result.confidence,
       evidence: result.evidence ? [{ section: result.evidence.section, text: result.evidence.excerpt }] : [],
-      reason: result.shortReason,
+      reason: sanitizedReason,
       recommendations: [],
     };
   });
@@ -347,7 +368,7 @@ async function runStages(
   const rewriteExamples: CareerAnalysis["rewriteExamples"] = [];
 
   const targetRoleResult = verifiedResults.find((r) => r.dimension === "target_role_alignment");
-  const targetRoleAnalysis = buildTargetRoleAnalysis(request, normalized, targetRoleResult);
+  const targetRoleAnalysis = buildTargetRoleAnalysis(request, normalized, targetRoleResult, context.outputLanguage ?? (context.language === "ar" ? "ar" : "en"));
 
   instrumentation.currentOperation = "result_build";
   const analysis: CareerAnalysis = {
@@ -370,33 +391,30 @@ async function runStages(
     metadata: { analyzedAt: new Date().toISOString(), capsApplied: overall.capsApplied },
   };
 
-  // Career V2 Part 9: a final gate before ANY Arabic-output analysis is
-  // returned/saved — no dimension reason, issue/strength summary, quick
-  // win, or ATS detail may contain leaked English explanatory prose.
-  // Proper nouns/currency figures are allow-listed (languageValidator.ts);
-  // a genuine leak fails the analysis closed rather than saving a report
-  // with English sentences in it. This pipeline has exactly one repair
-  // retry today (§29, above, for schema validation) — a second AI call
-  // specifically to re-translate leaked fields is a real follow-up this
-  // gate deliberately does NOT attempt yet, so it fails safely instead of
-  // silently shipping the leak.
+  // Career V2 Part 9, NON-FATAL as of a real production incident: a
+  // structurally-valid, fully-scored analysis was failing outright
+  // (ANALYSIS_FAILED) over English prose in a handful of fields — real
+  // customer scoring/ATS/evidence work discarded over presentation
+  // style, not an analysis-integrity problem. `sanitizeDimensionReason`
+  // above already substitutes deterministic Arabic text at the SOURCE
+  // for the one genuinely AI-authored field this can affect, so by the
+  // time this runs, a leak here should be rare — this stays as
+  // telemetry-only defense-in-depth (never a second AI call, never a
+  // thrown error): count it, log it, still return the real analysis.
+  // Proper nouns/currency figures are allow-listed (languageValidator.ts).
   //
   // Skipped for the mock provider on purpose: mockProvider.ts's own header
   // comment documents it as heuristics that exercise the pipeline, never a
   // simulation of real model output, and its shortReason strings are not
   // localized to outputLanguage by design — running this gate against it
-  // would fail every Arabic fixture for a property the mock never claims
+  // would flag every Arabic fixture for a property the mock never claims
   // to have. The real Anthropic provider IS instructed (SYSTEM_PROMPT) to
   // write shortReason in outputLanguage, so this gate is meaningful there.
   if (opts.provider.name !== "mock") {
     instrumentation.currentOperation = "language_validation";
     const languageCheck = validateReportLanguage(analysis);
     if (!languageCheck.ok) {
-      throw new AnalysisPipelineError(
-        "ANALYSIS_FAILED",
-        `Arabic report failed language validation: ${languageCheck.leaks.length} field(s) contained English prose leakage`,
-        { stage: "language_validation", providerAttempts: instrumentation.aiCallCount, schemaRepairCount: instrumentation.retryCount },
-      );
+      instrumentation.languageFallbackCount += languageCheck.leaks.length;
     }
   }
 

@@ -703,6 +703,12 @@ async function handleCustomerAnalysis(
       user_id: user.id,
       status: 200,
       duration_ms,
+      // Career V2 Part 9 (non-fatal redesign): a count of AI-authored
+      // reason fields that needed a deterministic language fallback —
+      // 0 for the overwhelming majority of runs, English-output runs
+      // always. Never fails the request; just visibility into how often
+      // this still fires after the source-level fix.
+      ...(result.instrumentation.languageFallbackCount > 0 ? { language_fallback_count: result.instrumentation.languageFallbackCount } : {}),
     });
 
     return jsonResponse(

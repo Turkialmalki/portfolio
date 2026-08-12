@@ -276,6 +276,17 @@ export interface AnalysisInstrumentation {
    * closes that gap. See `AnalysisPipelineErrorOptions.operation`.
    */
   currentOperation: string;
+  /**
+   * Count of AI-authored `reason`/`shortReason` fields that were
+   * substituted with a deterministic, localized fallback because they
+   * leaked the wrong language for `context.outputLanguage` (Career V2
+   * Part 9, made non-fatal after a real production incident — see
+   * languageValidator.ts's header and pipeline.ts's language-gate
+   * comment). Always 0 for English-output analyses and for the mock
+   * provider. Safe to log/return as a count — never the leaked text
+   * itself.
+   */
+  languageFallbackCount: number;
 }
 
 // ── §39 reproducibility metadata ──────────────────────────────────────────

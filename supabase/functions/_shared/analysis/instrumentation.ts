@@ -68,6 +68,7 @@ export function newInstrumentation(inputCharCount: number, provider: string, mod
     totalOutputTokens: 0,
     stopReason: null,
     currentOperation: "init",
+    languageFallbackCount: 0,
   };
 }
 

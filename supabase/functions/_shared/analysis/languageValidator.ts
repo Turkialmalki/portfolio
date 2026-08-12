@@ -3,12 +3,15 @@
  *
  * When `context.outputLanguage === "ar"`, every customer-facing prose
  * string in the analysis (dimension reasons, issue/strength summaries,
- * quick-win action/why, target-role verdict, ATS check details) must
- * actually be Arabic — no English explanatory sentences slipping through
- * ("The document shows solid signal in career progression."). Proper
- * nouns, acronyms, and product/technology names have no natural Arabic
- * equivalent and are explicitly allowed (ATS, LinkedIn, SAP, Odoo, React,
- * $27M) — this validator must never fail a report over one of those.
+ * quick-win action/why, target-role verdict, ATS check details) is
+ * expected to actually be Arabic — no English explanatory sentences
+ * slipping through ("The document shows solid signal in career
+ * progression."). Proper nouns, acronyms, and product/technology names
+ * have no natural Arabic equivalent and are explicitly allowed (ATS,
+ * LinkedIn, SAP, Odoo, React, $27M) — this module must never flag one of
+ * those. Evidence excerpts (the customer's own CV text, verbatim) are
+ * deliberately NEVER checked here at all — they stay in whatever
+ * language the CV itself was written in, on purpose.
  *
  * Deliberately conservative and deterministic: this is a SENTENCE-LEVEL
  * heuristic, not a language-detection model. It flags a field only when
@@ -19,6 +22,21 @@
  * proper noun; false positives are the failure mode this module is
  * designed to avoid (§ "do not regenerate solely because one English
  * proper noun exists").
+ *
+ * NON-FATAL BY DESIGN: a real production incident showed this gate
+ * failing an otherwise-complete, structurally-valid analysis outright
+ * (ANALYSIS_FAILED) over English prose in a handful of OPTIONAL,
+ * code-templatable fields — presentation degradation, not an
+ * analysis-integrity problem, and not worth discarding real scoring/ATS/
+ * evidence work over. `sanitizeDimensionReason` below is applied at the
+ * SOURCE (pipeline.ts, right where the AI's own shortReason is produced)
+ * so the dominant leak class never reaches this validator at all
+ * anymore; `validateReportLanguage` itself is called as **telemetry
+ * only** now (pipeline.ts logs a fallback count, never throws) — see
+ * that call site's own comment. There is no "language repair" AI call
+ * anywhere in this codebase, before or after this change — a leak is
+ * handled by substituting deterministic, already-Arabic text, never by
+ * asking the model again.
  */
 import type { CareerAnalysis } from "../methodology/types.ts";
 
@@ -79,6 +97,31 @@ export function isEnglishLeak(text: string): boolean {
 export interface LanguageLeak {
   field: string;
   text: string;
+}
+
+/**
+ * SOURCE-LEVEL fallback for the AI's own `shortReason`/`reason` text —
+ * after Career V2's code-templated fixes (findings.ts's strengths/
+ * quickWins/missingEvidenceQuestions, evidenceValidation.ts's
+ * verification-caveat suffix), this is the ONE remaining genuinely
+ * AI-authored customer-facing prose field; every other field
+ * `validateReportLanguage` checks either is code-templated already or
+ * traces back to this exact same text (`issues.*.summary`,
+ * `atsAnalysis.*.detail`, and a present `targetRoleAnalysis.
+ * positioningVerdict` are all literally the same string). Applying the
+ * fallback HERE, before the text is copied into any of those other
+ * fields, fixes all of them in one place — a "second AI call to repair
+ * language" is neither necessary nor implemented anywhere in this
+ * codebase (the analysis simply reads the deterministic fallback);
+ * `validateReportLanguage` below remains only as defense-in-depth for a
+ * field this sanitization doesn't cover.
+ */
+export function sanitizeDimensionReason(text: string, dimensionTitleAr: string, outputLanguage: "ar" | "en"): { text: string; fellBack: boolean } {
+  if (outputLanguage !== "ar" || !isEnglishLeak(text)) return { text, fellBack: false };
+  return {
+    text: `هذا الجانب من سيرتك (${dimensionTitleAr}) يحتاج مراجعة وتحسين — التفاصيل الكاملة متوفرة في المراجعة الكاملة.`,
+    fellBack: true,
+  };
 }
 
 export interface LanguageValidationResult {

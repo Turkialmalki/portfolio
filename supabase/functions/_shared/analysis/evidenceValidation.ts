@@ -49,7 +49,24 @@ export interface EvidenceVerificationOutcome {
  * an evidence claim that failed verification must not still buy the
  * document extra points inside that band.
  */
-export function verifyDimensionEvidence(result: DimensionAIResult, sourceText: string): EvidenceVerificationOutcome {
+/**
+ * Real production failure (Career V2, Arabic-output CV): this fixed
+ * caveat suffix was English-only and unconditionally appended to
+ * `shortReason` — which flows straight into `dimensions.*.reason`,
+ * `issues.*.summary`, and `atsAnalysis.*.detail` — regardless of
+ * `outputLanguage`. Evidence quotes failing to verify (a normal
+ * occurrence, not a rare edge case: any imperfect AI quote trips it)
+ * made this THE dominant leak source in practice, more than the
+ * code-templated findings.ts strings (see that file's own note on the
+ * same incident) — most/all of a real 5-field leak is plausibly
+ * explained by this alone, since it can touch every dimension at once.
+ */
+const UNVERIFIABLE_EVIDENCE_SUFFIX: Record<"ar" | "en", string> = {
+  en: " (unverifiable evidence removed — could not be matched against the document; confidence lowered)",
+  ar: " (تم حذف الدليل لعدم تطابقه مع مستندك — تم تخفيض مستوى الثقة)",
+};
+
+export function verifyDimensionEvidence(result: DimensionAIResult, sourceText: string, outputLanguage: "ar" | "en" = "en"): EvidenceVerificationOutcome {
   if (!result.evidence) {
     return { result, rejectedCount: 0 };
   }
@@ -63,7 +80,7 @@ export function verifyDimensionEvidence(result: DimensionAIResult, sourceText: s
       evidencePresent: false,
       evidenceQuality: "none",
       confidence: "low",
-      shortReason: `${result.shortReason} (unverifiable evidence removed — could not be matched against the document; confidence lowered)`,
+      shortReason: `${result.shortReason}${UNVERIFIABLE_EVIDENCE_SUFFIX[outputLanguage]}`,
     },
     rejectedCount: 1,
   };

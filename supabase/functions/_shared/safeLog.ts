@@ -80,6 +80,8 @@ export type SafeLogFields = {
   operation?: string;
   /** The escaped exception's constructor NAME only (e.g. "TypeError") — never its `.message`, which could echo request/response content this module can't pre-verify as safe. */
   error_type?: string;
+  /** instrumentation.languageFallbackCount — how many AI-authored reason fields needed a deterministic language fallback (Career V2 Part 9, non-fatal). A count only, never the leaked/fallback text. */
+  language_fallback_count?: number;
 };
 
 export function safeLog(fields: SafeLogFields): void {

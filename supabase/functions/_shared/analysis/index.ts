@@ -13,7 +13,7 @@ export {
 export { redactContactFields } from "./redact.ts";
 export { extractNormalizedResume } from "./structure.ts";
 export { computeAtsCompatibility } from "./atsCompatibility.ts";
-export { isEnglishLeak, validateReportLanguage, type LanguageLeak, type LanguageValidationResult } from "./languageValidator.ts";
+export { isEnglishLeak, sanitizeDimensionReason, validateReportLanguage, type LanguageLeak, type LanguageValidationResult } from "./languageValidator.ts";
 export { buildUiFreeReport, looksLikeCareerAnalysis } from "./reportFormat.ts";
 export { resolveProvider, type ProviderResolution } from "./provider.ts";
 export { createMockCareerAIProvider } from "./mockProvider.ts";
