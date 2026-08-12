@@ -83,11 +83,16 @@ function mapBackendErrorCode(code: string | undefined): CareerErrorCode {
 type Action =
   | { type: "FILE_SELECTED"; fileName: string }
   | { type: "UPLOAD_DONE" }
-  | { type: "RESULT"; report: UiFreeReport; resumeId?: string }
+  | { type: "RESULT"; report: UiFreeReport; resumeId?: string; analysisId?: string }
   | { type: "FAIL"; code: CareerErrorCode }
   | { type: "REVEALED" }
   | { type: "RESET" }
-  | { type: "RESTORE"; report: UiFreeReport; fileName: string };
+  | { type: "RESTORE"; report: UiFreeReport; fileName: string }
+  /** Career V2 Part 19: restoring a REAL analysis via `?analysis=<id>` —
+   *  distinct from RESTORE (which is fixture-only, no resumeId/analysisId,
+   *  never drives entitlement re-checks). Always lands already-revealed
+   *  (score-reveal animation is a first-view moment, not a returning one). */
+  | { type: "RESTORE_REAL"; report: UiFreeReport; resumeId: string; analysisId: string };
 
 function reducer(phase: CareerPhase, a: Action): CareerPhase {
   switch (a.type) {
@@ -99,7 +104,7 @@ function reducer(phase: CareerPhase, a: Action): CareerPhase {
         : phase;
     case "RESULT":
       return phase.name === "PROCESSING"
-        ? { name: "FREE_RESULT", report: a.report, fileName: phase.fileName, revealed: false, resumeId: a.resumeId }
+        ? { name: "FREE_RESULT", report: a.report, fileName: phase.fileName, revealed: false, resumeId: a.resumeId, analysisId: a.analysisId }
         : phase;
     case "FAIL":
       return {
@@ -113,6 +118,15 @@ function reducer(phase: CareerPhase, a: Action): CareerPhase {
       return { name: "LANDING" };
     case "RESTORE":
       return { name: "FREE_RESULT", report: a.report, fileName: a.fileName, revealed: true };
+    case "RESTORE_REAL":
+      return {
+        name: "FREE_RESULT",
+        report: a.report,
+        fileName: "",
+        revealed: true,
+        resumeId: a.resumeId,
+        analysisId: a.analysisId,
+      };
     default:
       return phase;
   }
@@ -384,9 +398,20 @@ export default function CareerClient() {
         }
 
         const report = (data as { report: UiFreeReport }).report;
+        const analysisId = (data as { analysisId?: string }).analysisId;
         trackCareerEvent("analysis_completed", { mode: "real", status: "ok", duration_ms: Date.now() - t0, lang });
-        dispatch({ type: "RESULT", report, resumeId });
+        dispatch({ type: "RESULT", report, resumeId, analysisId });
         trackCareerEvent("free_report_viewed", { score_band: report.scoreBand.labelEn, lang });
+        // Career V2 Part 19: from this point on, a refresh/return-from-
+        // email/return-from-PayPal/new-tab can restore this exact report —
+        // no report CONTENT ever goes in the URL, only the id. A plain
+        // history replace (no navigation, no reload) so this never
+        // interferes with the in-flight reveal animation.
+        if (analysisId && typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          url.searchParams.set("analysis", analysisId);
+          window.history.replaceState(window.history.state, "", url.toString());
+        }
       } catch {
         /* Orphaned-upload follow-up: reaches here for (a) the upload/
            insert failures above (nothing was left behind — the storage
@@ -449,6 +474,52 @@ export default function CareerClient() {
     });
     return () => sub.subscription.unsubscribe();
   }, [runRealAnalysisWithSession]);
+
+  /* Career V2 Part 19 — deep-link restore. Reads `?analysis=<id>` on
+     mount (client-side only, no dynamic route — required for this
+     static-exported site) and, if a session already exists, restores the
+     exact report via get-analysis-report. No report CONTENT is ever read
+     from the URL, only the id; the actual data comes back through the
+     caller's own RLS-scoped session. Runs once, only from LANDING, so it
+     can never clobber an in-progress upload/analysis or a fixture demo
+     already on screen. A missing/foreign/incomplete id, or no session yet
+     (the visitor hasn't signed back in), silently falls through to the
+     normal LANDING experience — never an error state for what is really
+     just "nothing to restore yet". */
+  useEffect(() => {
+    if (!supabase || !CAREER_FLAGS.analysisEnabled) return;
+    if (phase.name !== "LANDING") return;
+    if (typeof window === "undefined") return;
+    const analysisId = new URL(window.location.href).searchParams.get("analysis");
+    if (!analysisId) return;
+
+    let cancelled = false;
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase!.auth.getSession();
+      if (!session || cancelled) return;
+
+      const { data, error } = await supabase!.functions.invoke("get-analysis-report", {
+        body: { analysisId },
+      });
+      if (cancelled || error || !data || (data as { ok?: boolean }).ok !== true) return;
+      const found = (data as { found?: boolean }).found;
+      if (!found) return;
+
+      const restored = data as { resumeId: string; analysisId: string; report: UiFreeReport };
+      dispatch({ type: "RESTORE_REAL", report: restored.report, resumeId: restored.resumeId, analysisId: restored.analysisId });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Only the mount-time URL/session matter — this deliberately does not
+    // re-run on every `phase` change (the `phase.name !== "LANDING"` guard
+    // above is checked once at effect-run time, not tracked as a dep, so
+    // this stays a one-shot restore attempt).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ── THE analysis entry point — the single function that changes when
      PRIVACY_SECURITY_EXECUTION_VERIFIED / analysisEnabled flip (§14). */
@@ -623,6 +694,7 @@ export default function CareerClient() {
                 report={phase.report}
                 fileName={phase.fileName}
                 resumeId={phase.resumeId}
+                analysisId={phase.analysisId}
                 onRevealed={() => {
                   if (!phase.revealed) {
                     trackCareerEvent("career_score_revealed", {

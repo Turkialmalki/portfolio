@@ -1,0 +1,19 @@
+{
+  "// why this exists": "Same pattern as tests/analysis: written Deno-style (.ts extension imports) for the Edge Functions, tested under plain Node — no Docker, no Deno, no network, no AI credentials.",
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "rewriteRelativeImportExtensions": true,
+    "strict": true,
+    "types": ["node"],
+    "skipLibCheck": true,
+    "outDir": "../../../.ats-tests-build"
+  },
+  "include": [
+    "harness.ts",
+    "fixtures.ts",
+    "../../functions/_shared/analysis/**/*.ts",
+    "../../functions/_shared/methodology/**/*.ts"
+  ]
+}

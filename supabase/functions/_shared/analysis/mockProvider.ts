@@ -22,7 +22,7 @@
  * fallback to `rubricFor(dimension).recommendationRules[0]` is exercised
  * by every mock-provider run, not just real-provider ones.
  */
-import type { AnalysisContext, DimensionId } from "../methodology/types.ts";
+import type { AnalysisContext, DimensionId, EvidenceQuality, SignalLevel } from "../methodology/types.ts";
 import type {
   AIConfidence,
   AnalyzeDimensionsInput,
@@ -111,11 +111,57 @@ function confidenceFor(hasEvidence: boolean, uncertain: boolean): AIConfidence {
   return "medium";
 }
 
+/**
+ * Every scorer below still computes an internal 0–100 heuristic `score` —
+ * that math is what makes each heuristic legible ("30 + strongRatio*55",
+ * etc.) and stays untouched. `analyzeDimensionsMock` is the ONE place that
+ * converts each scorer's raw `score` into the real `DimensionAIResult`
+ * contract (signalLevel/evidencePresent/evidenceQuality), via
+ * `toClassification` below — so the mock produces the exact same
+ * CLASSIFICATION shape the real Anthropic provider does, without having
+ * to hand-author 15 separate signalLevel judgments.
+ */
+interface RawScorerResult {
+  score: number;
+  confidence: AIConfidence;
+  evidence: { section: string; excerpt: string } | null;
+  reasonCode: string;
+  shortReason: string;
+}
+
 type Scorer = (
   s: Signals,
   resume: NormalizedResume,
   context: AnalysisContext,
-) => Omit<DimensionAIResult, "dimensionId">;
+) => RawScorerResult;
+
+/**
+ * Mirrors `methodology/scoring.ts`'s `rubricScoreFor` band floors
+ * (90/75/60/45/0) to pick a signalLevel, then reads WHERE `score` sits
+ * inside that band (as a fraction of the band's width) to pick an
+ * evidenceQuality — so round-tripping `raw.score` through
+ * `rubricScoreFor(toClassification(raw))` lands close to the original
+ * heuristic number instead of collapsing to the band floor every time.
+ */
+function toClassification(raw: RawScorerResult): { signalLevel: SignalLevel; evidencePresent: boolean; evidenceQuality: EvidenceQuality } {
+  const score = Math.max(0, Math.min(100, raw.score));
+  const bands: Array<{ level: SignalLevel; floor: number; ceiling: number }> = [
+    { level: "very_strong", floor: 90, ceiling: 100 },
+    { level: "strong", floor: 75, ceiling: 89 },
+    { level: "mixed", floor: 60, ceiling: 74 },
+    { level: "weak", floor: 45, ceiling: 59 },
+    { level: "very_weak", floor: 0, ceiling: 44 },
+  ];
+  const band = bands.find((b) => score >= b.floor) ?? bands[bands.length - 1];
+  const evidencePresent = raw.evidence !== null;
+  if (!evidencePresent) {
+    return { signalLevel: band.level, evidencePresent: false, evidenceQuality: "none" };
+  }
+  const width = band.ceiling - band.floor;
+  const fraction = width === 0 ? 1 : (score - band.floor) / width;
+  const evidenceQuality: EvidenceQuality = fraction < 0.35 ? "limited" : fraction < 0.65 ? "specific" : "strong";
+  return { signalLevel: band.level, evidencePresent: true, evidenceQuality };
+}
 
 const SCORERS: Partial<Record<DimensionId, Scorer>> = {
   positioning: (s, resume) => {
@@ -339,15 +385,18 @@ function analyzeDimensionsMock(input: AnalyzeDimensionsInput): DimensionAIResult
     if (!scorer) {
       return {
         dimensionId,
-        score: 50,
+        signalLevel: "mixed",
+        evidencePresent: false,
+        evidenceQuality: "none",
         confidence: "low" as const,
         evidence: null,
         reasonCode: "OTHER",
         shortReason: "No heuristic implemented for this dimension in the mock provider.",
       };
     }
-    const result = scorer(signals, input.normalizedResume, input.context);
-    return { dimensionId, ...result };
+    const raw = scorer(signals, input.normalizedResume, input.context);
+    const { score: _score, ...rest } = raw;
+    return { dimensionId, ...toClassification(raw), ...rest };
   });
 }
 

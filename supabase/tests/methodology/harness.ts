@@ -6,6 +6,7 @@
  * sanity checks from the brief. Run with: npm run test:methodology
  */
 import {
+  CAREER_METHODOLOGY_VERSION,
   DIMENSIONS,
   DIMENSION_IDS,
   EVIDENCE_CAP_ID,
@@ -226,7 +227,7 @@ console.log("\n[6] Free vs paid projection");
   const score = overallFor(f);
   const issues = prioritizeIssues(rawIssues);
   const analysis: CareerAnalysis = {
-    methodologyVersion: "career_methodology_v1",
+    methodologyVersion: CAREER_METHODOLOGY_VERSION,
     overallScore: score.overallScore,
     scoreBand: (({ min, labelEn, labelAr }) => ({ min, labelEn, labelAr }))(bandForScore(score.overallScore)),
     confidence: aggregateConfidence(dims, score.weightPlan),
@@ -271,6 +272,18 @@ console.log("\n[6] Free vs paid projection");
     atsAnalysis: {
       indicators: [{ check: "standard section names", status: "ok", detail: "All sections standard." }],
       disclaimer: "Readability indicators only — no claim about any specific ATS.",
+    },
+    // Deterministic ATS Compatibility (Career V2 Part 5) is computed by
+    // atsCompatibility.ts from a real NormalizedResume, which this
+    // synthetic fixture never builds — a minimal, honestly-labeled stub
+    // stands in here since this test exercises free/paid projection, not
+    // the ATS engine itself (see the dedicated ATS fixture suite).
+    atsCompatibility: {
+      atsCompatibilityScore: 100,
+      atsChecksPassed: 7,
+      atsChecksWarning: 0,
+      atsChecksFailed: 0,
+      checks: [],
     },
     actionPlan: buildActionPlan(issues),
     metadata: { analyzedAt: "2026-08-12T00:00:00Z", capsApplied: score.capsApplied },

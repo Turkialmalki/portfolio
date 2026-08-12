@@ -50,3 +50,5 @@ next-env.d.ts
 .knowledge-tests-build/
 .analysis-tests-build/
 .parser-tests-build/
+.determinism-tests-build/
+.ats-tests-build/

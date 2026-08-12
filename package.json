@@ -12,7 +12,9 @@
     "test:knowledge": "tsc -p supabase/tests/knowledge && node .knowledge-tests-build/tests/knowledge/harness.js",
     "generate:cv-knowledge-seed": "tsc -p supabase/tests/knowledge && node scripts/generate-cv-knowledge-seed.mjs",
     "test:analysis": "tsc -p supabase/tests/analysis && node .analysis-tests-build/tests/analysis/harness.js",
-    "test:parser": "tsc -p supabase/tests/parser && node .parser-tests-build/tests/parser/harness.js"
+    "test:parser": "tsc -p supabase/tests/parser && node .parser-tests-build/tests/parser/harness.js",
+    "test:determinism": "tsc -p supabase/tests/determinism && node .determinism-tests-build/tests/determinism/harness.js",
+    "test:ats": "tsc -p supabase/tests/ats && node .ats-tests-build/tests/ats/harness.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

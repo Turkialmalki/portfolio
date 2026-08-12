@@ -40,11 +40,14 @@ export interface EvidenceVerificationOutcome {
  * If the dimension's single evidence item can't be matched against the
  * source text, it's discarded (never "fixed" or replaced), confidence is
  * forced to "low", and a fixed, code-owned note is appended to
- * `shortReason` — the score itself is left as-is (rejecting evidence is
- * not the same as rejecting the score; a real provider's score may still
- * be well-founded even if its quoting was imprecise), but a
- * low-confidence, evidence-stripped finding reads very differently in a
- * report than a well-evidenced one, which is the point.
+ * `shortReason`. `signalLevel` itself is left as-is (rejecting a quote is
+ * not the same as rejecting the classification — a real provider's
+ * signalLevel may still be well-founded even if its quoting was
+ * imprecise), but `evidencePresent`/`evidenceQuality` ARE pulled down to
+ * false/"none" (Career V2 Part 4): scoring.ts's `rubricScoreFor` reads
+ * those two fields to place the score within its signalLevel's band, so
+ * an evidence claim that failed verification must not still buy the
+ * document extra points inside that band.
  */
 export function verifyDimensionEvidence(result: DimensionAIResult, sourceText: string): EvidenceVerificationOutcome {
   if (!result.evidence) {
@@ -57,6 +60,8 @@ export function verifyDimensionEvidence(result: DimensionAIResult, sourceText: s
     result: {
       ...result,
       evidence: null,
+      evidencePresent: false,
+      evidenceQuality: "none",
       confidence: "low",
       shortReason: `${result.shortReason} (unverifiable evidence removed — could not be matched against the document; confidence lowered)`,
     },

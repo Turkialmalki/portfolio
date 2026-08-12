@@ -409,6 +409,17 @@ verify_jwt = false
 [functions.get-full-review]
 verify_jwt = false
 
+# Career V2 Part 19 (deep-link restore): same in-function auth.getUser()
+# pattern as get-full-review — gateway-level JWT verification would 401 a
+# legitimate first-load-with-no-session-yet request before the function
+# gets a chance to return its own honest {ok:true, found:false}.
+[functions.get-analysis-report]
+verify_jwt = false
+
+# Career V2 Parts 15-18: same in-function auth.getUser() pattern.
+[functions.send-career-report]
+verify_jwt = false
+
 [functions.request-payment-verification]
 verify_jwt = false
 

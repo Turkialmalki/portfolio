@@ -137,14 +137,23 @@ async function main() {
     const { verifyDimensionEvidence } = await import("../../functions/_shared/analysis/evidenceValidation.ts");
     const fabricated = {
       dimensionId: "achievement_impact" as const,
-      score: 80,
+      signalLevel: "strong" as const,
+      evidencePresent: true,
+      evidenceQuality: "strong" as const,
       confidence: "high" as const,
       evidence: { section: "Experience", excerpt: "Led 20 engineers to a record quarter" },
       reasonCode: "STRONG_EVIDENCE",
       shortReason: "test",
     };
     const { result, rejectedCount } = verifyDimensionEvidence(fabricated, "This CV never mentions leading any engineers.");
-    check("I. fabricated evidence is stripped and confidence lowered", result.evidence === null && result.confidence === "low" && rejectedCount === 1);
+    check(
+      "I. fabricated evidence is stripped and confidence lowered",
+      result.evidence === null && result.confidence === "low" && rejectedCount === 1,
+    );
+    check(
+      "I. fabricated evidence also zeroes evidencePresent/evidenceQuality so scoring can't be inflated by an unverifiable claim",
+      result.evidencePresent === false && result.evidenceQuality === "none",
+    );
   }
 
   // J. invented rewrite facts are rejected.
@@ -156,6 +165,49 @@ async function main() {
     check("J. a genuinely fact-preserving rewrite passes through", enforceRewriteFactPreservation(safe) !== null);
     const deferred = { before: "Improved the checkout flow's performance.", after: "Improved the checkout flow's performance by 40%.", classification: "NEEDS_USER_CONFIRMATION" as const, note: "test" };
     check("J. NEEDS_USER_CONFIRMATION candidates are not force-discarded by the number check (they're not claiming SAFE_TO_REWRITE)", enforceRewriteFactPreservation(deferred) !== null);
+  }
+
+  // M. Career V2 Part 9: Arabic report-language validator.
+  {
+    const { isEnglishLeak, validateReportLanguage } = await import("../../functions/_shared/analysis/languageValidator.ts");
+    check(
+      "M. flags the exact English leaks quoted in the command",
+      isEnglishLeak("The document shows solid signal in career progression.") &&
+        isEnglishLeak("The document shows solid signal in ats readability.") &&
+        isEnglishLeak("Replace each buzzword with a specific, checkable claim.") &&
+        isEnglishLeak("Whether the opening summary earns its space on the page."),
+    );
+    check(
+      "M. does not flag genuine Arabic prose carrying allow-listed proper nouns/currency figures",
+      !isEnglishLeak("السيرة تُظهر إشارة جيدة في التدرج المهني وتحتاج تحسين في LinkedIn وATS، إضافة إلى إنجاز بقيمة $27M.") &&
+        !isEnglishLeak("خبرتك في React وSQL واضحة، لكن قسم SAP يحتاج تفصيلاً أكثر."),
+    );
+    check("M. an empty/undefined field is never a leak", !isEnglishLeak("") && !isEnglishLeak("   "));
+
+    // The mock provider's own shortReason text is always English (never
+    // localized by design — see mockProvider.ts's header), so every prose
+    // field (not just `dimensions`) must be overridden to build a
+    // genuinely all-Arabic scaffold from the arabic_generic fixture's
+    // structure before testing "a clean report passes".
+    const arabicAnalysis = by("arabic_generic").analysis;
+    const allArabic = {
+      ...arabicAnalysis,
+      dimensions: arabicAnalysis.dimensions.map((d) => ({ ...d, reason: "السيرة تُظهر إشارة جيدة هنا." })),
+      strengths: arabicAnalysis.strengths.map((s) => ({ ...s, summary: "هذا الجانب من السيرة قوي وواضح." })),
+      issues: arabicAnalysis.issues.map((i) => ({ ...i, summary: "هذا الجزء يحتاج تحسيناً واضحاً." })),
+      quickWins: arabicAnalysis.quickWins.map((q) => ({ ...q, action: "حدّث هذا الجزء أولاً.", why: "لأنه الأكثر تأثيراً." })),
+      missingEvidenceQuestions: arabicAnalysis.missingEvidenceQuestions.map((m) => ({ ...m, question: "هل يمكنك توضيح هذا الرقم أكثر؟" })),
+      atsAnalysis: { ...arabicAnalysis.atsAnalysis, indicators: arabicAnalysis.atsAnalysis.indicators.map((ind) => ({ ...ind, detail: "البنية واضحة وقابلة للقراءة آلياً." })) },
+    };
+    const cleanCheck = validateReportLanguage(allArabic);
+    check("M. a fully-Arabic analysis passes validation", cleanCheck.ok && cleanCheck.leaks.length === 0);
+
+    const oneLeak = { ...allArabic, dimensions: allArabic.dimensions.map((d, i) => (i === 0 ? { ...d, reason: "The document shows solid signal in this dimension and needs improvement." } : d)) };
+    const leakCheck = validateReportLanguage(oneLeak);
+    check("M. an analysis with one leaked English field fails validation and identifies the field", !leakCheck.ok && leakCheck.leaks.length === 1);
+
+    const englishOutputAnalysis = { ...arabicAnalysis, context: { ...arabicAnalysis.context, outputLanguage: "en" as const } };
+    check("M. outputLanguage=en is never validated by this Arabic-only gate", validateReportLanguage(englishOutputAnalysis).ok);
   }
 
   // K. conflicting metrics produce a verification question.

@@ -20,7 +20,26 @@
  * bands are copied verbatim from methodology/scoreBands.ts. No real person's
  * CV content appears anywhere in this file.
  */
-import type { UiFreeReport } from "./careerTypes";
+import type { UiAtsCompatibility, UiFreeReport } from "./careerTypes";
+
+/**
+ * Synthetic ATS Compatibility block for demo fixtures only (Career V2
+ * Part 5/29's real engine is code-only and runs on a real parsed resume —
+ * these fixtures never go through it, so a plausible static block stands
+ * in, roughly correlated to the fixture's overall score for demo realism).
+ */
+function demoAtsCompatibility(score: number): UiAtsCompatibility {
+  const passed = score >= 80 ? 7 : score >= 60 ? 5 : score >= 40 ? 3 : 1;
+  const failed = score >= 80 ? 0 : score >= 60 ? 0 : score >= 40 ? 1 : 3;
+  const warning = 7 - passed - failed;
+  return {
+    atsCompatibilityScore: Math.max(10, Math.min(100, score + 15)),
+    atsChecksPassed: passed,
+    atsChecksWarning: warning,
+    atsChecksFailed: failed,
+    checks: [],
+  };
+}
 
 export type CareerFixtureKey =
   | "weak_entry"
@@ -103,6 +122,7 @@ const weakEntry: UiFreeReport = {
     sectionsToRewrite: 4,
     missingEvidenceQuestions: 3,
   },
+  atsCompatibility: demoAtsCompatibility(20),
 };
 
 const strongSenior: UiFreeReport = {
@@ -146,6 +166,7 @@ const strongSenior: UiFreeReport = {
     sectionsToRewrite: 1,
     missingEvidenceQuestions: 2,
   },
+  atsCompatibility: demoAtsCompatibility(84),
 };
 
 const arabicGeneric: UiFreeReport = {
@@ -211,6 +232,7 @@ const arabicGeneric: UiFreeReport = {
     sectionsToRewrite: 5,
     missingEvidenceQuestions: 3,
   },
+  atsCompatibility: demoAtsCompatibility(11),
 };
 
 const managerTasks: UiFreeReport = {
@@ -276,6 +298,7 @@ const managerTasks: UiFreeReport = {
     sectionsToRewrite: 4,
     missingEvidenceQuestions: 4,
   },
+  atsCompatibility: demoAtsCompatibility(20),
 };
 
 const jobMatchPartial: UiFreeReport = {
@@ -343,6 +366,7 @@ const jobMatchPartial: UiFreeReport = {
     sectionsToRewrite: 3,
     missingEvidenceQuestions: 2,
   },
+  atsCompatibility: demoAtsCompatibility(46),
 };
 
 export const CAREER_FIXTURES: Record<CareerFixtureKey, UiFreeReport> = {

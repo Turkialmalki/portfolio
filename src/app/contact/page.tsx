@@ -7,6 +7,7 @@ import TopBar from "@/components/TopBar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/sections/Footer";
 import { useLanguage } from "@/i18n/LanguageProvider";
+import { CONTACT } from "@/config/contact";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -66,7 +67,7 @@ export default function ContactPage() {
     {
       icon: LuMail,
       label: t.actions.mail,
-      href: "mailto:turkialmalki202200@gmail.com",
+      href: `mailto:${CONTACT.email}`,
       external: false,
     },
     {
@@ -119,7 +120,7 @@ export default function ContactPage() {
     await new Promise<void>((r) => setTimeout(r, 1100));
     const subject = `Message from ${form.name}${form.business ? ` — ${form.business}` : ""}`;
     const body = `Name: ${form.name}\nEmail: ${form.email}\nBusiness: ${form.business}\n\n${form.message}`;
-    window.location.href = `mailto:turkialmalki202200@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = `mailto:${CONTACT.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setStatus("success");
   };
 

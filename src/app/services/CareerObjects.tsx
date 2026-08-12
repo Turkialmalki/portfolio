@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { CONTACT } from "@/config/contact";
 
 /**
  * REAL career objects for the /services campaign.
@@ -18,11 +19,22 @@ export type Lang = "ar" | "en";
 
 /* ────────────────────────────── content ────────────────────────────── */
 
+// Display strings for the résumé-mockup header — derived from CONTACT
+// (protocol/"www." stripped for the plain-text bare-domain look these mockups
+// use). If a link isn't verified (null), it's dropped rather than shown dead.
+const SITE_DISPLAY = CONTACT.siteUrl.replace(/^https?:\/\/(www\.)?/, "");
+const LINKEDIN_DISPLAY = CONTACT.linkedinUrl
+  ? CONTACT.linkedinUrl.replace(/^https?:\/\/(www\.)?/, "")
+  : null;
+const CONTACT_LINE_PARTS = [SITE_DISPLAY, LINKEDIN_DISPLAY].filter(
+  (p): p is string => Boolean(p),
+);
+
 const P = {
   name: { ar: "تركي المالكي", en: "Turki Almalki" },
   contact: {
-    ar: "الرياض، السعودية · turkialmalki.com · linkedin.com/in/turkialmalki",
-    en: "Riyadh, Saudi Arabia · turkialmalki.com · linkedin.com/in/turkialmalki",
+    ar: `الرياض، السعودية · ${CONTACT_LINE_PARTS.join(" · ")}`,
+    en: `Riyadh, Saudi Arabia · ${CONTACT_LINE_PARTS.join(" · ")}`,
   },
   titleStrong: {
     ar: "قائد هندسة برمجيات · منتجات رقمية وابتكار",

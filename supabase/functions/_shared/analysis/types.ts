@@ -16,9 +16,11 @@ import type {
   AnalysisContext,
   CareerAnalysis,
   DimensionId,
+  EvidenceQuality,
   Evidence,
   FactClassification,
   SeniorityLevel,
+  SignalLevel,
 } from "../methodology/types.ts";
 import type { RetrievalExample } from "../knowledge/types.ts";
 
@@ -111,10 +113,24 @@ export type AIConfidence = "high" | "medium" | "low";
  *     coarse, mostly-fixed bucket — see methodology/reasonCodes.ts) +
  *     `shortReason` (one short sentence of nuance, length-guided but not
  *     hard-truncated by validation — see schemaValidation.ts).
+ *
+ * Career V2 Part 4 removed the last thing the LLM invented unconstrained:
+ * `score: number`. It now returns a rubric CLASSIFICATION —
+ * `signalLevel` (which of the rubric's own 5 anchor bands the CV falls
+ * in) + `evidencePresent`/`evidenceQuality` (how much of that
+ * classification is backed by a checkable quote) — and
+ * `methodology/scoring.ts`'s `rubricScoreFor` is the ONLY place that
+ * becomes a number. Both fields are closed enums enforced by Anthropic's
+ * own tool-use JSON schema (the same mechanism `confidence` and
+ * `dimensionId` already use successfully here — NOT the same mechanism
+ * `reasonCode` deliberately avoids; see schemaValidation.ts's note on why
+ * `reasonCode` stays a free string).
  */
 export interface DimensionAIResult {
   dimensionId: DimensionId;
-  score: number;
+  signalLevel: SignalLevel;
+  evidencePresent: boolean;
+  evidenceQuality: EvidenceQuality;
   confidence: AIConfidence;
   evidence: { section: string; excerpt: string } | null;
   reasonCode: string;

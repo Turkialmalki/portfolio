@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { animate } from "framer-motion";
+import Link from "next/link";
+import { AnimatePresence, animate, motion } from "framer-motion";
 import type { CareerCopy } from "./careerCopy";
 import {
   DIMENSION_TITLES,
@@ -13,6 +14,8 @@ import { CAREER_FLAGS, CAREER_FULL_REVIEW_PRICE } from "@/config/careerFlags";
 import { CAREER_USD_PAYMENT_CONFIG } from "@/config/payments";
 import { trackCareerEvent } from "@/lib/careerAnalytics";
 import { supabase } from "@/lib/supabaseClient";
+import { CONTACT } from "@/config/contact";
+import { CAREER_SERVICES, COMPLETE_BUNDLE, priceLabel as servicePriceLabel } from "@/data/careerServices";
 
 /* ═══════════════════════════════════════════════════════════════════════
    FREE RESULT + LOCKED FULL REVIEW (Command 06A §16–§32, §65–§66).
@@ -36,6 +39,7 @@ export default function CareerReport({
   report,
   fileName,
   resumeId,
+  analysisId,
   onRevealed,
 }: {
   t: CareerCopy;
@@ -45,6 +49,10 @@ export default function CareerReport({
   /** Undefined for a synthetic-demo fixture report — the Full Review CTA
    *  stays visually identical but never creates a purchase without one. */
   resumeId?: string;
+  /** Undefined for a synthetic-demo fixture report — "email me the
+   *  report" (Part 15-18) stays visually identical but never calls
+   *  send-career-report without a real analysisId to own. */
+  analysisId?: string;
   onRevealed: () => void;
 }) {
   const rDir = report.reportLang === "ar" ? "rtl" : "ltr";
@@ -52,7 +60,11 @@ export default function CareerReport({
 
   return (
     <div className="cp-report">
-      <ScoreReveal t={t} lang={lang} report={report} fileName={fileName} onRevealed={onRevealed} />
+      <ScoreReveal t={t} lang={lang} report={report} fileName={fileName} analysisId={analysisId} onRevealed={onRevealed} />
+
+      <AtsCompatibilityCard t={t} report={report} />
+
+      <JobMatchNote t={t} lang={lang} report={report} />
 
       <DimensionOverview t={t} lang={lang} report={report} rDir={rDir} strong={strong} />
 
@@ -78,6 +90,12 @@ export default function CareerReport({
       <FullReviewGate t={t} lang={lang} report={report} resumeId={resumeId} />
 
       <Methodology t={t} />
+
+      <NextServices t={t} lang={lang} />
+
+      <ContactFooter t={t} />
+
+      <ReportStyles />
     </div>
   );
 }
@@ -89,12 +107,14 @@ function ScoreReveal({
   lang,
   report,
   fileName,
+  analysisId,
   onRevealed,
 }: {
   t: CareerCopy;
   lang: CareerLang;
   report: UiFreeReport;
   fileName: string;
+  analysisId?: string;
   onRevealed: () => void;
 }) {
   const nRef = useRef<HTMLSpanElement>(null);
@@ -186,8 +206,8 @@ function ScoreReveal({
   const uiLabel = lang === "ar" ? report.scoreBand.labelAr : report.scoreBand.labelEn;
 
   return (
-    <section className="cp-sec cp-score-sec" aria-label={t.scoreRevealLabel}>
-      <p className="cp-sec-k">{t.scoreRevealLabel}</p>
+    <section className="cp-sec cp-score-sec" aria-label={t.cvStrengthLabel}>
+      <p className="cp-sec-k">{t.cvStrengthLabel}</p>
       <p className="cp-score-file" dir="auto">
         {fileName}
       </p>
@@ -209,7 +229,295 @@ function ScoreReveal({
           {report.overallScore >= 75 ? t.scoreStrongLine : t.scoreWeakLine}
         </p>
         <p className="cp-score-confidence">{t.confidenceLabel[report.confidence]}</p>
+
+        {/* item A — three compact indicators, never a second headline */}
+        <ScoreIndicators t={t} lang={lang} report={report} />
+
+        {/* item I */}
+        <SendReportByEmail t={t} lang={lang} analysisId={analysisId} />
       </div>
+    </section>
+  );
+}
+
+/**
+ * Item A (three compact indicators) — ATS, evidence coverage, strongest
+ * area. Each is a short label + value, never a restatement of the hero
+ * headline above it.
+ */
+function ScoreIndicators({
+  t,
+  lang,
+  report,
+}: {
+  t: CareerCopy;
+  lang: CareerLang;
+  report: UiFreeReport;
+}) {
+  const ats = report.atsCompatibility;
+  // Thresholds for the ATS Compatibility phrase (Career V2 Part 6/11 — the
+  // backend ships only the raw 0–100 score, never a verdict string, so the
+  // UI picks a phrase deterministically): >=80 good, >=55 mixed, else weak.
+  const atsPhrase =
+    ats.atsCompatibilityScore >= 80
+      ? t.atsCompatibilityGood
+      : ats.atsCompatibilityScore >= 55
+        ? t.atsCompatibilityMixed
+        : t.atsCompatibilityWeak;
+
+  // Evidence coverage: UiFreeReport carries no per-dimension "has evidence"
+  // flag, so we reuse the backend's own `confidence` field 1:1 — it is
+  // already the backend's estimate of how well-evidenced its scoring was,
+  // so relabeling it here as high/medium/low describes the same fact
+  // without inventing a new metric (§15).
+  const evidenceLevel = report.confidence;
+
+  const strongest = report.topStrengths[0];
+
+  return (
+    <dl className="cp-indicators">
+      <div className="cp-indicator">
+        <dt>{t.atsCompatibilityLabel}</dt>
+        <dd>
+          <bdi dir="ltr">{Math.round(ats.atsCompatibilityScore)}/100</bdi> · {atsPhrase}
+        </dd>
+      </div>
+      <div className="cp-indicator">
+        <dt title={t.evidenceCoverageTooltip}>{t.evidenceCoverageLabel}</dt>
+        <dd>{t.evidenceCoverageLevel[evidenceLevel]}</dd>
+      </div>
+      {strongest && (
+        <div className="cp-indicator">
+          <dt>{t.strongestAreaLabel}</dt>
+          <dd>{DIMENSION_TITLES[strongest.dimension][lang]}</dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
+/**
+ * Item I — "send report to email". For now this is a static, non-networked
+ * placeholder: it never calls out to the network and never wires an actual
+ * email send. Real send + its animated expand/collapse are implemented
+ * separately (a dedicated piece of work) — this button only proves the
+ * entry point exists.
+ */
+/** True below 640px — the breakpoint the bottom-sheet variant kicks in at (Part 15/24: mobile gets a sheet, desktop an anchored dropdown). */
+function useIsNarrow(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const sync = () => setNarrow(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return narrow;
+}
+
+type SendStatus = "idle" | "sending" | "sent" | "error";
+
+/**
+ * Item I / Parts 15-18 — "email me the report", for real: an animated
+ * anchored dropdown on desktop, a bottom sheet on mobile (AnimatePresence,
+ * spring, opacity 0→1 / y 12→0 / scale 0.98→1 — fast and subtle, no heavy
+ * blur), backed by a REAL server-side send (send-career-report Edge
+ * Function — no mailto, no fake success). Delivery is restricted to the
+ * authenticated account's own verified email (Part 16 — security over
+ * convenience): the field is prefilled and read-only, never a free-text
+ * "send to any address" box.
+ */
+function SendReportByEmail({ t, lang, analysisId }: { t: CareerCopy; lang: CareerLang; analysisId?: string }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
+  const [status, setStatus] = useState<SendStatus>("idle");
+  const narrow = useIsNarrow();
+  const openedTracked = useRef(false);
+
+  useEffect(() => {
+    if (!open || !supabase) return;
+    let cancelled = false;
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!cancelled) setEmail(data.user?.email ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  function toggle() {
+    setOpen((v) => {
+      const next = !v;
+      if (next && !openedTracked.current) {
+        openedTracked.current = true;
+        trackCareerEvent("career_report_email_opened", {});
+      }
+      return next;
+    });
+  }
+
+  async function handleSend() {
+    // Prevent double submits (Part 18) — a click while already sending/sent is a no-op.
+    if (!supabase || !analysisId || status === "sending" || status === "sent") return;
+    setStatus("sending");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-career-report", {
+        body: { analysisId },
+      });
+      const ok = !error && data && (data as { ok?: boolean }).ok === true;
+      if (!ok) {
+        setStatus("error");
+        return;
+      }
+      setStatus("sent");
+      trackCareerEvent("career_report_email_sent", {});
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  const panelVariants = {
+    hidden: { opacity: 0, y: 12, scale: 0.98 },
+    visible: { opacity: 1, y: 0, scale: 1 },
+  };
+  const sheetVariants = {
+    hidden: { opacity: 0, y: "100%" },
+    visible: { opacity: 1, y: 0 },
+  };
+  const spring = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.7 };
+
+  const panel = (
+    <motion.div
+      key="send-email-panel"
+      className={narrow ? "cp-send-email-sheet" : "cp-send-email-panel"}
+      role="dialog"
+      aria-label={t.sendToEmailCta}
+      variants={narrow ? sheetVariants : panelVariants}
+      initial="hidden"
+      animate="visible"
+      exit="hidden"
+      transition={spring}
+    >
+      {narrow && <div className="cp-sheet-grip" aria-hidden />}
+      <p className="cp-send-email-title">{t.sendToEmailTitle}</p>
+      <p className="cp-send-email-note">{t.sendToEmailBody}</p>
+
+      {analysisId ? (
+        <>
+          <div className="cp-auth-form" dir="ltr">
+            <input
+              type="email"
+              className="cp-auth-input"
+              value={email ?? ""}
+              placeholder={t.sendToEmailPlaceholder}
+              readOnly
+              aria-readonly="true"
+              dir="ltr"
+            />
+            <button
+              type="button"
+              className="cp-cta cp-cta-secondary"
+              onClick={handleSend}
+              disabled={status === "sending" || status === "sent" || !email}
+              aria-busy={status === "sending"}
+            >
+              {status === "sending" ? t.sendToEmailSending : status === "sent" ? t.sendToEmailSentCta : t.sendToEmailSubmit}
+            </button>
+          </div>
+          {status === "sent" && (
+            <p className="cp-send-email-status cp-send-email-success" role="status">
+              {t.sendToEmailSent}
+              <br />
+              {t.sendToEmailCheckInbox}
+            </p>
+          )}
+          {status === "error" && (
+            <p className="cp-send-email-status cp-send-email-error" role="alert">
+              {t.sendToEmailError}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="cp-send-email-note">{t.sendToEmailComingSoonBody}</p>
+      )}
+    </motion.div>
+  );
+
+  return (
+    <div className="cp-send-email">
+      <button type="button" className="cp-linkbtn cp-linkbtn-muted" onClick={toggle} aria-expanded={open}>
+        {t.sendToEmailCta}
+      </button>
+      <AnimatePresence>{open && panel}</AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Item B — ATS Compatibility card, its own small section near the hero.
+ * Deterministic, code-computed (Career V2 Part 5/6/11) — a SEPARATE concept
+ * from `atsAnalysis` (paid Full Review's "ATS" section). Never merged, never
+ * mixed into `overallScore`.
+ */
+function AtsCompatibilityCard({ t, report }: { t: CareerCopy; report: UiFreeReport }) {
+  const ats = report.atsCompatibility;
+  // A note about readability risk — never a pass/fail claim for any real
+  // ATS product — is shown when failures are notable or the score is very
+  // low. Thresholds documented here since the backend ships raw counts only.
+  const risky = ats.atsChecksFailed >= 3 || ats.atsCompatibilityScore < 40;
+
+  return (
+    <section className="cp-sec cp-ats-sec" aria-label={t.atsCompatibilityFull}>
+      <h2 className="cp-h2 cp-rule">{t.atsCompatibilityFull}</h2>
+      <div className="cp-ats-score" dir="ltr">
+        <span className="cp-ats-num">{Math.round(ats.atsCompatibilityScore)}</span>
+        <span className="cp-ats-den">{t.scoreOutOf}</span>
+      </div>
+      <ul className="cp-ats-counts">
+        <li>
+          <span className="cp-full-n">{ats.atsChecksPassed}</span> {t.atsChecksPassedLabel}
+        </li>
+        <li>
+          <span className="cp-full-n">{ats.atsChecksWarning}</span> {t.atsChecksWarningLabel}
+        </li>
+        <li>
+          <span className="cp-full-n">{ats.atsChecksFailed}</span> {t.atsChecksFailedLabel}
+        </li>
+      </ul>
+      {risky && <p className="cp-ats-risk">{t.atsReadabilityRiskNote}</p>}
+      <p className="cp-ats-disclaimer">{t.atsCompatibilityDisclaimer}</p>
+    </section>
+  );
+}
+
+/**
+ * Career V2 Part 6/7: Job Match — the THIRD distinct concept, separate
+ * from CV Strength and ATS Compatibility, and NEVER shown as a real
+ * match unless a target role/JD genuinely existed for this analysis.
+ * `UiFreeReport` carries no separate "was a target role given" flag —
+ * `target_role_alignment` is simply one of the (possibly excluded)
+ * dimensions in `dimensionSummary`, present only when the dimension was
+ * actually scored (methodology/scoring.ts excludes it entirely, never
+ * zeroes it, when there's no target role — see planWeights). Deriving
+ * presence from that existing array, rather than adding a new backend
+ * field, means this can never drift from the real exclusion logic.
+ */
+function JobMatchNote({ t, lang, report }: { t: CareerCopy; lang: CareerLang; report: UiFreeReport }) {
+  const dim = report.dimensionSummary.find((d) => d.dimension === "target_role_alignment");
+  return (
+    <section className="cp-sec cp-jobmatch-sec" aria-label={t.jobMatchLabel}>
+      <p className="cp-sec-k">{t.jobMatchLabel}</p>
+      {dim ? (
+        <>
+          <p className="cp-jobmatch-score" dir="ltr">
+            {Math.round(dim.score)}/100
+          </p>
+          <p className="cp-jobmatch-summary">{dim.summary}</p>
+        </>
+      ) : (
+        <p className="cp-jobmatch-missing">{t.jobMatchMissingNote}</p>
+      )}
     </section>
   );
 }
@@ -432,6 +740,28 @@ function RewritePreview({
 type PurchaseState = { id: string; status: string } | null;
 type GateStatus = "idle" | "preparing" | "prepare_error" | "verify_submitting" | "verify_requested" | "verify_error";
 
+/**
+ * Part 14 — collapses GateStatus + purchase + entitlement into the 4-word
+ * vocabulary the product wants: "payment not started" / "awaiting
+ * verification" / "verified" / "report unlocked". `purchase.status ===
+ * "verified"` (restored from the real `purchases` row on mount, see the
+ * effect above) is the one case that can genuinely land on "verified"
+ * distinctly from "opened" — a narrow window right after an admin
+ * verifies but before this tab's own `get-full-review` re-check has
+ * completed. Once `fullReview` loads, "opened" always wins.
+ */
+type PaymentStateKey = "notStarted" | "pendingVerification" | "verified" | "opened";
+function paymentStateFor(
+  status: GateStatus,
+  purchase: PurchaseState,
+  fullReview: UiFullReview | null,
+): PaymentStateKey {
+  if (fullReview) return "opened";
+  if (purchase?.status === "verified") return "verified";
+  if (purchase || status === "verify_requested" || status === "verify_submitting") return "pendingVerification";
+  return "notStarted";
+}
+
 function FullReviewGate({
   t,
   lang,
@@ -476,6 +806,45 @@ function FullReviewGate({
     };
   }, [resumeId, status]);
 
+  /* Part 14 — persist payment state across refresh/return-from-PayPal/
+     new-tab. `purchase`/`status` above are plain React state, which resets
+     to "idle"/null on every remount; this restores them from the caller's
+     own real purchase row (RLS-scoped `purchases_select_own`, same
+     ownership discipline as every other query here) so a genuine reload
+     mid-verification shows "awaiting verification", never resets to
+     "not started" and risks a customer paying twice. Runs once and only
+     when there's nothing live already in flight (status still "idle") —
+     never overwrites a checkout/verification the user just triggered in
+     this same session. */
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !enabled || status !== "idle" || purchase) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await client
+        .from("purchases")
+        .select("id, status")
+        .eq("product_key", "career_cv_full_review")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled || error || !data) return;
+      // purchases.status vocabulary (post generic_payment_verification
+      // migration): pending | verification_requested | verified | rejected
+      // | refunded. Only the first three represent a real, current
+      // in-flight-or-completed attempt worth restoring — a rejected/
+      // refunded purchase should NOT block a fresh retry, so it's left
+      // unrestored (falls back to "not started").
+      if (data.status === "pending" || data.status === "verification_requested" || data.status === "verified") {
+        setPurchase({ id: data.id, status: data.status });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -505,11 +874,34 @@ function FullReviewGate({
     ] as Array<[number, string]>
   ).filter(([n]) => n > 0);
 
+  /* §G/H — locked-row preview. The two count-based rows only render when
+     that real count is > 0 (never a fabricated "{n}"); the other four are
+     generic feature rows, always shown. */
+  const lockedRows = [
+    report.fullReviewCounts.recommendations > 0
+      ? t.fullLockedRowRecommendations.replace("{n}", String(report.fullReviewCounts.recommendations))
+      : null,
+    report.fullReviewCounts.highPriority > 0
+      ? t.fullLockedRowHighPriority.replace("{n}", String(report.fullReviewCounts.highPriority))
+      : null,
+    t.fullLockedRowAts,
+    t.fullLockedRowSections,
+    t.fullLockedRowRewrites,
+    t.fullLockedRowPriorityOrder,
+  ].filter((row): row is string => row !== null);
+
   /* §29/checkout: create/reuse a `pending` purchase server-side (its price
      comes ONLY from _shared/careerPricing.ts, never this button) BEFORE
      ever sending the customer to PayPal — that purchase_id is what lets
      them later prove payment against their own account. Opening the
-     PayPal link is not, and never becomes, proof of payment. */
+     PayPal link is not, and never becomes, proof of payment.
+
+     The tab is opened synchronously, in the same click's call stack, and
+     only navigated to the PayPal URL once create-purchase resolves.
+     window.open() called after an `await` loses the "direct result of a
+     user gesture" trust most browsers (Safari/iOS especially) require —
+     it gets silently popup-blocked, leaving the customer stuck on this
+     page's own verify-payment form having never reached PayPal at all. */
   async function startCheckout() {
     trackCareerEvent("career_checkout_clicked", {
       payment_enabled: enabled,
@@ -519,6 +911,9 @@ function FullReviewGate({
     if (!enabled || !resumeId || !supabase) return; // demo/fixture reports never touch real payment infra
     const paypalUrl = CAREER_USD_PAYMENT_CONFIG.career_cv_full_review?.url;
     if (!paypalUrl) return;
+
+    const paypalTab = window.open("", "_blank");
+    if (paypalTab) paypalTab.opener = null; // no `noopener` on open() itself — we need the handle to navigate it below
 
     setStatus("preparing");
     try {
@@ -535,9 +930,16 @@ function FullReviewGate({
       setPurchase(created);
       setStatus("idle");
       trackCareerEvent("career_checkout_started", { lang });
-      window.open(paypalUrl, "_blank", "noopener,noreferrer");
+      if (paypalTab && !paypalTab.closed) {
+        paypalTab.location.href = paypalUrl;
+      } else {
+        // The synchronous open() was itself blocked (rare) — fall back to
+        // a fresh attempt; still a direct result of this same click handler.
+        window.open(paypalUrl, "_blank", "noopener,noreferrer");
+      }
     } catch {
       setStatus("prepare_error");
+      paypalTab?.close();
     }
   }
 
@@ -563,7 +965,9 @@ function FullReviewGate({
 
   return (
     <section ref={ref} className="cp-sec cp-full" aria-label={t.fullH}>
-      <h2 className="cp-h2 cp-rule">{t.fullH}</h2>
+      <p className="cp-sec-k">{t.fullH}</p>
+      <h2 className="cp-h2 cp-rule">{t.fullHeadline}</h2>
+      <p className="cp-full-sub">{t.fullSubheading}</p>
       {counts.length > 0 && (
         <>
           <p className="cp-full-found">{t.fullFound}</p>
@@ -588,7 +992,7 @@ function FullReviewGate({
         <>
           {/* locked structure — section titles blurred, no fabricated prose (§65) */}
           <ul className="cp-locked" aria-label={t.lockedA11y}>
-            {t.fullLockedRows.map((row) => (
+            {lockedRows.map((row) => (
               <li key={row} className="cp-locked-row">
                 <span className="cp-lock" aria-hidden>
                   🔒
@@ -599,10 +1003,20 @@ function FullReviewGate({
             ))}
           </ul>
 
-          <p className="cp-full-what">{t.fullWhat}</p>
+          {/* what's included — plain, not blurred; the same content the
+              locked rows above tease, stated once more as a quick recap */}
+          <ul className="cp-full-includes">
+            {t.fullIncludes.map((item) => (
+              <li key={item}>
+                <span aria-hidden>✓</span> {item}
+              </li>
+            ))}
+          </ul>
 
           {/* §29 — payment gate: price shown, action honestly unavailable when
-              the flag/link aren't both live */}
+              the flag/link aren't both live. The "$5" fragment is isolated in
+              its own `dir="ltr"` span so the currency figure never reorders
+              inside the surrounding Arabic sentence on narrow RTL widths. */}
           <button
             type="button"
             className="cp-cta cp-cta-buy"
@@ -610,10 +1024,22 @@ function FullReviewGate({
             aria-disabled={!enabled || status === "preparing"}
             onClick={startCheckout}
           >
-            {status === "preparing" ? t.fullCtaPreparing : t.fullCta.replace("$5", priceLabel)}
+            {status === "preparing" ? (
+              t.fullCtaPreparing
+            ) : (
+              <>
+                {t.fullCta.split("$5")[0]}
+                <bdi dir="ltr">{priceLabel}</bdi>
+                {t.fullCta.split("$5")[1]}
+              </>
+            )}
           </button>
           {!enabled && <p className="cp-locked-note">{t.fullLockedNote}</p>}
           {status === "prepare_error" && <p className="cp-locked-note" role="alert">{t.fullCtaError}</p>}
+
+          <p className="cp-payment-state" role="status">
+            {t.paymentState[paymentStateFor(status, purchase, fullReview)]}
+          </p>
 
           {purchase && status !== "verify_requested" && (
             <form className="cp-auth-form" onSubmit={submitVerification} dir={lang === "ar" ? "rtl" : "ltr"}>
@@ -747,5 +1173,227 @@ function Methodology({ t }: { t: CareerCopy }) {
       <p className="cp-method-ai">{t.methodAI}</p>
       <p className="cp-method-by">{t.builtBy}</p>
     </section>
+  );
+}
+
+/* ─────────────────────── next services (item J) ─────────────────────── */
+
+/**
+ * "وش الخطوة التالية؟" — end-of-report cross-sell, deliberately two short
+ * groups rather than a wall of cards. All prices/outcomes come straight
+ * from `src/data/careerServices.ts` + `src/config/careerServices.ts` (the
+ * same catalog /services uses) — nothing here invents a price or a product.
+ * Every CTA points at `/services`: there is no dedicated product page per
+ * service, /services itself is the one scroll-driven catalog.
+ */
+function NextServices({ t, lang }: { t: CareerCopy; lang: CareerLang }) {
+  const cvRewrite = CAREER_SERVICES.find((s) => s.id === "resumeWriting");
+  const linkedin = CAREER_SERVICES.find((s) => s.id === "linkedinOptimization");
+  const portfolio = CAREER_SERVICES.find((s) => s.id === "mvpPortfolio");
+  if (!cvRewrite || !linkedin || !portfolio) return null; // catalog entry missing — never render a broken row
+
+  const group1 = [
+    { key: "cv", name: t.nextServiceCvName, cta: t.nextServiceCvCta, svc: cvRewrite },
+    { key: "linkedin", name: t.nextServiceLinkedinName, cta: t.nextServiceLinkedinCta, svc: linkedin },
+    { key: "portfolio", name: t.nextServicePortfolioName, cta: t.nextServicePortfolioCta, svc: portfolio },
+  ];
+
+  return (
+    <section className="cp-sec cp-next-services" aria-label={t.nextStepsH}>
+      <h2 className="cp-h2 cp-rule">{t.nextStepsH}</h2>
+
+      <p className="cp-sec-k">{t.nextStepsGroup1H}</p>
+      <ul className="cp-service-rows">
+        {group1.map((row) => (
+          <li key={row.key} className="cp-service-row">
+            <div>
+              <p className="cp-service-name">{row.name}</p>
+              <p className="cp-service-detail">
+                {row.svc.outcome[lang]} · {servicePriceLabel(row.svc.price, lang)}
+              </p>
+            </div>
+            <Link href="/services" className="cp-cta cp-cta-secondary cp-service-cta">
+              {row.cta}
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <div className="cp-next-idea">
+        <p className="cp-sec-k">{t.nextStepsGroup2H}</p>
+        <ul className="cp-service-rows">
+          <li className="cp-service-row">
+            <div>
+              <p className="cp-service-name">{portfolio.name[lang]}</p>
+              <p className="cp-service-detail">{servicePriceLabel(portfolio.price, lang)}</p>
+            </div>
+            <Link href="/services" className="cp-cta cp-cta-secondary cp-service-cta">
+              {portfolio.cta[lang]}
+            </Link>
+          </li>
+          <li className="cp-service-row">
+            <div>
+              <p className="cp-service-name">{COMPLETE_BUNDLE.name[lang]}</p>
+              <p className="cp-service-detail">{servicePriceLabel(COMPLETE_BUNDLE.price, lang)}</p>
+            </div>
+            <Link href="/services" className="cp-cta cp-cta-secondary cp-service-cta">
+              {COMPLETE_BUNDLE.cta[lang]}
+            </Link>
+          </li>
+        </ul>
+        <Link href="/services" className="cp-linkbtn">
+          {t.nextStepsSeeAll}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────── contact / social footer (item K) ─────────────────────── */
+
+function ContactFooter({ t }: { t: CareerCopy }) {
+  return (
+    <section className="cp-sec cp-contact-footer" aria-label={t.contactH}>
+      <h2 className="cp-h2 cp-rule">{t.contactH}</h2>
+      <p className="cp-contact-name">{t.contactName}</p>
+      <p className="cp-contact-line">{t.contactSentence}</p>
+      <div className="cp-contact-buttons">
+        <a className="cp-cta cp-cta-secondary" href={`mailto:${CONTACT.email}`}>
+          {t.contactEmailCta}
+        </a>
+        {CONTACT.linkedinUrl && (
+          <a className="cp-cta cp-cta-secondary" href={CONTACT.linkedinUrl} target="_blank" rel="noopener noreferrer">
+            {t.contactLinkedinCta}
+          </a>
+        )}
+        {CONTACT.githubUrl && (
+          <a className="cp-cta cp-cta-secondary" href={CONTACT.githubUrl} target="_blank" rel="noopener noreferrer">
+            {t.contactGithubCta}
+          </a>
+        )}
+        <a className="cp-cta cp-cta-secondary" href={CONTACT.siteUrl} target="_blank" rel="noopener noreferrer">
+          {t.contactSiteCta}
+        </a>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════ report-only styles ═══════════════════════
+   New UI introduced by the Career V2 report journey. CareerClient.tsx's
+   own global `<style>` (its `CareerStyles`) already defines `.cp-*` base
+   classes and renders AFTER this component in the DOM, so any override of
+   an EXISTING class here is written with an extra `.cp-report` prefix —
+   raising specificity above a bare single-class selector — so it wins
+   regardless of DOM/cascade order. Brand-new classes need no such prefix. */
+function ReportStyles() {
+  return (
+    <style>{`
+      /* ── item C — issue/opportunity row: number + severity + title never
+         collide on narrow RTL widths; the title wraps to its own line
+         instead of overflowing or squeezing the badges. ── */
+      .cp-report .cp-issue summary { flex-wrap: wrap; row-gap: 6px; }
+      .cp-report .cp-issue-n { flex: 0 0 auto; min-width: 20px; }
+      .cp-report .cp-sev { flex: 0 0 auto; white-space: nowrap; }
+      .cp-report .cp-issue-dim { flex: 1 1 auto; min-width: 40%; word-break: break-word; }
+      .cp-report .cp-opp-head { flex-wrap: wrap; row-gap: 6px; }
+
+      /* dimension row — same narrow-width safety net */
+      @media (max-width: 420px) {
+        .cp-report .cp-dim-row { flex-wrap: wrap; row-gap: 8px; }
+        .cp-report .cp-dim-name { min-width: 100%; }
+        .cp-report .cp-dim-track { min-width: 0; }
+      }
+
+      /* ── item A — hero indicators row ── */
+      .cp-indicators {
+        display: flex; flex-wrap: wrap; justify-content: center; gap: 20px 32px;
+        margin: 22px 0 4px; padding: 18px 0 0; border-top: 1px solid var(--border-subtle);
+      }
+      .cp-indicator { margin: 0; text-align: center; min-width: 84px; }
+      .cp-indicator dt {
+        font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--text-muted); margin: 0 0 4px;
+      }
+      .cp-indicator dd { margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-primary); }
+
+      /* ── item I — send to email (Parts 15-18: animated dropdown/sheet, real send) ── */
+      .cp-send-email { margin-top: 16px; text-align: center; position: relative; }
+      .cp-send-email-panel {
+        max-width: 420px; margin: 12px auto 0; padding: 16px 18px;
+        border: 1.5px solid var(--border-subtle); border-radius: 12px; text-align: start;
+        background: var(--surface-1, var(--bg-primary));
+        box-shadow: 0 8px 28px -12px rgba(0,0,0,0.22);
+      }
+      .cp-send-email-title { margin: 0 0 4px; font-size: 14.5px; font-weight: 700; color: var(--text-primary); }
+      .cp-send-email-note { margin: 0 0 12px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.7; }
+      .cp-send-email-panel .cp-auth-form { margin-top: 0; }
+      .cp-auth-input[readonly] { opacity: 0.85; cursor: default; }
+      .cp-send-email-status { margin: 10px 0 0; font-size: 13.5px; line-height: 1.6; }
+      .cp-send-email-success { color: var(--success, #1a7f4e); }
+      .cp-send-email-error { color: var(--danger, #c23b3b); }
+
+      /* Mobile bottom sheet (Part 15/24): fixed to the viewport bottom, full-width, above everything, keyboard-safe padding. */
+      .cp-send-email-sheet {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+        max-width: none; margin: 0; border-radius: 18px 18px 0 0;
+        border: 1px solid var(--border-subtle); border-bottom: none;
+        padding: 10px 18px calc(20px + env(safe-area-inset-bottom));
+        box-shadow: 0 -12px 32px -16px rgba(0,0,0,0.3);
+      }
+      .cp-sheet-grip { width: 36px; height: 4px; border-radius: 999px; background: var(--border-subtle); margin: 4px auto 14px; }
+
+      /* ── Job Match (Part 6/7) — third distinct concept, small and quiet ── */
+      .cp-jobmatch-sec { text-align: center; padding-top: 4px; }
+      .cp-jobmatch-score { margin: 4px 0 0; font-size: 20px; font-weight: 800; direction: ltr; }
+      .cp-jobmatch-summary { margin: 4px 0 0; font-size: 13.5px; color: var(--text-secondary); max-width: 520px; margin-inline: auto; }
+      .cp-jobmatch-missing { margin: 4px 0 0; font-size: 13.5px; color: var(--text-muted); }
+
+      /* ── item B — ATS Compatibility card ── */
+      .cp-ats-sec { text-align: center; }
+      .cp-ats-score { display: flex; align-items: baseline; justify-content: center; gap: 4px; direction: ltr; }
+      .cp-ats-num { font-size: clamp(36px, 5vw, 48px); font-weight: 900; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+      .cp-ats-den { font-size: 16px; font-weight: 500; color: var(--text-muted); }
+      .cp-ats-counts {
+        list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap;
+        justify-content: center; gap: 8px 22px; font-size: 14px; color: var(--text-secondary);
+      }
+      .cp-ats-risk {
+        max-width: 480px; margin: 16px auto 0; padding: 10px 16px; font-size: 13px;
+        color: #a05a00; background: #fdf3d8; border: 1px solid #f0dfae; border-radius: 10px;
+      }
+      [data-theme="dark"] .cp-ats-risk { color: #ffc46b; background: rgba(255,196,107,0.1); border-color: rgba(255,196,107,0.3); }
+      .cp-ats-disclaimer { max-width: 480px; margin: 14px auto 0; font-size: 12px; color: var(--text-muted); line-height: 1.7; }
+
+      /* ── full review restructure ── */
+      .cp-full-sub { color: var(--text-secondary); line-height: 1.8; margin: 0 0 20px; max-width: 520px; }
+      .cp-full-includes { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 8px; font-size: 14.5px; }
+      .cp-full-includes li { color: var(--text-secondary); }
+      .cp-full-includes li span[aria-hidden] { color: var(--text-primary); font-weight: 900; margin-inline-end: 6px; }
+      .cp-payment-state { text-align: center; font-size: 12.5px; font-weight: 700; color: var(--text-muted); margin: 14px 0 0; }
+
+      /* ── item J — next services ── */
+      .cp-service-rows { list-style: none; margin: 14px 0 0; padding: 0; }
+      .cp-service-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 14px;
+        padding: 16px 0; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap;
+      }
+      .cp-service-name { font-weight: 700; font-size: 15px; margin: 0 0 4px; }
+      .cp-service-detail { font-size: 13px; color: var(--text-secondary); margin: 0; }
+      .cp-service-cta { flex-shrink: 0; padding: 10px 22px; font-size: 14px; min-height: 40px; }
+      .cp-next-idea { margin-top: 44px; padding-top: 28px; border-top: 1px dashed var(--border-subtle); }
+
+      /* ── item K — contact / social footer ── */
+      .cp-contact-footer { text-align: center; }
+      .cp-contact-name { font-weight: 900; font-size: 17px; margin: 0 0 6px; }
+      .cp-contact-line { color: var(--text-secondary); line-height: 1.8; max-width: 440px; margin: 0 auto 20px; }
+      .cp-contact-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+      .cp-contact-buttons .cp-cta { padding: 11px 22px; font-size: 14px; min-height: 42px; }
+
+      @media (max-width: 380px) {
+        .cp-indicators { gap: 16px 20px; }
+        .cp-service-cta { width: 100%; text-align: center; }
+      }
+    `}</style>
   );
 }

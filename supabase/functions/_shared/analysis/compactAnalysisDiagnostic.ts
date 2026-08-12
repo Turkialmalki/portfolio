@@ -31,6 +31,7 @@ import {
   computeOverallScore,
   planWeights,
   projectFreeReport,
+  rubricScoreFor,
   type AnalysisContext,
   type CareerAnalysis,
   type DimensionResult,
@@ -38,6 +39,7 @@ import {
 import { preprocessResumeText } from "./preprocess.ts";
 import { redactContactFields } from "./redact.ts";
 import { extractNormalizedResume } from "./structure.ts";
+import { computeAtsCompatibility } from "./atsCompatibility.ts";
 import { buildAndRunRetrieval } from "./retrievalContext.ts";
 import { validateDimensionAIResults } from "./schemaValidation.ts";
 import { verifyDimensionEvidence } from "./evidenceValidation.ts";
@@ -220,7 +222,7 @@ export async function runCompactAnalysisDiagnostic(
           }
           return {
             dimension: result.dimensionId,
-            score: result.score,
+            score: rubricScoreFor(result.signalLevel, result.evidencePresent, result.evidenceQuality),
             confidence: result.confidence,
             evidence: result.evidence ? [{ section: result.evidence.section, text: result.evidence.excerpt }] : [],
             reason: result.shortReason,
@@ -249,6 +251,7 @@ export async function runCompactAnalysisDiagnostic(
           missingEvidenceQuestions,
           rewriteExamples: [], // deferred — §17, not part of the free critical path
           atsAnalysis,
+          atsCompatibility: computeAtsCompatibility(normalized, redaction),
           actionPlan: [],
           metadata: { analyzedAt: new Date().toISOString(), capsApplied: overall.capsApplied },
         };

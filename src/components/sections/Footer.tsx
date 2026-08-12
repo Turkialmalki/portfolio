@@ -11,31 +11,39 @@ import {
 } from "react-icons/fi";
 import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/i18n/LanguageProvider";
+import { CONTACT } from "@/config/contact";
 
 type Bezier = [number, number, number, number];
 
 const EASE: Bezier = [0.16, 1, 0.3, 1];
 
+// Built from CONTACT so a missing/null URL just drops the icon instead of
+// rendering a dead link — see src/config/contact.ts for the verified values.
 const SOCIAL_LINKS = [
-  {
+  CONTACT.linkedinUrl && {
     label: "LinkedIn",
-    href: "https://www.linkedin.com/in/turki-almalki",
+    href: CONTACT.linkedinUrl,
     Icon: FiLinkedin,
     event: "linkedin_click",
   },
-  {
+  CONTACT.githubUrl && {
     label: "GitHub",
-    href: "https://github.com/Turkialmalki",
+    href: CONTACT.githubUrl,
     Icon: FiGithub,
     event: null,
   },
   {
     label: "Email",
-    href: "mailto:turkialmalki202200@gmail.com",
+    href: `mailto:${CONTACT.email}`,
     Icon: FiMail,
     event: "email_click",
   },
-];
+].filter(Boolean) as {
+  label: string;
+  href: string;
+  Icon: typeof FiLinkedin;
+  event: string | null;
+}[];
 
 const COPY = {
   en: {

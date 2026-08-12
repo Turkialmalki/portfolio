@@ -30,7 +30,7 @@
  * `analyzeDimensions` again with the same input on a validation failure;
  * this adapter is stateless per call).
  */
-import { DIMENSION_IDS } from "../methodology/types.ts";
+import { DIMENSION_IDS, EVIDENCE_QUALITIES, SIGNAL_LEVELS } from "../methodology/types.ts";
 import type {
   AnalyzeDimensionsInput,
   CareerAIProvider,
@@ -50,6 +50,16 @@ import { callAnthropic } from "./anthropicClient.ts";
  * complete generation for 12 dimensions within any reasonable output
  * budget (measured: 4096/4096 output tokens, stop_reason "max_tokens",
  * zero dimensions successfully returned).
+ *
+ * Career V2 Part 4: `score: number` is gone. The model now picks a rubric
+ * CLASSIFICATION — `signalLevel` (closed enum, same 5 bands every
+ * dimension's `scoreAnchors` already documents) + `evidencePresent`/
+ * `evidenceQuality` — and `methodology/scoring.ts`'s `rubricScoreFor`
+ * turns that into the actual number. `signalLevel`/`evidenceQuality` are
+ * real JSON-schema `enum`s, the same mechanism `dimensionId` and
+ * `confidence` already use here without incident — this is NOT the
+ * `reasonCode` pattern (a free string, deliberately never enum-enforced;
+ * see schemaValidation.ts's note on why that field stays loose).
  */
 export const DIMENSION_RESULT_SCHEMA = {
   type: "object",
@@ -60,7 +70,22 @@ export const DIMENSION_RESULT_SCHEMA = {
         type: "object",
         properties: {
           dimensionId: { type: "string", enum: DIMENSION_IDS as unknown as string[] },
-          score: { type: "number", minimum: 0, maximum: 100 },
+          signalLevel: {
+            type: "string",
+            enum: SIGNAL_LEVELS as unknown as string[],
+            description:
+              "Which rubric anchor band this dimension's evidence supports, from very_weak (matches the rubric's lowest anchor) to very_strong (matches its top anchor). Judge against the rubric's own anchor descriptions, not a felt sense of 0-100.",
+          },
+          evidencePresent: {
+            type: "boolean",
+            description: "Whether at least one concrete, checkable quote from the resume supports this classification.",
+          },
+          evidenceQuality: {
+            type: "string",
+            enum: EVIDENCE_QUALITIES as unknown as string[],
+            description:
+              "How strong the supporting evidence is: none (no checkable quote), limited (present but thin/generic), specific (a clear, concrete instance), strong (multiple or highly concrete instances). Use 'none' whenever evidencePresent is false.",
+          },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
           evidence: {
             type: ["object", "null"],
@@ -73,14 +98,14 @@ export const DIMENSION_RESULT_SCHEMA = {
           },
           reasonCode: {
             type: "string",
-            description: "A short bucket label for why this score, e.g. STRONG_ROLE_IDENTITY, RESPONSIBILITY_WITHOUT_OUTCOME, INSUFFICIENT_EVIDENCE. Pick the closest fit or OTHER.",
+            description: "A short bucket label for why this classification, e.g. STRONG_ROLE_IDENTITY, RESPONSIBILITY_WITHOUT_OUTCOME, INSUFFICIENT_EVIDENCE. Pick the closest fit or OTHER.",
           },
           shortReason: {
             type: "string",
             description: "ONE short sentence of nuance, under ~160 characters. Never a paragraph.",
           },
         },
-        required: ["dimensionId", "score", "confidence", "reasonCode", "shortReason"],
+        required: ["dimensionId", "signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"],
       },
     },
   },
@@ -151,16 +176,20 @@ async function callAnthropicTool(
 
 export const SYSTEM_PROMPT =
   "You are the evaluation engine behind a CV analysis product. You will be given " +
-  "compact methodology rubrics and a structured resume. Score strictly against the " +
-  "given rubrics and dimensions only. Any evidence you cite must be a VERBATIM quote " +
-  "from the resume text you were given — never invent metrics, team sizes, titles, " +
-  "technologies, or achievements not present in the source text. If the resume does " +
-  "not support a dimension, say so with low confidence rather than inventing " +
-  "evidence. You never compute or return an overall score — only per-dimension " +
-  "scores. BE CONCISE: at most one evidence excerpt per dimension (or none), one " +
-  "short reasonCode bucket, and one short sentence (shortReason, under ~160 " +
-  "characters) — never a paragraph, never a list of recommendations. This budget is " +
-  "deliberately tight so every requested dimension fits in the response. " +
+  "compact methodology rubrics and a structured resume. Classify strictly against the " +
+  "given rubrics and dimensions only — for each dimension, pick the signalLevel whose " +
+  "rubric anchor description the CV actually matches (very_weak/weak/mixed/strong/" +
+  "very_strong), never a felt sense of a precise number; the product's scoring engine, " +
+  "not you, turns that classification into a number. Any evidence you cite must be a " +
+  "VERBATIM quote from the resume text you were given — never invent metrics, team " +
+  "sizes, titles, technologies, or achievements not present in the source text. If the " +
+  "resume does not support a dimension, say so with low confidence and evidencePresent: " +
+  "false rather than inventing evidence. You never compute or return an overall score — " +
+  "only per-dimension classifications. BE CONCISE: at most one evidence excerpt per " +
+  "dimension (or none), one short reasonCode bucket, and one short sentence " +
+  "(shortReason, under ~160 characters) — never a paragraph, never a list of " +
+  "recommendations. This budget is deliberately tight so every requested dimension " +
+  "fits in the response. " +
   "LANGUAGE: `context.language` is the language the RESUME ITSELF is written in — " +
   "it only tells you which writing-quality norms to judge language_quality against. " +
   "`context.outputLanguage` is the language of the CUSTOMER using this product. " +

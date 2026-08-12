@@ -24,7 +24,9 @@ import type {
   Confidence,
   DimensionId,
   DimensionResult,
+  EvidenceQuality,
   ExcludedDimension,
+  SignalLevel,
 } from "./types.ts";
 import { DIMENSIONS } from "./dimensions.ts";
 import { SENIORITY_WEIGHT_MULTIPLIERS } from "./seniority.ts";
@@ -159,4 +161,66 @@ export function aggregateConfidence(
 
 function clamp(score: number): number {
   return Math.max(0, Math.min(100, score));
+}
+
+/**
+ * §Career V2 Part 4: turns the LLM's constrained rubric classification
+ * (signalLevel + evidenceQuality) into the fixed numeric `DimensionResult.
+ * score` — the ONLY place that conversion happens. The LLM never invents a
+ * precise number again; this function is the deterministic arithmetic that
+ * replaces it.
+ *
+ * Every one of the 15 dimensions in dimensions.ts shares the identical
+ * 5-anchor ladder (scoreAnchors: 90/75/60/45/0 — asserted by the
+ * methodology test harness, "scoreAnchors share the same ladder across all
+ * dimensions"), read here from `DIMENSIONS` rather than re-declared, so a
+ * future rubric edit can't silently drift out of sync with this mapping.
+ * `signalLevel` selects which anchor band the score falls in (its FLOOR —
+ * an anchor's own description already describes what a document AT that
+ * floor looks like); `evidenceQuality` then places the score somewhere
+ * inside that band, as a FRACTION of the band's own width — never a flat
+ * constant — so the same four evidence-quality levels mean proportionally
+ * the same thing whether the band is 10 points wide (very_strong) or 45
+ * points wide (very_weak). `evidencePresent: false` always yields the
+ * band's floor, matching "none" — a claim with literally no evidence gets
+ * no credit for the classification's own internal confidence.
+ */
+const SHARED_ANCHOR_FLOORS: readonly number[] = [...DIMENSIONS[0].scoreAnchors]
+  .map((a) => a.atOrAbove)
+  .sort((a, b) => a - b);
+
+const SIGNAL_LEVEL_ORDER: readonly SignalLevel[] = ["very_weak", "weak", "mixed", "strong", "very_strong"];
+
+const ANCHOR_BAND: Record<SignalLevel, { floor: number; ceiling: number }> = Object.fromEntries(
+  SIGNAL_LEVEL_ORDER.map((level, i) => [
+    level,
+    {
+      floor: SHARED_ANCHOR_FLOORS[i],
+      ceiling: i + 1 < SHARED_ANCHOR_FLOORS.length ? SHARED_ANCHOR_FLOORS[i + 1] - 1 : 100,
+    },
+  ]),
+) as Record<SignalLevel, { floor: number; ceiling: number }>;
+
+/**
+ * Fraction of the anchor band's own width — deliberately never reaching 1
+ * (which would touch the next anchor's floor). Versioned alongside
+ * CAREER_METHODOLOGY_VERSION: changing these fractions changes what every
+ * future analysis scores and must ship as a new methodology version.
+ */
+const EVIDENCE_QUALITY_BAND_FRACTION: Record<EvidenceQuality, number> = {
+  none: 0,
+  limited: 0.2,
+  specific: 0.5,
+  strong: 0.8,
+};
+
+export function rubricScoreFor(
+  signalLevel: SignalLevel,
+  evidencePresent: boolean,
+  evidenceQuality: EvidenceQuality,
+): number {
+  const band = ANCHOR_BAND[signalLevel];
+  const effectiveQuality: EvidenceQuality = evidencePresent ? evidenceQuality : "none";
+  const bonus = Math.round((band.ceiling - band.floor) * EVIDENCE_QUALITY_BAND_FRACTION[effectiveQuality]);
+  return clamp(Math.min(band.floor + bonus, band.ceiling));
 }

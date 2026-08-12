@@ -19,6 +19,7 @@ import { LuTrophy, LuWorkflow, LuChartBar, LuSparkles, LuSmartphone } from "reac
 import TopBar from "@/components/TopBar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/sections/Footer";
+import { CONTACT } from "@/config/contact";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -221,7 +222,7 @@ export default function AboutClient() {
             <Link href="/projects" className="ab-btn-primary">
               View My Portfolio
             </Link>
-            <a href="mailto:turkialmalki202200@gmail.com" className="ab-btn-secondary">
+            <a href={`mailto:${CONTACT.email}`} className="ab-btn-secondary">
               Let&apos;s Connect
             </a>
           </motion.div>
@@ -361,7 +362,7 @@ export default function AboutClient() {
             {...fadeUp}
             transition={{ duration: 0.7, ease: EASE, delay: 0.15 }}
           >
-            <a href="mailto:turkialmalki202200@gmail.com" className="ab-btn-primary">
+            <a href={`mailto:${CONTACT.email}`} className="ab-btn-primary">
               Contact Me
             </a>
           </motion.div>

@@ -29,6 +29,7 @@ export {
   aggregateConfidence,
   computeOverallScore,
   planWeights,
+  rubricScoreFor,
   type EffectiveWeight,
   type OverallScoreResult,
   type WeightPlan,

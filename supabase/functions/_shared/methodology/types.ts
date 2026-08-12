@@ -55,6 +55,19 @@ export type CvLanguage = "ar" | "en" | "bilingual";
 // ── Confidence (§28) ─────────────────────────────────────────────────────
 export type Confidence = "high" | "medium" | "low";
 
+// ── Constrained rubric classification (Career V2 Part 4) ─────────────────
+// The LLM no longer invents a precise 0–100 number per dimension — it
+// classifies against the SAME rubric-anchor ladder every dimension in
+// dimensions.ts already defines (scoreAnchors: 90/75/60/45/0), plus how
+// much evidence backs that classification. scoring.ts's `rubricScoreFor`
+// is the ONLY place these become a number — see that file for the mapping
+// and why it's derived from the anchors rather than invented.
+export const SIGNAL_LEVELS = ["very_weak", "weak", "mixed", "strong", "very_strong"] as const;
+export type SignalLevel = (typeof SIGNAL_LEVELS)[number];
+
+export const EVIDENCE_QUALITIES = ["none", "limited", "specific", "strong"] as const;
+export type EvidenceQuality = (typeof EVIDENCE_QUALITIES)[number];
+
 // ── Priority model (§23) ─────────────────────────────────────────────────
 export type Severity = "critical" | "high" | "medium" | "low";
 export type Effort = "quick" | "moderate" | "substantial";
@@ -174,6 +187,32 @@ export interface AtsAnalysis {
   disclaimer: string;
 }
 
+// ── ATS Compatibility (Career V2 Part 5): deterministic, code-only ───────
+// Shape lives here (methodology stays the single source of data contracts)
+// but every value is computed in analysis/atsCompatibility.ts — zero AI
+// involvement, unlike AtsAnalysis above. Kept as a SEPARATE type/field
+// from AtsAnalysis on purpose: AtsAnalysis is the LLM's ats_readability
+// dimension judgment (weighted into CV Strength); AtsCompatibility is a
+// standalone, code-only number never mixed into overallScore.
+export type AtsCheckStatus = "pass" | "warning" | "fail";
+
+export interface AtsCheckResult {
+  id: string;
+  labelEn: string;
+  labelAr: string;
+  status: AtsCheckStatus;
+  detailEn: string;
+  detailAr: string;
+}
+
+export interface AtsCompatibilityResult {
+  atsCompatibilityScore: number;
+  atsChecksPassed: number;
+  atsChecksWarning: number;
+  atsChecksFailed: number;
+  checks: AtsCheckResult[];
+}
+
 // ── Action plan (§23–24): what to fix FIRST ──────────────────────────────
 export interface ActionPlanStep {
   order: number;
@@ -219,6 +258,8 @@ export interface CareerAnalysis {
   rewriteExamples: RewriteExample[];
   targetRoleAnalysis?: TargetRoleAnalysis;
   atsAnalysis: AtsAnalysis;
+  /** Career V2 Part 5 — deterministic, code-only. Never AI-derived, never mixed into overallScore. */
+  atsCompatibility: AtsCompatibilityResult;
   actionPlan: ActionPlanStep[];
   metadata: {
     analyzedAt: string;

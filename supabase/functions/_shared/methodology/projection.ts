@@ -13,6 +13,7 @@
  *          target-role detail, missing-evidence questions, action plan.
  */
 import type {
+  AtsCompatibilityResult,
   CareerAnalysis,
   DimensionId,
   Issue,
@@ -40,6 +41,8 @@ export interface FreeReport {
   topStrengths: Array<Pick<Strength, "dimension" | "summary">>;
   rewriteExample: RewriteExample | null;
   quickWin: QuickWin | null;
+  /** Career V2 Part 6/11: ATS Compatibility is shown in the FREE report, not gated — a separate concept from CV Strength, never a universal pass claim. */
+  atsCompatibility: AtsCompatibilityResult;
 }
 
 export function projectFreeReport(analysis: CareerAnalysis): FreeReport {
@@ -64,6 +67,7 @@ export function projectFreeReport(analysis: CareerAnalysis): FreeReport {
       .map(({ dimension, summary }) => ({ dimension, summary })),
     rewriteExample: analysis.rewriteExamples[0] ?? null,
     quickWin: analysis.quickWins[0] ?? null,
+    atsCompatibility: analysis.atsCompatibility,
   };
 }
 
@@ -102,6 +106,7 @@ export interface FullReviewData {
   strengths: Strength[];
   actionPlan: CareerAnalysis["actionPlan"];
   atsAnalysis: CareerAnalysis["atsAnalysis"];
+  atsCompatibility: AtsCompatibilityResult;
   /** null, honestly, when no target role was ever provided — never a
    *  guessed role (§ never invent a target role). */
   targetRoleAnalysis: CareerAnalysis["targetRoleAnalysis"] | null;
@@ -128,6 +133,7 @@ export function projectFullReviewForClient(analysis: CareerAnalysis): FullReview
     strengths: analysis.strengths,
     actionPlan: analysis.actionPlan,
     atsAnalysis: analysis.atsAnalysis,
+    atsCompatibility: analysis.atsCompatibility,
     targetRoleAnalysis: analysis.targetRoleAnalysis ?? null,
     rewriteSuggestions: analysis.rewriteExamples,
   };

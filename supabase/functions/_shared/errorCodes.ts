@@ -41,7 +41,16 @@ export type SafeErrorCode =
   | "PARSE_TIMEOUT"
   // ── Command 06A.5: real customer analysis path ───────────────────────────
   /** The release gate (PRIVACY_SECURITY_EXECUTION_VERIFIED) is still false — real customer analysis is not open yet. Never a client-side-only state: the server enforces this too. */
-  | "GATED";
+  | "GATED"
+  // ── Career V2 Parts 15-18: send-career-report / Resend ───────────────────
+  /** RESEND_API_KEY / CAREER_REPORT_FROM_EMAIL secret missing — should not happen once configured, kept as an honest fallback rather than a silent crash. */
+  | "EMAIL_NOT_CONFIGURED"
+  /** Resend unreachable, timed out, or returned 5xx — transient, safe to retry. */
+  | "EMAIL_PROVIDER_UNAVAILABLE"
+  /** Resend returned 429 — sending too fast. */
+  | "EMAIL_RATE_LIMITED"
+  /** Resend rejected the send for any other reason (never forwarded verbatim — see safeLog.ts). */
+  | "EMAIL_SEND_FAILED";
 
 const SAFE_MESSAGES: Record<SafeErrorCode, string> = {
   INVALID_FILE: "The uploaded file could not be processed.",
@@ -62,6 +71,10 @@ const SAFE_MESSAGES: Record<SafeErrorCode, string> = {
   PARSE_FAILED: "This file could not be parsed. Please try a different file.",
   PARSE_TIMEOUT: "This file took too long to process. Please try a smaller file.",
   GATED: "Real CV analysis is in private beta and isn't open yet. Please check back soon.",
+  EMAIL_NOT_CONFIGURED: "Email delivery isn't configured yet. Please try again later.",
+  EMAIL_PROVIDER_UNAVAILABLE: "The email provider is temporarily unavailable. Please try again in a moment.",
+  EMAIL_RATE_LIMITED: "Too many send attempts. Please wait a moment and try again.",
+  EMAIL_SEND_FAILED: "We couldn't send that email. Please try again.",
 };
 
 const STATUS_BY_CODE: Record<SafeErrorCode, number> = {
@@ -83,6 +96,10 @@ const STATUS_BY_CODE: Record<SafeErrorCode, number> = {
   PARSE_FAILED: 422,
   PARSE_TIMEOUT: 504,
   GATED: 503,
+  EMAIL_NOT_CONFIGURED: 503,
+  EMAIL_PROVIDER_UNAVAILABLE: 502,
+  EMAIL_RATE_LIMITED: 429,
+  EMAIL_SEND_FAILED: 502,
 };
 
 /** Builds the exact, safe JSON body + status for a given code — no other fields ever added. */

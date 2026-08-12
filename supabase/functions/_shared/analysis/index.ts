@@ -3,8 +3,18 @@ export { ANALYSIS_PIPELINE_VERSION } from "./version.ts";
 export * from "./types.ts";
 export { LIMITS, validateAnalyzeResumeRequest } from "./validateRequest.ts";
 export { preprocessResumeText } from "./preprocess.ts";
+export {
+  computeAnalysisIdentity,
+  computeResumeFingerprint,
+  computeTargetRoleFingerprint,
+  computeJobDescriptionFingerprint,
+  type AnalysisIdentity,
+} from "./fingerprint.ts";
 export { redactContactFields } from "./redact.ts";
 export { extractNormalizedResume } from "./structure.ts";
+export { computeAtsCompatibility } from "./atsCompatibility.ts";
+export { isEnglishLeak, validateReportLanguage, type LanguageLeak, type LanguageValidationResult } from "./languageValidator.ts";
+export { buildUiFreeReport, looksLikeCareerAnalysis } from "./reportFormat.ts";
 export { resolveProvider, type ProviderResolution } from "./provider.ts";
 export { createMockCareerAIProvider } from "./mockProvider.ts";
 export { createAnthropicCareerAIProvider } from "./anthropicProvider.ts";

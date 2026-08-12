@@ -51,12 +51,51 @@ export const CAREER_COPY = {
     processingHold: "لحظات — نجهز النتيجة النهائية",
     processingA11y: "جاري تحليل سيرتك الذاتية",
 
-    // ── score ──
+    // ── score (Career V2 Part 1/7/8/25/27: three distinct concepts, never one universal "ATS pass score") ──
     scoreOutOf: "/100",
-    scoreRevealLabel: "تقييم سيرتك",
+    scoreRevealLabel: "درجة قوة السيرة",
+    cvStrengthLabel: "درجة قوة السيرة",
     scoreWeakLine: "خبرتك قد تكون أقوى من الطريقة اللي تظهر فيها سيرتك الآن.",
     scoreStrongLine: "سيرتك قوية، وفيه فرص بسيطة تخليها أوضح وأقوى.",
     confidenceLabel: { high: "ثقة عالية", medium: "ثقة متوسطة", low: "ثقة منخفضة" },
+    atsCompatibilityLabel: "توافق ATS",
+    atsCompatibilityFull: "التوافق مع أنظمة التوظيف ATS",
+    atsCompatibilityGood: "قابلية قراءة جيدة",
+    atsCompatibilityMixed: "قابلية قراءة متوسطة",
+    atsCompatibilityWeak: "قابلية قراءة تحتاج تحسين",
+    atsCompatibilityDisclaimer:
+      "التوافق مع ATS هو تقدير لقابلية قراءة وتنظيم السيرة وفق أنماط شائعة في أنظمة التوظيف، وليس ضماناً للقبول أو الرفض لدى شركة معينة.",
+    jobMatchLabel: "مدى التوافق مع الوظيفة",
+    jobMatchMissingNote: "أضف وصف الوظيفة لاحقاً لمعرفة مدى تطابق سيرتك معها.",
+    evidenceCoverageLabel: "تغطية الأدلة",
+    evidenceCoverageTooltip: "يعكس مقدار الأدلة التي وجدناها في السيرة لدعم التقييم.",
+    evidenceCoverageLevel: { high: "قوية", medium: "متوسطة", low: "محدودة" },
+    strongestAreaLabel: "أقوى جانب",
+    whyThisScoreH: "ليش حصلت على هذه الدرجة؟",
+    raisedScoreH: "رفع الدرجة",
+    loweredScoreH: "خفض الدرجة",
+    methodologyBadge: "منهج التقييم v2",
+
+    // ── ATS Compatibility card (Career V2 Part 6/11 — deterministic, code-computed) ──
+    atsChecksPassedLabel: "فحص ناجح",
+    atsChecksWarningLabel: "فحص فيه تنبيه",
+    atsChecksFailedLabel: "فحص فاشل",
+    atsReadabilityRiskNote:
+      "عدد الفحوصات الفاشلة مرتفع — هذا يشير لخطر في قابلية القراءة الآلية، وليس حكمًا بالرفض من أي نظام توظيف محدد.",
+
+    // ── send report to email (placeholder — real send + animation are separate work) ──
+    sendToEmailCta: "أرسل التقرير لبريدي",
+    sendToEmailComingSoonTitle: "قريباً",
+    sendToEmailComingSoonBody: "إرسال التقرير للبريد الإلكتروني قريباً — هذي معاينة أولية فقط.",
+    sendToEmailPlaceholder: "بريدك الإلكتروني",
+    sendToEmailSubmit: "إرسال التقرير",
+    sendToEmailTitle: "أرسل التقرير لبريدك",
+    sendToEmailBody: "خله عندك وارجع له بأي وقت.",
+    sendToEmailSending: "جاري الإرسال...",
+    sendToEmailSentCta: "تم الإرسال ✓",
+    sendToEmailSent: "تم إرسال التقرير ✓",
+    sendToEmailCheckInbox: "شيّك بريدك — التقرير وصلك.",
+    sendToEmailError: "تعذر إرسال التقرير. حاول مرة ثانية.",
 
     // ── free report ──
     dimensionsH: "وين تقف سيرتك",
@@ -75,6 +114,8 @@ export const CAREER_COPY = {
 
     // ── full review ──
     fullH: "المراجعة الكاملة",
+    fullHeadline: "كمّل سيرتك، مو بس حلّلها.",
+    fullSubheading: "التحليل المجاني يعطيك الصورة العامة. المراجعة الكاملة تعطيك كيف تصلح كل نقطة.",
     fullFound: "وجدنا في سيرتك:",
     fullCounts: {
       recommendations: "توصية للتحسين",
@@ -82,6 +123,14 @@ export const CAREER_COPY = {
       sectionsToRewrite: "أقسام تحتاج إعادة صياغة",
       missingEvidenceQuestions: "أسئلة لإكمال الأدلة",
     },
+    /* count-based rows carry "{n}" — replaced with the real count and only
+       ever rendered when that count is > 0 (never a fabricated number). */
+    fullLockedRowRecommendations: "{n} توصية تفصيلية",
+    fullLockedRowHighPriority: "{n} تغييرات عالية الأولوية",
+    fullLockedRowAts: "خطة تحسين ATS",
+    fullLockedRowSections: "توصيات لكل قسم",
+    fullLockedRowRewrites: "اقتراحات إعادة صياغة",
+    fullLockedRowPriorityOrder: "ترتيب ما يجب إصلاحه أولاً",
     fullLockedRows: [
       "توصيات مفصلة لكل بُعد",
       "تحسينات التوافق مع أنظمة التوظيف (ATS)",
@@ -89,10 +138,23 @@ export const CAREER_COPY = {
       "توجيه حسب الوظيفة المستهدفة",
       "اقتراحات إعادة صياغة إضافية",
     ],
-    fullCta: "راجع التقرير الكامل بـ $5",
+    fullIncludes: [
+      "توصيات تفصيلية",
+      "تحسين ATS",
+      "خطة عمل بالأولوية",
+      "مراجعة قسم بقسم",
+      "اقتراحات إعادة صياغة",
+    ],
+    fullCta: "افتح المراجعة الكاملة بـ $5",
     fullLockedNote: "الدفع يفتح قريباً — التقرير الكامل غير متاح حالياً.",
     fullWhat: "وش تحصل مقابل $5؟ مراجعة مفصلة، إصلاحات مرتبة بالأولوية، وتوجيه قسم بقسم.",
     lockedA11y: "محتوى مقفل — يفتح مع المراجعة الكاملة",
+    paymentState: {
+      notStarted: "الدفع لم يبدأ",
+      pendingVerification: "بانتظار التحقق",
+      verified: "تم التحقق ✓",
+      opened: "تم فتح التقرير",
+    },
     fullCtaPreparing: "جاري تجهيز الدفع...",
     fullCtaError: "تعذر تجهيز الدفع. حاول مرة أخرى.",
     fullPayNote: "بعد الدفع عبر PayPal، ارجع لهذه الصفحة وأرسل رقم العملية للتحقق — تقريرك الكامل يفتح بعد التأكيد.",
@@ -130,6 +192,27 @@ export const CAREER_COPY = {
     methodAI:
       "نحلل سيرتك وفق معايير واضحة، والتقييم النهائي يُحسب بشكل ثابت وليس رقماً عشوائياً من الذكاء الاصطناعي.",
     builtBy: "من بناء تركي المالكي — سنوات من مراجعة وبناء وتطوير الملفات المهنية والمنتجات الرقمية.",
+
+    // ── next services (end of report cross-sell — Career V2 Part J) ──
+    nextStepsH: "وش الخطوة التالية؟",
+    nextStepsGroup1H: "طور حضورك المهني",
+    nextStepsGroup2H: "وعندك فكرة تبغى تبنيها؟",
+    nextStepsSeeAll: "عرض كل الخدمات",
+    nextServiceCvName: "إعادة كتابة السيرة الذاتية",
+    nextServiceCvCta: "أعد كتابة سيرتي",
+    nextServiceLinkedinName: "تحسين LinkedIn",
+    nextServiceLinkedinCta: "حسّن LinkedIn",
+    nextServicePortfolioName: "الموقع الشخصي",
+    nextServicePortfolioCta: "ابنِ موقعي الشخصي",
+
+    // ── contact / social footer (Career V2 Part K) ──
+    contactH: "تحتاج مساعدة مباشرة؟",
+    contactName: "تركي المالكي",
+    contactSentence: "إذا عندك سؤال عن تقريرك أو تبغى مساعدة شخصية، تواصل معي مباشرة.",
+    contactEmailCta: "راسلني",
+    contactLinkedinCta: "LinkedIn",
+    contactGithubCta: "GitHub",
+    contactSiteCta: "الموقع",
 
     // ── returning ──
     returningH: "تقريرك الأخير",
@@ -189,10 +272,49 @@ export const CAREER_COPY = {
     processingA11y: "Analyzing your CV",
 
     scoreOutOf: "/100",
-    scoreRevealLabel: "Your CV score",
+    scoreRevealLabel: "CV Strength",
+    cvStrengthLabel: "CV Strength",
     scoreWeakLine: "Your experience may be stronger than your CV currently shows.",
     scoreStrongLine: "Your CV is already strong. There are still a few ways to sharpen it.",
     confidenceLabel: { high: "High confidence", medium: "Medium confidence", low: "Low confidence" },
+    atsCompatibilityLabel: "ATS",
+    atsCompatibilityFull: "ATS Compatibility",
+    atsCompatibilityGood: "Good readability",
+    atsCompatibilityMixed: "Mixed readability",
+    atsCompatibilityWeak: "Needs improvement",
+    atsCompatibilityDisclaimer:
+      "ATS Compatibility estimates how readable and well-structured your CV is for common applicant-tracking patterns — it is not a guarantee of acceptance or rejection by any specific company.",
+    jobMatchLabel: "Job Match",
+    jobMatchMissingNote: "Add a job description to measure role-specific match.",
+    evidenceCoverageLabel: "Evidence coverage",
+    evidenceCoverageTooltip: "Reflects how much evidence we found in your CV to support the assessment.",
+    evidenceCoverageLevel: { high: "Strong", medium: "Medium", low: "Limited" },
+    strongestAreaLabel: "Strongest area",
+    whyThisScoreH: "Why this score?",
+    raisedScoreH: "Raised the score",
+    loweredScoreH: "Lowered the score",
+    methodologyBadge: "Methodology v2",
+
+    // ── ATS Compatibility card (Career V2 Part 6/11 — deterministic, code-computed) ──
+    atsChecksPassedLabel: "checks passed",
+    atsChecksWarningLabel: "checks with a warning",
+    atsChecksFailedLabel: "checks failed",
+    atsReadabilityRiskNote:
+      "A high number of failed checks reads as a readability risk for applicant-tracking systems — not a rejection verdict from any specific company.",
+
+    // ── send report to email (placeholder — real send + animation are separate work) ──
+    sendToEmailCta: "Email me this report",
+    sendToEmailComingSoonTitle: "Coming soon",
+    sendToEmailComingSoonBody: "Emailing your report is coming soon — this is just an early preview.",
+    sendToEmailPlaceholder: "Your email",
+    sendToEmailSubmit: "Send report",
+    sendToEmailTitle: "Send this report to your email",
+    sendToEmailBody: "Keep it and come back to it anytime.",
+    sendToEmailSending: "Sending...",
+    sendToEmailSentCta: "Sent ✓",
+    sendToEmailSent: "Report sent ✓",
+    sendToEmailCheckInbox: "Check your inbox — it's on its way.",
+    sendToEmailError: "Couldn't send the report. Please try again.",
 
     dimensionsH: "Where your CV stands",
     dimensionsExpand: "Show all dimensions",
@@ -209,6 +331,8 @@ export const CAREER_COPY = {
     rewriteDemoNote: "Illustrative example — real rewrites are part of the Full Review.",
 
     fullH: "Full Review",
+    fullHeadline: "Complete your CV, not just diagnose it.",
+    fullSubheading: "The free analysis gives you the big picture. The Full Review shows you how to fix every point.",
     fullFound: "In your CV we found:",
     fullCounts: {
       recommendations: "improvement recommendations",
@@ -216,6 +340,14 @@ export const CAREER_COPY = {
       sectionsToRewrite: "sections to rewrite",
       missingEvidenceQuestions: "missing-evidence questions",
     },
+    /* count-based rows carry "{n}" — replaced with the real count and only
+       ever rendered when that count is > 0 (never a fabricated number). */
+    fullLockedRowRecommendations: "{n} detailed recommendations",
+    fullLockedRowHighPriority: "{n} high-priority changes",
+    fullLockedRowAts: "ATS improvement plan",
+    fullLockedRowSections: "Section-by-section recommendations",
+    fullLockedRowRewrites: "Rewrite suggestions",
+    fullLockedRowPriorityOrder: "What to fix first, in order",
     fullLockedRows: [
       "Detailed recommendations per dimension",
       "ATS readability improvements",
@@ -223,10 +355,23 @@ export const CAREER_COPY = {
       "Target-role guidance",
       "Additional rewrite suggestions",
     ],
+    fullIncludes: [
+      "Detailed recommendations",
+      "ATS improvements",
+      "Prioritized action plan",
+      "Section-by-section review",
+      "Rewrite suggestions",
+    ],
     fullCta: "Unlock the Full Review — $5",
     fullLockedNote: "Checkout opens soon — the Full Review is not available yet.",
     fullWhat: "What do you get for $5? A detailed review, prioritized fixes, and section-by-section guidance.",
     lockedA11y: "Locked content — included in the Full Review",
+    paymentState: {
+      notStarted: "Payment not started",
+      pendingVerification: "Awaiting verification",
+      verified: "Verified ✓",
+      opened: "Report unlocked",
+    },
     fullCtaPreparing: "Preparing checkout...",
     fullCtaError: "Couldn't start checkout. Please try again.",
     fullPayNote: "After paying on PayPal, come back to this page and submit your transaction reference to verify — your full report unlocks once confirmed.",
@@ -263,6 +408,27 @@ export const CAREER_COPY = {
       "Your CV is analyzed across structured criteria. The final score is calculated consistently — not guessed by the AI.",
     builtBy:
       "Built by Turki Almalki — from years of reviewing, building and improving professional profiles and digital products.",
+
+    // ── next services (end of report cross-sell — Career V2 Part J) ──
+    nextStepsH: "What's next?",
+    nextStepsGroup1H: "Level up your professional presence",
+    nextStepsGroup2H: "Got an idea you want to build?",
+    nextStepsSeeAll: "See all services",
+    nextServiceCvName: "CV Rewrite",
+    nextServiceCvCta: "Rewrite my CV",
+    nextServiceLinkedinName: "LinkedIn Optimization",
+    nextServiceLinkedinCta: "Optimize my LinkedIn",
+    nextServicePortfolioName: "Personal Website",
+    nextServicePortfolioCta: "Build my portfolio",
+
+    // ── contact / social footer (Career V2 Part K) ──
+    contactH: "Need direct help?",
+    contactName: "Turki Almalki",
+    contactSentence: "If you have a question about your report or want personal help, reach out directly.",
+    contactEmailCta: "Email me",
+    contactLinkedinCta: "LinkedIn",
+    contactGithubCta: "GitHub",
+    contactSiteCta: "Website",
 
     returningH: "Your last report",
     returningNew: "New analysis",

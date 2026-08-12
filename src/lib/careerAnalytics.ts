@@ -37,7 +37,19 @@ export type CareerEventName =
   | "career_payment_verification_submitted"
   | "career_auth_started"
   | "career_auth_completed"
-  | "career_error_shown";
+  | "career_error_shown"
+  // Career V2 (Part 31) — the journey beyond the score: determinism/
+  // trust, email delivery, the paywall preview, the full-review unlock,
+  // and the next-step/services/contact cross-sell. Same discipline: names
+  // allowlisted here first, payloads stay primitive and PII-free.
+  | "career_analysis_completed"
+  | "career_report_email_opened"
+  | "career_report_email_sent"
+  | "career_locked_section_viewed"
+  | "career_full_review_clicked"
+  | "career_full_review_unlocked"
+  | "career_service_clicked"
+  | "career_contact_clicked";
 
 const CAREER_EVENT_NAMES: ReadonlySet<CareerEventName> = new Set([
   "career_viewed",
@@ -56,6 +68,14 @@ const CAREER_EVENT_NAMES: ReadonlySet<CareerEventName> = new Set([
   "career_auth_started",
   "career_auth_completed",
   "career_error_shown",
+  "career_analysis_completed",
+  "career_report_email_opened",
+  "career_report_email_sent",
+  "career_locked_section_viewed",
+  "career_full_review_clicked",
+  "career_full_review_unlocked",
+  "career_service_clicked",
+  "career_contact_clicked",
 ]);
 
 /**

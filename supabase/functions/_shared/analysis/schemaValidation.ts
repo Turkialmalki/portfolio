@@ -9,25 +9,35 @@
  * on its own).
  *
  * §9 hard rule, enforced structurally: this validator reads exactly the
- * fields of `DimensionAIResult` (dimensionId, score, confidence, evidence,
- * reasonCode, shortReason) and nothing else. If a provider's raw JSON
- * includes an `overallScore` field, it is simply never read here — there
- * is no code path from raw AI JSON to `CareerAnalysis.overallScore` that
- * doesn't go through scoring.ts's `computeOverallScore`.
+ * fields of `DimensionAIResult` (dimensionId, signalLevel, evidencePresent,
+ * evidenceQuality, confidence, evidence, reasonCode, shortReason) and
+ * nothing else. If a provider's raw JSON includes an `overallScore` or
+ * `score` field, it is simply never read here — there is no code path
+ * from raw AI JSON to `CareerAnalysis.overallScore` that doesn't go
+ * through scoring.ts's `computeOverallScore`/`rubricScoreFor`.
  *
+ * `signalLevel`/`evidenceQuality` ARE validated against their closed
+ * lists (methodology/types.ts's `SIGNAL_LEVELS`/`EVIDENCE_QUALITIES|) —
+ * unlike `reasonCode`. That's not a contradiction: those two fields are
+ * real JSON-schema `enum`s in the tool call itself (anthropicProvider.ts),
+ * the same mechanism `confidence`/`dimensionId` already use here safely,
+ * so the model structurally cannot emit a value outside the list.
  * `reasonCode` is validated as a non-empty string only, NOT against the
- * closed list in methodology/reasonCodes.ts — rejecting an otherwise
- * valid result because the model chose a reasonable code outside a fixed
- * list would recreate Command 05D.1's schema-validation-failure problem.
+ * closed list in methodology/reasonCodes.ts, because it is a free string
+ * in the schema (never enum-enforced) — rejecting an otherwise valid
+ * result because the model chose a reasonable code outside a fixed list
+ * would recreate Command 05D.1's schema-validation-failure problem.
  * `shortReason` is length-guided, not hard-capped: an over-length reason
  * is still real content, not a structural defect worth discarding an
  * entire dimension result over.
  */
-import { DIMENSION_IDS, type DimensionId } from "../methodology/types.ts";
+import { DIMENSION_IDS, EVIDENCE_QUALITIES, SIGNAL_LEVELS, type DimensionId } from "../methodology/types.ts";
 import type { DimensionAIResult, SchemaIssue } from "./types.ts";
 
 const CONFIDENCE_VALUES = new Set(["high", "medium", "low"]);
 const DIMENSION_ID_SET = new Set<string>(DIMENSION_IDS);
+const SIGNAL_LEVEL_SET = new Set<string>(SIGNAL_LEVELS);
+const EVIDENCE_QUALITY_SET = new Set<string>(EVIDENCE_QUALITIES);
 
 function isValidEvidence(e: unknown): e is { section: string; excerpt: string } | null {
   if (e === null || e === undefined) return true;
@@ -49,8 +59,14 @@ function validateOne(raw: unknown, index: number, expected: Set<DimensionId>): {
   } else if (!expected.has(o.dimensionId as DimensionId)) {
     issues.push({ path: `${path}.dimensionId`, issue: `dimensionId ${o.dimensionId} was not requested for this analysis` });
   }
-  if (typeof o.score !== "number" || Number.isNaN(o.score) || o.score < 0 || o.score > 100) {
-    issues.push({ path: `${path}.score`, issue: "score must be a number 0–100" });
+  if (typeof o.signalLevel !== "string" || !SIGNAL_LEVEL_SET.has(o.signalLevel)) {
+    issues.push({ path: `${path}.signalLevel`, issue: "signalLevel must be one of very_weak|weak|mixed|strong|very_strong" });
+  }
+  if (typeof o.evidencePresent !== "boolean") {
+    issues.push({ path: `${path}.evidencePresent`, issue: "evidencePresent must be a boolean" });
+  }
+  if (typeof o.evidenceQuality !== "string" || !EVIDENCE_QUALITY_SET.has(o.evidenceQuality)) {
+    issues.push({ path: `${path}.evidenceQuality`, issue: "evidenceQuality must be one of none|limited|specific|strong" });
   }
   if (typeof o.confidence !== "string" || !CONFIDENCE_VALUES.has(o.confidence)) {
     issues.push({ path: `${path}.confidence`, issue: "confidence must be high|medium|low" });
@@ -72,7 +88,9 @@ function validateOne(raw: unknown, index: number, expected: Set<DimensionId>): {
     issues: [],
     value: {
       dimensionId: o.dimensionId as DimensionId,
-      score: o.score as number,
+      signalLevel: o.signalLevel as DimensionAIResult["signalLevel"],
+      evidencePresent: o.evidencePresent as boolean,
+      evidenceQuality: o.evidenceQuality as DimensionAIResult["evidenceQuality"],
       confidence: o.confidence as DimensionAIResult["confidence"],
       evidence: (o.evidence as DimensionAIResult["evidence"]) ?? null,
       reasonCode: o.reasonCode as string,

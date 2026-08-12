@@ -149,6 +149,24 @@ export interface UiAtsAnalysis {
   disclaimer: string;
 }
 
+/** Career V2 Part 5 — deterministic, code-only. Separate concept from CV Strength/UiAtsAnalysis above. */
+export interface UiAtsCheck {
+  id: string;
+  labelEn: string;
+  labelAr: string;
+  status: "pass" | "warning" | "fail";
+  detailEn: string;
+  detailAr: string;
+}
+
+export interface UiAtsCompatibility {
+  atsCompatibilityScore: number;
+  atsChecksPassed: number;
+  atsChecksWarning: number;
+  atsChecksFailed: number;
+  checks: UiAtsCheck[];
+}
+
 export interface UiKeywordFinding {
   keyword: string;
   tier: "core" | "supporting" | "optional";
@@ -175,6 +193,7 @@ export interface UiFullReview {
   strengths: UiStrengthDetail[];
   actionPlan: UiActionPlanStep[];
   atsAnalysis: UiAtsAnalysis;
+  atsCompatibility: UiAtsCompatibility;
   /** null, honestly, when no target role was ever given — never a guess. */
   targetRoleAnalysis: UiTargetRoleAnalysis | null;
   rewriteSuggestions: UiRewriteSuggestion[];
@@ -193,6 +212,8 @@ export interface UiFreeReport {
   /** Language the analyzed CV (and therefore all finding text) is written in. */
   reportLang: CareerLang;
   fullReviewCounts: UiFullReviewCounts;
+  /** Career V2 Part 6/11 — shown in the FREE report, not gated. */
+  atsCompatibility: UiAtsCompatibility;
 }
 
 /**
@@ -213,6 +234,11 @@ export type CareerPhase =
        *  verification are created against. Never used to re-derive report
        *  content client-side. */
       resumeId?: string;
+      /** Set for a real analysis — the `resume_analyses.id` this report
+       *  came from. Drives the `?analysis=` deep link (Career V2 Part 19)
+       *  and is the ownership handle `send-career-report` checks against
+       *  (Part 17) — never used to re-derive report content client-side. */
+      analysisId?: string;
     }
   | { name: "ERROR"; code: CareerErrorCode; fileName?: string };
 

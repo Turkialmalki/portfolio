@@ -31,11 +31,14 @@ import { safeError, classifyRpcError, type SafeErrorCode } from "../_shared/erro
 import { safeLog, safeLogError } from "../_shared/safeLog.ts";
 import { PRIVACY_SECURITY_EXECUTION_VERIFIED } from "../_shared/releaseGates.ts";
 import { parseResumeFile } from "../_shared/parser/index.ts";
-import { SENIORITY_LEVELS, projectFreeReport } from "../_shared/methodology/index.ts";
+import { CAREER_METHODOLOGY_VERSION, SENIORITY_LEVELS } from "../_shared/methodology/index.ts";
 import {
   AnalysisPipelineError,
   AnthropicProviderError,
   buildProviderDiagnosticBody,
+  buildUiFreeReport,
+  computeAnalysisIdentity,
+  looksLikeCareerAnalysis,
   resolveProvider,
   runAnalysis,
   runBasicSmokeTest,
@@ -483,6 +486,64 @@ async function handleCustomerAnalysis(
     return respondError("INVALID_REQUEST", headers);
   }
 
+  // §Career V2 Part 2–3: deterministic analysis identity. Same resume
+  // content + same methodology version + same target role + same job
+  // description → the SAME stored analysis is reused instead of calling
+  // Anthropic again — this is the actual fix for score drift, not a
+  // display-layer rounding trick. Computed AFTER validation so the
+  // fingerprint always matches exactly what would be sent to the AI.
+  const identity = await computeAnalysisIdentity({
+    resumeText: validated.request.resumeText,
+    methodologyVersion: CAREER_METHODOLOGY_VERSION,
+    targetRole: validated.request.targetRole,
+    jobDescription: validated.request.jobDescription,
+  });
+
+  // Lookup through the CALLER's own RLS-scoped client (resume_analyses_
+  // select_own) — same ownership pattern as the `resumes` read above — so
+  // this can never surface another user's cached analysis even if a
+  // fingerprint collided (it structurally can't select cross-user rows).
+  const { data: existing, error: existingError } = await userClient
+    .from("resume_analyses")
+    .select("id, result_json, status")
+    .eq("resume_id", resumeId)
+    .eq("analysis_fingerprint", identity.analysisFingerprint)
+    .eq("status", "complete")
+    .maybeSingle();
+
+  if (existingError) {
+    safeLogError({ event: "analyze_resume_customer_reuse_lookup_failed", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: "INTERNAL_ERROR", duration_ms: Date.now() - start });
+    // Non-fatal: fall through and analyze fresh rather than failing the
+    // whole request over a cache-lookup error.
+  }
+
+  if (existing && looksLikeCareerAnalysis(existing.result_json)) {
+    await admin.from("resumes").update({ status: "analyzed", content_fingerprint: identity.resumeFingerprint }).eq("id", resumeId);
+    const duration_ms = Date.now() - start;
+    safeLog({
+      event: "analyze_resume_customer_reused",
+      request_id: requestId,
+      resume_id: resumeId,
+      analysis_id: existing.id,
+      user_id: user.id,
+      status: 200,
+      duration_ms,
+    });
+    return jsonResponse(
+      {
+        ok: true,
+        mode: "customer",
+        resumeId,
+        analysisId: existing.id,
+        report: buildUiReport(existing.result_json, outputLanguage),
+        analysisLatencyMs: duration_ms,
+        reused: true,
+      },
+      200,
+      headers,
+    );
+  }
+
   const { provider, realProviderConfigured } = resolveProvider((name) => Deno.env.get(name));
   if (!realProviderConfigured) {
     // A real customer must never receive a mock-provider result —
@@ -502,8 +563,13 @@ async function handleCustomerAnalysis(
     });
 
     const analysis = result.analysis;
-    const free = projectFreeReport(analysis);
 
+    // §Career V2 Part 2–3: persist the same identity we looked up above,
+    // plus the methodology version, so a future resubmission with
+    // unchanged inputs can reuse this exact row (resume_analyses_reuse_idx
+    // enforces at most one complete row per resume_id+analysis_fingerprint;
+    // ON CONFLICT DO NOTHING + a follow-up select handles the rare race
+    // where two requests computed the same fingerprint concurrently).
     const { data: inserted, error: insertError } = await admin
       .from("resume_analyses")
       .insert({
@@ -511,56 +577,51 @@ async function handleCustomerAnalysis(
         user_id: user.id,
         overall_score: analysis.overallScore,
         analysis_version: result.engineMetadata.analysisPipelineVersion,
+        methodology_version: CAREER_METHODOLOGY_VERSION,
+        resume_fingerprint: identity.resumeFingerprint,
+        target_role_fingerprint: identity.targetRoleFingerprint,
+        job_description_fingerprint: identity.jobDescriptionFingerprint,
+        analysis_fingerprint: identity.analysisFingerprint,
         result_json: analysis,
         status: "complete",
       })
       .select("id")
       .single();
 
+    let analysisId = inserted?.id as string | undefined;
     if (insertError || !inserted) {
-      const code = classifyRpcError(insertError?.message ?? "");
-      safeLogError({ event: "analyze_resume_customer_persist_failed", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: code, duration_ms: Date.now() - start });
-      await admin.from("resumes").update({ status: "failed" }).eq("id", resumeId);
-      return respondError(code, headers);
+      // Postgres unique_violation (23505) on resume_analyses_reuse_idx
+      // means a concurrent request already persisted this exact analysis
+      // identity first — reuse THAT row instead of failing, rather than
+      // surfacing a spurious 500 for what is actually a successful reuse
+      // race between two near-simultaneous requests for the same CV.
+      if ((insertError as { code?: string } | null)?.code === "23505") {
+        const { data: raced } = await userClient
+          .from("resume_analyses")
+          .select("id")
+          .eq("resume_id", resumeId)
+          .eq("analysis_fingerprint", identity.analysisFingerprint)
+          .eq("status", "complete")
+          .maybeSingle();
+        analysisId = raced?.id;
+      }
+      if (!analysisId) {
+        const code = classifyRpcError(insertError?.message ?? "");
+        safeLogError({ event: "analyze_resume_customer_persist_failed", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: code, duration_ms: Date.now() - start });
+        await admin.from("resumes").update({ status: "failed" }).eq("id", resumeId);
+        return respondError(code, headers);
+      }
     }
 
-    await admin.from("resumes").update({ status: "analyzed" }).eq("id", resumeId);
+    await admin.from("resumes").update({ status: "analyzed", content_fingerprint: identity.resumeFingerprint }).eq("id", resumeId);
 
-    // §15: the frontend renders this exact shape (UiFreeReport in
-    // careerTypes.ts) without recomputing anything — fullReviewCounts are
-    // all deterministic counts already produced by the real analysis,
-    // never invented for the paywall preview.
-    const uiReport = {
-      overallScore: free.overallScore,
-      scoreBand: free.scoreBand,
-      confidence: free.confidence,
-      // The language the customer-facing prose was actually written in
-      // (outputLanguage) — NOT the CV's own detected language. Drives
-      // `dir` on summary/issue/strength/quick-win text. The one exception
-      // is the rewrite example's `before`/`after`, which stays in the
-      // CV's own language on purpose (a rewrite must never translate the
-      // person's actual bullet) — RewritePreview renders those with their
-      // own dir when it differs from reportLang.
-      reportLang: outputLanguage,
-      dimensionSummary: free.dimensionSummary,
-      topIssues: free.topIssues,
-      topStrengths: free.topStrengths,
-      rewriteExample: free.rewriteExample,
-      quickWin: free.quickWin,
-      fullReviewCounts: {
-        recommendations: analysis.actionPlan.length,
-        highPriority: analysis.issues.filter((i) => i.severity === "critical" || i.severity === "high").length,
-        sectionsToRewrite: new Set(analysis.issues.map((i) => i.dimension)).size,
-        missingEvidenceQuestions: analysis.missingEvidenceQuestions.length,
-      },
-    };
-
+    const uiReport = buildUiReport(analysis, outputLanguage);
     const duration_ms = Date.now() - start;
     safeLog({
       event: "analyze_resume_customer_completed",
       request_id: requestId,
       resume_id: resumeId,
-      analysis_id: inserted.id,
+      analysis_id: analysisId,
       user_id: user.id,
       status: 200,
       duration_ms,
@@ -571,7 +632,7 @@ async function handleCustomerAnalysis(
         ok: true,
         mode: "customer",
         resumeId,
-        analysisId: inserted.id,
+        analysisId,
         report: uiReport,
         analysisLatencyMs: duration_ms,
       },
@@ -614,3 +675,9 @@ async function handleCustomerAnalysis(
     return respondError("INTERNAL_ERROR", headers);
   }
 }
+
+/* buildUiFreeReport (aliased below as buildUiReport)/looksLikeCareerAnalysis
+   now live in _shared/analysis/reportFormat.ts — shared with
+   get-analysis-report so a deep-link restore (Career V2 Part 19) returns a
+   byte-identical shape to a fresh/reused analysis. */
+const buildUiReport = buildUiFreeReport;
