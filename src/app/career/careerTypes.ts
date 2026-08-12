@@ -104,6 +104,82 @@ export interface UiFullReviewCounts {
   missingEvidenceQuestions: number;
 }
 
+/**
+ * Mirror of projection.ts's FullReviewData — the entitlement-gated paid
+ * content, served ONLY by `get-full-review` after it independently
+ * verifies ownership + an active `career_cv_full_review` entitlement.
+ * Nothing here is ever computed client-side or shown without that check
+ * succeeding server-side first.
+ */
+export interface UiDimensionDetail {
+  dimension: DimensionId;
+  score: number;
+  reason: string;
+  recommendations: string[];
+}
+
+export interface UiIssueDetail {
+  dimension: DimensionId;
+  severity: Severity;
+  effort: "quick" | "moderate" | "substantial";
+  summary: string;
+  recommendations: string[];
+}
+
+export interface UiStrengthDetail {
+  dimension: DimensionId;
+  summary: string;
+}
+
+export interface UiActionPlanStep {
+  order: number;
+  issueSummary: string;
+  severity: Severity;
+  effort: "quick" | "moderate" | "substantial";
+}
+
+export interface UiAtsIndicator {
+  check: string;
+  status: "ok" | "risk" | "problem";
+  detail: string;
+}
+
+export interface UiAtsAnalysis {
+  indicators: UiAtsIndicator[];
+  disclaimer: string;
+}
+
+export interface UiKeywordFinding {
+  keyword: string;
+  tier: "core" | "supporting" | "optional";
+  match: "strong_match" | "partial_match" | "not_demonstrated";
+}
+
+export interface UiTargetRoleAnalysis {
+  targetRole: string;
+  hasJobDescription: boolean;
+  positioningVerdict: string;
+  keywordFindings: UiKeywordFinding[];
+  gaps: string[];
+}
+
+export interface UiRewriteSuggestion {
+  before: string;
+  after: string;
+  note: string;
+}
+
+export interface UiFullReview {
+  dimensionDetails: UiDimensionDetail[];
+  issues: UiIssueDetail[];
+  strengths: UiStrengthDetail[];
+  actionPlan: UiActionPlanStep[];
+  atsAnalysis: UiAtsAnalysis;
+  /** null, honestly, when no target role was ever given — never a guess. */
+  targetRoleAnalysis: UiTargetRoleAnalysis | null;
+  rewriteSuggestions: UiRewriteSuggestion[];
+}
+
 /** Mirror of projection.ts FreeReport, plus UI-only context fields. */
 export interface UiFreeReport {
   overallScore: number;
@@ -127,7 +203,17 @@ export type CareerPhase =
   | { name: "LANDING" }
   | { name: "UPLOADING"; fileName: string }
   | { name: "PROCESSING"; fileName: string; startedAt: number }
-  | { name: "FREE_RESULT"; report: UiFreeReport; fileName: string; revealed: boolean }
+  | {
+      name: "FREE_RESULT";
+      report: UiFreeReport;
+      fileName: string;
+      revealed: boolean;
+      /** Set for a real analysis (undefined for a synthetic-demo fixture)
+       *  — the handle `career_cv_full_review` purchases and payment
+       *  verification are created against. Never used to re-derive report
+       *  content client-side. */
+      resumeId?: string;
+    }
   | { name: "ERROR"; code: CareerErrorCode; fileName?: string };
 
 /**

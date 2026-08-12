@@ -72,3 +72,63 @@ export function projectFreeReport(analysis: CareerAnalysis): FreeReport {
 export function projectFullReport(analysis: CareerAnalysis): CareerAnalysis {
   return analysis;
 }
+
+/**
+ * PAID FULL REVIEW, shaped for the client (Command 06B — entitlement-gated
+ * Full Review). Everything here already exists in the analysis produced at
+ * scan time — no second AI call, nothing invented for the paywall. Only
+ * `get-full-review` calls this, and only after it has independently
+ * confirmed the caller owns the analysis AND holds a verified entitlement
+ * for `career_cv_full_review`.
+ */
+export interface FullReviewDimensionDetail {
+  dimension: DimensionId;
+  score: number;
+  reason: string;
+  recommendations: string[];
+}
+
+export interface FullReviewIssueDetail {
+  dimension: DimensionId;
+  severity: Issue["severity"];
+  effort: Issue["effort"];
+  summary: string;
+  recommendations: string[];
+}
+
+export interface FullReviewData {
+  dimensionDetails: FullReviewDimensionDetail[];
+  issues: FullReviewIssueDetail[];
+  strengths: Strength[];
+  actionPlan: CareerAnalysis["actionPlan"];
+  atsAnalysis: CareerAnalysis["atsAnalysis"];
+  /** null, honestly, when no target role was ever provided — never a
+   *  guessed role (§ never invent a target role). */
+  targetRoleAnalysis: CareerAnalysis["targetRoleAnalysis"] | null;
+  rewriteSuggestions: RewriteExample[];
+}
+
+export function projectFullReviewForClient(analysis: CareerAnalysis): FullReviewData {
+  return {
+    dimensionDetails: analysis.dimensions.map((d) => ({
+      dimension: d.dimension,
+      score: d.score,
+      reason: d.reason,
+      recommendations: d.recommendations,
+    })),
+    issues: [...analysis.issues]
+      .sort((a, b) => b.priorityRank - a.priorityRank)
+      .map(({ dimension, severity, effort, summary, recommendations }) => ({
+        dimension,
+        severity,
+        effort,
+        summary,
+        recommendations,
+      })),
+    strengths: analysis.strengths,
+    actionPlan: analysis.actionPlan,
+    atsAnalysis: analysis.atsAnalysis,
+    targetRoleAnalysis: analysis.targetRoleAnalysis ?? null,
+    rewriteSuggestions: analysis.rewriteExamples,
+  };
+}

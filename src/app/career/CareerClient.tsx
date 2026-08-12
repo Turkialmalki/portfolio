@@ -83,7 +83,7 @@ function mapBackendErrorCode(code: string | undefined): CareerErrorCode {
 type Action =
   | { type: "FILE_SELECTED"; fileName: string }
   | { type: "UPLOAD_DONE" }
-  | { type: "RESULT"; report: UiFreeReport }
+  | { type: "RESULT"; report: UiFreeReport; resumeId?: string }
   | { type: "FAIL"; code: CareerErrorCode }
   | { type: "REVEALED" }
   | { type: "RESET" }
@@ -99,7 +99,7 @@ function reducer(phase: CareerPhase, a: Action): CareerPhase {
         : phase;
     case "RESULT":
       return phase.name === "PROCESSING"
-        ? { name: "FREE_RESULT", report: a.report, fileName: phase.fileName, revealed: false }
+        ? { name: "FREE_RESULT", report: a.report, fileName: phase.fileName, revealed: false, resumeId: a.resumeId }
         : phase;
     case "FAIL":
       return {
@@ -385,7 +385,7 @@ export default function CareerClient() {
 
         const report = (data as { report: UiFreeReport }).report;
         trackCareerEvent("analysis_completed", { mode: "real", status: "ok", duration_ms: Date.now() - t0, lang });
-        dispatch({ type: "RESULT", report });
+        dispatch({ type: "RESULT", report, resumeId });
         trackCareerEvent("free_report_viewed", { score_band: report.scoreBand.labelEn, lang });
       } catch {
         /* Orphaned-upload follow-up: reaches here for (a) the upload/
@@ -622,6 +622,7 @@ export default function CareerClient() {
                 lang={lang}
                 report={phase.report}
                 fileName={phase.fileName}
+                resumeId={phase.resumeId}
                 onRevealed={() => {
                   if (!phase.revealed) {
                     trackCareerEvent("career_score_revealed", {

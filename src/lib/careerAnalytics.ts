@@ -33,6 +33,8 @@ export type CareerEventName =
   | "career_issue_expanded"
   | "career_full_review_viewed"
   | "career_checkout_clicked"
+  | "career_checkout_started"
+  | "career_payment_verification_submitted"
   | "career_auth_started"
   | "career_auth_completed"
   | "career_error_shown";
@@ -49,6 +51,8 @@ const CAREER_EVENT_NAMES: ReadonlySet<CareerEventName> = new Set([
   "career_issue_expanded",
   "career_full_review_viewed",
   "career_checkout_clicked",
+  "career_checkout_started",
+  "career_payment_verification_submitted",
   "career_auth_started",
   "career_auth_completed",
   "career_error_shown",

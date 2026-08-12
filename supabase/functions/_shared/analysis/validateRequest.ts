@@ -40,6 +40,12 @@ export function validateAnalyzeResumeRequest(input: unknown): ValidationResult {
     errors.push({ field: "language", reason: `language must be one of: ${SUPPORTED_LANGUAGES.join(", ")}` });
   }
 
+  if (r.outputLanguage !== undefined) {
+    if (r.outputLanguage !== "ar" && r.outputLanguage !== "en") {
+      errors.push({ field: "outputLanguage", reason: "outputLanguage must be one of: ar, en" });
+    }
+  }
+
   const seniority = r.seniority;
   if (typeof seniority !== "string" || !SENIORITY_LEVELS.includes(seniority as never)) {
     errors.push({ field: "seniority", reason: `seniority must be one of: ${SENIORITY_LEVELS.join(", ")}` });
@@ -71,6 +77,7 @@ export function validateAnalyzeResumeRequest(input: unknown): ValidationResult {
   const request: AnalyzeResumeRequest = {
     resumeText: resumeText as string,
     language: language as AnalyzeResumeRequest["language"],
+    outputLanguage: r.outputLanguage as AnalyzeResumeRequest["outputLanguage"],
     seniority: seniority as AnalyzeResumeRequest["seniority"],
     targetRole: r.targetRole as string | undefined,
     roleFamily: r.roleFamily as string | undefined,

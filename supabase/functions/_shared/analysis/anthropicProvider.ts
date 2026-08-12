@@ -160,13 +160,26 @@ export const SYSTEM_PROMPT =
   "scores. BE CONCISE: at most one evidence excerpt per dimension (or none), one " +
   "short reasonCode bucket, and one short sentence (shortReason, under ~160 " +
   "characters) — never a paragraph, never a list of recommendations. This budget is " +
-  "deliberately tight so every requested dimension fits in the response.";
+  "deliberately tight so every requested dimension fits in the response. " +
+  "LANGUAGE: `context.language` is the language the RESUME ITSELF is written in — " +
+  "it only tells you which writing-quality norms to judge language_quality against. " +
+  "`context.outputLanguage` is the language of the CUSTOMER using this product. " +
+  "`shortReason` MUST always be written in natural, professional `context.outputLanguage` " +
+  "prose — regardless of what language the resume is in — never a literal translation, " +
+  "never a mix of languages within a sentence. The only exceptions are proper nouns, " +
+  "acronyms, and product/company/technology names with no natural equivalent (e.g. ATS, " +
+  "LinkedIn, SAP, React) and currency-prefixed figures (e.g. $27M), which may stay as-is. " +
+  "`evidence.excerpt` is a verbatim quote FROM THE RESUME and must never be translated.";
 
 export function buildDimensionsPrompt(input: AnalyzeDimensionsInput): string {
+  const context = {
+    ...input.context,
+    outputLanguage: input.context.outputLanguage ?? (input.context.language === "ar" ? "ar" : "en"),
+  };
   return JSON.stringify({
     task: "analyze_dimensions",
     dimensionIds: input.dimensionIds,
-    context: input.context,
+    context,
     // §6: the COMPACT runtime methodology (methodology/runtimeMethodology.ts)
     // — a projection of the same rubrics compose.ts uses, trimmed for this
     // call only. See that file's header for why the full rubric objects

@@ -29,6 +29,8 @@ export const SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = ["ar", "en", "b
 export interface AnalyzeResumeRequest {
   resumeText: string;
   language: SupportedLanguage;
+  /** The customer's UI language — controls what language customer-facing prose is written in. Optional; defaults to `language` (narrowed to ar/en) when omitted. */
+  outputLanguage?: "ar" | "en";
   seniority: SeniorityLevel;
   targetRole?: string;
   roleFamily?: string;

@@ -133,17 +133,30 @@ export function buildMissingEvidenceQuestions(
   return questions;
 }
 
-/** §20: readability indicators only — never a pass/fail claim. */
-export function buildAtsAnalysis(results: DimensionResult[]): AtsAnalysis {
-  const disclaimer =
-    "These are structural readability indicators only — not a simulation of any specific applicant tracking system and never a guarantee of parsing, ranking, or recruiter visibility.";
+const ATS_DISCLAIMER: Record<"ar" | "en", string> = {
+  en:
+    "These are structural readability indicators only — not a simulation of any specific applicant tracking system and never a guarantee of parsing, ranking, or recruiter visibility.",
+  ar:
+    "هذه مؤشرات هيكلية لسهولة القراءة فقط — وليست محاكاة لأي نظام تتبع متقدمين محدد، ولا ضمانًا لتحليل السيرة أو ترتيبها أو ظهورها لمسؤول التوظيف.",
+};
+const ATS_CHECK_LABEL: Record<"ar" | "en", string> = {
+  en: "structure and heading clarity",
+  ar: "وضوح البنية والعناوين",
+};
+
+/** §20: readability indicators only — never a pass/fail claim. Customer-
+ *  facing prose (the disclaimer and check label) follows `outputLanguage`
+ *  — the per-dimension `detail` text itself is `atsResult.reason`, already
+ *  in that language via the AI's own outputLanguage instruction. */
+export function buildAtsAnalysis(results: DimensionResult[], outputLanguage: "ar" | "en" = "en"): AtsAnalysis {
+  const disclaimer = ATS_DISCLAIMER[outputLanguage];
   const atsResult = results.find((r) => r.dimension === "ats_readability");
   if (!atsResult) {
     return { indicators: [], disclaimer };
   }
   const status = atsResult.score >= 80 ? "ok" : atsResult.score >= 60 ? "risk" : "problem";
   return {
-    indicators: [{ check: "structure and heading clarity", status, detail: atsResult.reason }],
+    indicators: [{ check: ATS_CHECK_LABEL[outputLanguage], status, detail: atsResult.reason }],
     disclaimer,
   };
 }
@@ -153,12 +166,11 @@ export function buildFindings(
   context: AnalysisContext,
   factConflicts: MetricConflict[],
 ) {
-  void context;
   const rawIssues = buildIssues(results);
   const issues = prioritizeIssues(rawIssues);
   const strengths = buildStrengths(results);
   const quickWins = buildQuickWins(rawIssues);
   const missingEvidenceQuestions = buildMissingEvidenceQuestions(results, factConflicts);
-  const atsAnalysis = buildAtsAnalysis(results);
+  const atsAnalysis = buildAtsAnalysis(results, context.outputLanguage ?? (context.language === "ar" ? "ar" : "en"));
   return { issues, strengths, quickWins, missingEvidenceQuestions, atsAnalysis };
 }

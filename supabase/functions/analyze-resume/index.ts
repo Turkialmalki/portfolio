@@ -381,7 +381,7 @@ async function handleCustomerAnalysis(
   // the same double-enforcement pattern delete-resume already uses.
   const { data: resume, error: resumeError } = await userClient
     .from("resumes")
-    .select("id, user_id, storage_path, mime_type, original_filename, deleted_at")
+    .select("id, user_id, storage_path, mime_type, original_filename, deleted_at, language")
     .eq("id", resumeId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -460,9 +460,17 @@ async function handleCustomerAnalysis(
     ? (seniorityInput as (typeof SENIORITY_LEVELS)[number])
     : "mid";
 
+  // The customer's UI language at upload time (`resumes.language` — set
+  // by CareerClient from the language toggle, NOT a detected property of
+  // the CV text). Drives what language the AI writes customer-facing
+  // prose in; `language` above (the CV's OWN detected language) stays
+  // reserved for the language_quality rubric. See AnalysisContext.
+  const outputLanguage: "ar" | "en" = resume.language === "ar" ? "ar" : "en";
+
   const validated = validateAnalyzeResumeRequest({
     resumeText,
     language,
+    outputLanguage,
     seniority,
     targetRole: typeof bodyRecord.targetRole === "string" ? bodyRecord.targetRole : undefined,
     roleFamily: typeof bodyRecord.roleFamily === "string" ? bodyRecord.roleFamily : undefined,
@@ -526,7 +534,14 @@ async function handleCustomerAnalysis(
       overallScore: free.overallScore,
       scoreBand: free.scoreBand,
       confidence: free.confidence,
-      reportLang: analysis.context.language === "ar" ? "ar" : "en",
+      // The language the customer-facing prose was actually written in
+      // (outputLanguage) — NOT the CV's own detected language. Drives
+      // `dir` on summary/issue/strength/quick-win text. The one exception
+      // is the rewrite example's `before`/`after`, which stays in the
+      // CV's own language on purpose (a rewrite must never translate the
+      // person's actual bullet) — RewritePreview renders those with their
+      // own dir when it differs from reportLang.
+      reportLang: outputLanguage,
       dimensionSummary: free.dimensionSummary,
       topIssues: free.topIssues,
       topStrengths: free.topStrengths,

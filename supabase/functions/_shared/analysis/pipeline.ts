@@ -88,6 +88,10 @@ function buildContext(request: AnalyzeResumeRequest, industry: string | undefine
   return {
     seniority: request.seniority,
     language: request.language as CvLanguage,
+    // The customer's UI language, not the CV's own — falls back to the
+    // CV's language (narrowed to ar/en) only for older callers that never
+    // send one (fixtures, tests, admin-mode runs).
+    outputLanguage: request.outputLanguage ?? (request.language === "ar" ? "ar" : "en"),
     targetRole: request.targetRole,
     jobDescription: request.jobDescription,
     industry,

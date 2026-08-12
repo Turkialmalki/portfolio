@@ -403,6 +403,12 @@ verify_jwt = false
 [functions.parse-resume]
 verify_jwt = false
 
+[functions.create-purchase]
+verify_jwt = false
+
+[functions.get-full-review]
+verify_jwt = false
+
 [functions.request-payment-verification]
 verify_jwt = false
 

@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { animate } from "framer-motion";
 import type { CareerCopy } from "./careerCopy";
 import {
   DIMENSION_TITLES,
   type CareerLang,
   type UiFreeReport,
+  type UiFullReview,
 } from "./careerTypes";
 import { CAREER_FLAGS, CAREER_FULL_REVIEW_PRICE } from "@/config/careerFlags";
+import { CAREER_USD_PAYMENT_CONFIG } from "@/config/payments";
 import { trackCareerEvent } from "@/lib/careerAnalytics";
+import { supabase } from "@/lib/supabaseClient";
 
 /* ═══════════════════════════════════════════════════════════════════════
    FREE RESULT + LOCKED FULL REVIEW (Command 06A §16–§32, §65–§66).
@@ -32,12 +35,16 @@ export default function CareerReport({
   lang,
   report,
   fileName,
+  resumeId,
   onRevealed,
 }: {
   t: CareerCopy;
   lang: CareerLang;
   report: UiFreeReport;
   fileName: string;
+  /** Undefined for a synthetic-demo fixture report — the Full Review CTA
+   *  stays visually identical but never creates a purchase without one. */
+  resumeId?: string;
   onRevealed: () => void;
 }) {
   const rDir = report.reportLang === "ar" ? "rtl" : "ltr";
@@ -68,9 +75,7 @@ export default function CareerReport({
 
       <RewritePreview t={t} report={report} rDir={rDir} />
 
-      <FullReviewGate t={t} lang={lang} report={report} />
-
-      <AuthPrompt t={t} />
+      <FullReviewGate t={t} lang={lang} report={report} resumeId={resumeId} />
 
       <Methodology t={t} />
     </div>
@@ -424,19 +429,52 @@ function RewritePreview({
 
 /* ─────────────── full review paywall (§27–§30, §65–§66) ─────────────── */
 
+type PurchaseState = { id: string; status: string } | null;
+type GateStatus = "idle" | "preparing" | "prepare_error" | "verify_submitting" | "verify_requested" | "verify_error";
+
 function FullReviewGate({
   t,
   lang,
   report,
+  resumeId,
 }: {
   t: CareerCopy;
   lang: CareerLang;
   report: UiFreeReport;
+  resumeId?: string;
 }) {
   const ref = useRef<HTMLElement>(null);
   const seen = useRef(false);
   const priceLabel = `$${CAREER_FULL_REVIEW_PRICE.amount}`;
   const enabled = CAREER_FLAGS.paymentEnabled;
+
+  const [status, setStatus] = useState<GateStatus>("idle");
+  const [purchase, setPurchase] = useState<PurchaseState>(null);
+  const [reference, setReference] = useState("");
+  const [paidEmail, setPaidEmail] = useState("");
+  const [fullReview, setFullReview] = useState<UiFullReview | null>(null);
+
+  /* Entitlement check — independent of the checkout flow above, so a
+     returning customer (refresh, a later visit after an admin verifies)
+     sees their unlocked content without re-clicking anything. Never
+     trusts anything client-side: `get-full-review` re-derives ownership
+     AND a verified entitlement server-side before returning content. */
+  useEffect(() => {
+    const client = supabase;
+    if (!resumeId || !client) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await client.functions.invoke("get-full-review", {
+        body: { resumeId },
+      });
+      if (cancelled || error || !data || (data as { ok?: boolean }).ok !== true) return;
+      const result = data as { entitled: boolean; report?: UiFullReview };
+      if (result.entitled && result.report) setFullReview(result.report);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeId, status]);
 
   useEffect(() => {
     const el = ref.current;
@@ -467,6 +505,62 @@ function FullReviewGate({
     ] as Array<[number, string]>
   ).filter(([n]) => n > 0);
 
+  /* §29/checkout: create/reuse a `pending` purchase server-side (its price
+     comes ONLY from _shared/careerPricing.ts, never this button) BEFORE
+     ever sending the customer to PayPal — that purchase_id is what lets
+     them later prove payment against their own account. Opening the
+     PayPal link is not, and never becomes, proof of payment. */
+  async function startCheckout() {
+    trackCareerEvent("career_checkout_clicked", {
+      payment_enabled: enabled,
+      price_usd: CAREER_FULL_REVIEW_PRICE.amount,
+      lang,
+    });
+    if (!enabled || !resumeId || !supabase) return; // demo/fixture reports never touch real payment infra
+    const paypalUrl = CAREER_USD_PAYMENT_CONFIG.career_cv_full_review?.url;
+    if (!paypalUrl) return;
+
+    setStatus("preparing");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("no_session");
+
+      const { data, error } = await supabase.functions.invoke("create-purchase", {
+        body: { product_key: "career_cv_full_review" },
+      });
+      if (error || !data || (data as { ok?: boolean }).ok !== true) throw new Error("create_purchase_failed");
+
+      const created = (data as { purchase: { id: string; status: string } }).purchase;
+      setPurchase(created);
+      setStatus("idle");
+      trackCareerEvent("career_checkout_started", { lang });
+      window.open(paypalUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      setStatus("prepare_error");
+    }
+  }
+
+  async function submitVerification(e: FormEvent) {
+    e.preventDefault();
+    if (!purchase || !supabase) return;
+    setStatus("verify_submitting");
+    try {
+      const { data, error } = await supabase.functions.invoke("request-payment-verification", {
+        body: {
+          purchase_id: purchase.id,
+          reference: reference.trim() || undefined,
+          email: paidEmail.trim() || undefined,
+        },
+      });
+      if (error || !data || (data as { ok?: boolean }).ok !== true) throw new Error("verify_request_failed");
+      setStatus("verify_requested");
+      trackCareerEvent("career_payment_verification_submitted", { lang });
+    } catch {
+      setStatus("verify_error");
+    }
+  }
+
   return (
     <section ref={ref} className="cp-sec cp-full" aria-label={t.fullH}>
       <h2 className="cp-h2 cp-rule">{t.fullH}</h2>
@@ -483,88 +577,163 @@ function FullReviewGate({
         </>
       )}
 
-      {/* locked structure — section titles blurred, no fabricated prose (§65) */}
-      <ul className="cp-locked" aria-label={t.lockedA11y}>
-        {t.fullLockedRows.map((row) => (
-          <li key={row} className="cp-locked-row">
-            <span className="cp-lock" aria-hidden>
-              🔒
-            </span>
-            <span className="cp-locked-title">{row}</span>
-            <span className="cp-locked-blur" aria-hidden />
-          </li>
-        ))}
-      </ul>
+      {fullReview ? (
+        <>
+          <p className="cp-locked-note" role="status">
+            {t.fullUnlockedNote}
+          </p>
+          <UnlockedFullReview t={t} lang={lang} data={fullReview} />
+        </>
+      ) : (
+        <>
+          {/* locked structure — section titles blurred, no fabricated prose (§65) */}
+          <ul className="cp-locked" aria-label={t.lockedA11y}>
+            {t.fullLockedRows.map((row) => (
+              <li key={row} className="cp-locked-row">
+                <span className="cp-lock" aria-hidden>
+                  🔒
+                </span>
+                <span className="cp-locked-title">{row}</span>
+                <span className="cp-locked-blur" aria-hidden />
+              </li>
+            ))}
+          </ul>
 
-      <p className="cp-full-what">{t.fullWhat}</p>
+          <p className="cp-full-what">{t.fullWhat}</p>
 
-      {/* §29 — payment gate: price shown, action honestly unavailable */}
-      <button
-        type="button"
-        className="cp-cta cp-cta-buy"
-        disabled={!enabled}
-        aria-disabled={!enabled}
-        onClick={() => {
-          trackCareerEvent("career_checkout_clicked", {
-            payment_enabled: enabled,
-            price_usd: CAREER_FULL_REVIEW_PRICE.amount,
-            lang,
-          });
-          /* When payment enables, this becomes a plain navigation to the
-             verified PayPal payment link read from CAREER_USD_PAYMENT_CONFIG
-             — never Lemon Squeezy, never a client-side entitlement. Until
-             then there is deliberately nothing here. */
-        }}
-      >
-        {t.fullCta.replace("$5", priceLabel)}
-      </button>
-      {!enabled && <p className="cp-locked-note">{t.fullLockedNote}</p>}
+          {/* §29 — payment gate: price shown, action honestly unavailable when
+              the flag/link aren't both live */}
+          <button
+            type="button"
+            className="cp-cta cp-cta-buy"
+            disabled={!enabled || status === "preparing"}
+            aria-disabled={!enabled || status === "preparing"}
+            onClick={startCheckout}
+          >
+            {status === "preparing" ? t.fullCtaPreparing : t.fullCta.replace("$5", priceLabel)}
+          </button>
+          {!enabled && <p className="cp-locked-note">{t.fullLockedNote}</p>}
+          {status === "prepare_error" && <p className="cp-locked-note" role="alert">{t.fullCtaError}</p>}
+
+          {purchase && status !== "verify_requested" && (
+            <form className="cp-auth-form" onSubmit={submitVerification} dir={lang === "ar" ? "rtl" : "ltr"}>
+              <p className="cp-beta-title">{t.verifyH}</p>
+              <p className="cp-auth-hint">{t.verifyBody}</p>
+              <input
+                type="text"
+                className="cp-auth-input"
+                placeholder={t.verifyRefPlaceholder}
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                dir="ltr"
+              />
+              <input
+                type="email"
+                className="cp-auth-input"
+                placeholder={t.verifyEmailPlaceholder}
+                value={paidEmail}
+                onChange={(e) => setPaidEmail(e.target.value)}
+                dir="ltr"
+              />
+              <button type="submit" className="cp-cta cp-cta-secondary" disabled={status === "verify_submitting"}>
+                {status === "verify_submitting" ? t.verifySending : t.verifySubmitCta}
+              </button>
+              {status === "verify_error" && <p className="cp-locked-note" role="alert">{t.verifyError}</p>}
+              <p className="cp-auth-hint">{t.fullPayNote}</p>
+            </form>
+          )}
+          {status === "verify_requested" && (
+            <p className="cp-locked-note" role="status">
+              {t.verifyRequested}
+            </p>
+          )}
+        </>
+      )}
     </section>
   );
 }
 
-/* ───────────────────────── auth prompt (§31–§32) ───────────────────────── */
+/* ─────────────── unlocked Full Review content (real, entitlement-gated) ─────────────── */
 
-function AuthPrompt({ t }: { t: CareerCopy }) {
-  const [submitted, setSubmitted] = useState(false);
-  const enabled = CAREER_FLAGS.authEnabled;
-
+function UnlockedFullReview({ t, lang, data }: { t: CareerCopy; lang: CareerLang; data: UiFullReview }) {
+  const dir = lang === "ar" ? "rtl" : "ltr";
   return (
-    <section className="cp-sec cp-auth" aria-label={t.authH}>
-      <h2 className="cp-h2 cp-rule">{t.authH}</h2>
-      <form
-        className="cp-auth-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          trackCareerEvent("career_auth_started", { auth_enabled: enabled });
-          /* Hosted auth is launch-partial: the UI exists, real magic-link
-             delivery does not. Never pretend a mail was sent. */
-          setSubmitted(true);
-        }}
-      >
-        <label className="cp-visually-hidden" htmlFor="career-email">
-          {t.authEmail}
-        </label>
-        <input
-          id="career-email"
-          type="email"
-          required
-          autoComplete="email"
-          placeholder={t.authEmail}
-          className="cp-auth-input"
-          dir="ltr"
-        />
-        <button type="submit" className="cp-cta cp-cta-secondary">
-          {t.authCta}
-        </button>
-      </form>
-      <p className="cp-auth-hint">{t.authNoPassword}</p>
-      {submitted && !enabled && (
-        <p className="cp-locked-note" role="status">
-          {t.authPending}
-        </p>
+    <div className="cp-full-unlocked" dir={dir}>
+      <section aria-label={t.detailH}>
+        <h3 className="cp-h2 cp-rule">{t.detailH}</h3>
+        <ul className="cp-full-counts">
+          {data.dimensionDetails.map((d) => (
+            <li key={d.dimension}>
+              <strong>{DIMENSION_TITLES[d.dimension][lang]}</strong> ({Math.round(d.score)}/100) — {d.reason}
+              {d.recommendations.length > 0 && (
+                <ul>
+                  {d.recommendations.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-label={t.atsH}>
+        <h3 className="cp-h2 cp-rule">{t.atsH}</h3>
+        {data.atsAnalysis.indicators.map((ind, i) => (
+          <p key={i}>
+            <strong>{ind.check}</strong> — {ind.detail}
+          </p>
+        ))}
+        <p className="cp-auth-hint">{data.atsAnalysis.disclaimer}</p>
+      </section>
+
+      <section aria-label={t.actionPlanH}>
+        <h3 className="cp-h2 cp-rule">{t.actionPlanH}</h3>
+        <ol>
+          {data.actionPlan.map((step) => (
+            <li key={step.order}>
+              [{t.severity[step.severity]} · {t.actionPlanEffort[step.effort]}] {step.issueSummary}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section aria-label={t.targetRoleH}>
+        <h3 className="cp-h2 cp-rule">{t.targetRoleH}</h3>
+        {data.targetRoleAnalysis ? (
+          <>
+            <p>{data.targetRoleAnalysis.positioningVerdict}</p>
+            {data.targetRoleAnalysis.gaps.length > 0 && (
+              <ul>
+                {data.targetRoleAnalysis.gaps.map((g, i) => (
+                  <li key={i}>{g}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : (
+          <p className="cp-auth-hint">{t.noTargetRoleNote}</p>
+        )}
+      </section>
+
+      {data.rewriteSuggestions.length > 0 && (
+        <section aria-label={t.rewriteSuggestionsFullH}>
+          <h3 className="cp-h2 cp-rule">{t.rewriteSuggestionsFullH}</h3>
+          {data.rewriteSuggestions.map((rw, i) => (
+            <figure className="cp-rewrite" key={i}>
+              <figcaption className="cp-rw-k">{t.rewriteBefore}</figcaption>
+              <p className="cp-rw-before">{rw.before}</p>
+              <span className="cp-rw-arrow" aria-hidden>
+                ↓
+              </span>
+              <figcaption className="cp-rw-k">{t.rewriteAfter}</figcaption>
+              <p className="cp-rw-after">{rw.after}</p>
+              <p className="cp-rw-note">{rw.note}</p>
+            </figure>
+          ))}
+        </section>
       )}
-    </section>
+    </div>
   );
 }
 

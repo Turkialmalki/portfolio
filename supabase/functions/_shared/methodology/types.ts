@@ -185,7 +185,17 @@ export interface ActionPlanStep {
 // ── Analysis input context ───────────────────────────────────────────────
 export interface AnalysisContext {
   seniority: SeniorityLevel;
+  /** The CV's OWN detected language — drives the language_quality rubric only (Arabic is never scored against English norms). Never used to decide what language the AI writes its prose in; see `outputLanguage`. */
   language: CvLanguage;
+  /**
+   * The language the CUSTOMER's UI is in — every customer-facing prose
+   * field the model writes (shortReason, and anything derived from it)
+   * must be written in this language, regardless of what language the CV
+   * itself is in. Defaults to `language` (narrowed to ar/en) when the
+   * caller doesn't supply one, so existing fixtures/tests/mock-provider
+   * callers that never set this keep their current behavior.
+   */
+  outputLanguage?: "ar" | "en";
   targetRole?: string;
   jobDescription?: string;
   /** One of contextPatterns.ts's industry categories, when detectable. */

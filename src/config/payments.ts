@@ -42,21 +42,21 @@ export type PaymentLinkConfig = {
 };
 
 /**
- * A price prepared but NOT yet wired to any checkout. `url` is `null` on
- * purpose — Command 05C §14 requires the actual PayPal payment link to
- * charge exactly this amount in this currency BEFORE anything reads this
- * config to render a checkout button. No dynamic SAR↔USD conversion is
- * ever performed anywhere in this codebase; each currency has its own
- * fixed, manually-set price. `enabled: false` is the second gate — even
- * once a real link exists, flipping this to `true` is a deliberate,
- * separate step, not a side effect of adding the URL.
+ * A price prepared, `url`/`enabled` flipped only as a deliberate, separate
+ * step once the exact production checkout link exists. No dynamic SAR↔USD
+ * conversion is ever performed anywhere in this codebase; each currency
+ * has its own fixed, manually-set price. `enabled` stays `false` (the
+ * type still defaults new entries that way in spirit) until a real link
+ * is wired AND the purchase-creation/verification chain behind it is
+ * actually live — flipping `url` alone must never be read as "checkout is
+ * ready" by anything that consumes this config.
  */
 export type PendingPaymentLinkConfig = {
   provider: "paypal";
   type: "payment-link";
   url: string | null;
   expectedPrice: { amount: number; currency: "SAR" | "USD" };
-  enabled: false;
+  enabled: boolean;
 };
 
 /**
@@ -97,9 +97,14 @@ export const CAREER_PAYMENT_CONFIG: Partial<
  * price is written down in exactly one place ahead of that work, per this
  * file's own stated discipline.
  *
- * To activate once the link exists: set `url`, flip `enabled: true`, and
- * only then wire a checkout surface to read it — each step deliberate,
- * never automatic from the other.
+ * ACTIVATED: this is the official, human-confirmed production PayPal
+ * Payment Link for "Career Full CV Review", $5.00 USD, one-time payment
+ * (checkpoint resolved in chat — the exact URL was provided directly, not
+ * invented). Checkout opens through `create-purchase` (which records a
+ * `pending` purchase row server-side, at THIS price, before the customer
+ * ever reaches PayPal) → this link → `request-payment-verification` →
+ * an admin's `verify-payment` → `grant_entitlement`. Nothing here skips
+ * that chain — see FullReviewGate in CareerReport.tsx.
  */
 export const CAREER_USD_PAYMENT_CONFIG: Partial<
   Record<"career_cv_full_review", PendingPaymentLinkConfig>
@@ -107,8 +112,8 @@ export const CAREER_USD_PAYMENT_CONFIG: Partial<
   career_cv_full_review: {
     provider: "paypal",
     type: "payment-link",
-    url: null,
+    url: "https://www.paypal.com/ncp/payment/HXZMDU97GMX9L",
     expectedPrice: { amount: 5, currency: "USD" },
-    enabled: false,
+    enabled: true,
   },
 };
