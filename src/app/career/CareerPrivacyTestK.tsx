@@ -87,14 +87,26 @@ export default function CareerPrivacyTestK() {
       const { data, error } = await supabase.functions.invoke("analyze-resume", {
         body: { mode: "customer", resumeId: "00000000-0000-0000-0000-000000000000" },
       });
-      // Mirrors the exact data-shape read in CareerClient's real analysis
-      // path: the Edge Function always returns its SafeErrorCode in the
-      // JSON body's `error` field, status carried separately by the SDK.
+      // On a non-2xx response, supabase-js v2 leaves `data` null and puts
+      // the raw Response on `error.context` (FunctionsHttpError) — the
+      // JSON body (and its SafeErrorCode `error` field) has to be read
+      // from there, not from `data`. `data.error` only applies to the 2xx
+      // "still JSON-shaped failure" case, which this endpoint doesn't use.
       const status = (error as { context?: { status?: number } } | null)?.context?.status;
-      const code =
-        data && typeof (data as { error?: unknown }).error === "string"
-          ? (data as { error: string }).error
-          : undefined;
+      let code: string | undefined;
+      const errCtx = (error as { context?: { json?: () => Promise<unknown> } } | null)?.context;
+      if (errCtx?.json) {
+        try {
+          const body = await errCtx.json();
+          if (body && typeof (body as { error?: unknown }).error === "string") {
+            code = (body as { error: string }).error;
+          }
+        } catch {
+          /* body already consumed or not JSON — leave code undefined, status still shown */
+        }
+      } else if (data && typeof (data as { error?: unknown }).error === "string") {
+        code = (data as { error: string }).error;
+      }
       setDiag({ sent: true, status, code });
     } catch {
       setDiag({ sent: true });
