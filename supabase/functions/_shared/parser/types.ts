@@ -25,7 +25,8 @@ export type ParserWarningCode =
   | "HEADER_FOOTER_REPETITION_DETECTED"
   | "SHORT_DOCUMENT"
   | "PAGE_LIMIT_TRUNCATED"
-  | "CHAR_LIMIT_TRUNCATED";
+  | "CHAR_LIMIT_TRUNCATED"
+  | "PAGE_EXTRACTION_FAILED";
 
 export interface ParsedResumeMetadata {
   /** Never a filesystem/storage path, never PII — only counts and flags relevant to reproducing the parse. */

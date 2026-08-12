@@ -128,36 +128,54 @@ export async function extractPdf(bytes: Uint8Array): Promise<PdfExtractionOutcom
     let columnUncertain = false;
     let truncated = false;
 
+    let anyPageExtractionFailed = false;
     for (let pageNum = 1; pageNum <= pagesToRead; pageNum++) {
-      const page = await doc.getPage(pageNum);
-      const content = await page.getTextContent();
-
       let pageText = "";
-      let lastY: number | null = null;
-      for (const item of content.items) {
-        const y = item.transform[5];
-        if (lastY !== null) {
-          const dy = lastY - y; // positive = moved down the page (normal top-to-bottom flow)
-          if (dy > Y_LINE_BREAK_TOLERANCE) {
-            pageText += "\n";
-          } else if (dy < -Y_LINE_BREAK_TOLERANCE) {
-            // Jumped UP the page mid-stream — not normal reading order for
-            // a single column; a strong signal of multi-column text
-            // interleaved by PDF.js's stream order (§14).
-            columnUncertain = true;
-            pageText += "\n";
-          }
-        }
-        pageText += item.str;
-        if (item.hasEOL) pageText += "\n";
-        lastY = y;
-      }
-      pageText = pageText.trim();
+      try {
+        const page = await doc.getPage(pageNum);
+        const content = await page.getTextContent();
 
-      if (pageText.length === 0) {
-        const ops = await page.getOperatorList();
-        const imageOps = [pdfjs.OPS.paintImageXObject, pdfjs.OPS.paintImageXObjectRepeat, pdfjs.OPS.paintInlineImageXObject];
-        if (ops.fnArray.some((fn) => imageOps.includes(fn))) anyImageOnlyPage = true;
+        let lastY: number | null = null;
+        for (const item of content.items) {
+          const y = item.transform[5];
+          if (lastY !== null) {
+            const dy = lastY - y; // positive = moved down the page (normal top-to-bottom flow)
+            if (dy > Y_LINE_BREAK_TOLERANCE) {
+              pageText += "\n";
+            } else if (dy < -Y_LINE_BREAK_TOLERANCE) {
+              // Jumped UP the page mid-stream — not normal reading order for
+              // a single column; a strong signal of multi-column text
+              // interleaved by PDF.js's stream order (§14).
+              columnUncertain = true;
+              pageText += "\n";
+            }
+          }
+          pageText += item.str;
+          if (item.hasEOL) pageText += "\n";
+          lastY = y;
+        }
+        pageText = pageText.trim();
+
+        if (pageText.length === 0) {
+          const ops = await page.getOperatorList();
+          const imageOps = [pdfjs.OPS.paintImageXObject, pdfjs.OPS.paintImageXObjectRepeat, pdfjs.OPS.paintInlineImageXObject];
+          if (ops.fnArray.some((fn) => imageOps.includes(fn))) anyImageOnlyPage = true;
+        }
+      } catch {
+        // A real-world PDF can have one malformed/unusual page (a broken
+        // content stream, an unsupported font/glyph table, a corrupted
+        // page object) even when every other page is perfectly readable —
+        // PDF.js throws per-page, not per-document, for these. Previously
+        // this propagated uncaught all the way to parseResume.ts's outer
+        // catch, turning "page 3 of 4 is odd" into an opaque, undifferentiated
+        // PARSE_FAILED for the whole file. Skipping just this page and
+        // continuing means a resume with one bad page still gets analyzed
+        // on the (usually substantial) text that DID extract; the existing
+        // PDF_NO_EXTRACTABLE_TEXT/SCAN_REQUIRES_TEXT_PDF checks below still
+        // correctly catch the case where EVERY page fails this way and
+        // combinedText ends up empty.
+        anyPageExtractionFailed = true;
+        continue;
       }
 
       combinedText += (combinedText.length > 0 ? "\n\n" : "") + pageText;
@@ -167,6 +185,7 @@ export async function extractPdf(bytes: Uint8Array): Promise<PdfExtractionOutcom
         break;
       }
     }
+    if (anyPageExtractionFailed) warnings.push("PAGE_EXTRACTION_FAILED");
     if (truncated) warnings.push("CHAR_LIMIT_TRUNCATED");
 
     const nonWhitespaceCount = combinedText.replace(/\s/g, "").length;

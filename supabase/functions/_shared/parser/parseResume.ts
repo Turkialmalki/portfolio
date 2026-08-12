@@ -51,7 +51,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 function pickExtractionQuality(charCount: number, warnings: ParserWarningCode[], structureUncertain: boolean): ExtractionQuality {
   if (charCount < PARSER_LIMITS.weakButUsableChars) return "low";
-  const hasUncertaintyWarning = warnings.includes("MULTI_COLUMN_ORDER_UNCERTAIN") || warnings.includes("STRUCTURE_UNCERTAIN_TABLE_LAYOUT");
+  const hasUncertaintyWarning =
+    warnings.includes("MULTI_COLUMN_ORDER_UNCERTAIN") ||
+    warnings.includes("STRUCTURE_UNCERTAIN_TABLE_LAYOUT") ||
+    warnings.includes("PAGE_EXTRACTION_FAILED");
   if (hasUncertaintyWarning || structureUncertain) return "medium";
   return "high";
 }
