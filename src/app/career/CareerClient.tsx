@@ -22,6 +22,7 @@ import { supabase } from "@/lib/supabaseClient";
 import CareerHero from "./CareerHero";
 import CareerReport from "./CareerReport";
 import { CareerAuthGate, CareerErrorState, CareerProcessing, CareerUploader } from "./CareerFlow";
+import CareerPrivacyTestK from "./CareerPrivacyTestK";
 import { CAREER_COPY } from "./careerCopy";
 import type { CareerErrorCode, CareerPhase, UiFreeReport } from "./careerTypes";
 import {
@@ -188,6 +189,20 @@ function storedSet(v: StoredReport | null) {
 }
 
 export default function CareerClient() {
+  // TEMPORARY — Privacy Test K QA diagnostic escape hatch (see
+  // CareerPrivacyTestK.tsx header comment). Isolated from the real
+  // product entirely: never rendered unless the URL explicitly carries
+  // ?privacyTestK=1, never linked from anywhere in the real UI. Delete
+  // both this branch and that file once PRIVACY_SECURITY_EXECUTION_VERIFIED
+  // is true. Declared as a plain hook alongside every other hook below —
+  // and returned on only AFTER all hooks have run — so this stays a
+  // legal, unconditional hook call on every render (Rules of Hooks).
+  const [showPrivacyTestK, setShowPrivacyTestK] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setShowPrivacyTestK(new URLSearchParams(window.location.search).get("privacyTestK") === "1");
+  }, []);
+
   const { lang } = useLanguage();
   const t = CAREER_COPY[lang];
   const mode = useMode();
@@ -490,6 +505,8 @@ export default function CareerClient() {
     if (!stored || inProduct) return null;
     return stored;
   }, [stored, inProduct]);
+
+  if (showPrivacyTestK) return <CareerPrivacyTestK />;
 
   return (
     <>
