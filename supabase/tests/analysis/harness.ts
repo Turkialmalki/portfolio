@@ -14,6 +14,7 @@ import {
   createMockCareerAIProvider,
   DIMENSION_RESULT_SCHEMA,
   keyedResultsToArray,
+  MAX_DIMENSIONS_PER_BATCH,
   runAnalysis,
   validateAnalyzeResumeRequest,
   validateDimensionAIResults,
@@ -566,7 +567,15 @@ async function main() {
       check("A. empty-results provider: runAnalysis throws AnalysisPipelineError", !!err);
       check("A. code is ANALYSIS_FAILED", err?.code === "ANALYSIS_FAILED");
       check("A. stage is repair_schema_validation", err?.stage === "repair_schema_validation", String(err?.stage));
-      check("A. providerAttempts is 2 (primary call + the one repair retry)", err?.providerAttempts === 2, String(err?.providerAttempts));
+      // Batched (MAX_DIMENSIONS_PER_BATCH per call): primary = one call
+      // per batch across ALL expected dimensions; the targeted repair
+      // retries the SAME (still-empty) set, so it's an equal number of
+      // batches again — 2x total, not the old flat "2".
+      {
+        const expectedDims = err?.dimensionSummary?.expectedDimensionCount ?? 0;
+        const expectedBatches = Math.ceil(expectedDims / MAX_DIMENSIONS_PER_BATCH);
+        check("A. providerAttempts is 2x the batch count (primary batches + targeted repair batches, all still empty)", err?.providerAttempts === expectedBatches * 2, `expected ${expectedBatches * 2}, got ${err?.providerAttempts}`);
+      }
       check("A. schemaRepairCount is 1", err?.schemaRepairCount === 1, String(err?.schemaRepairCount));
       check("A. issues records one 'missing dimension result' per expected dimension", (err?.issues?.length ?? 0) > 0);
     }
@@ -601,7 +610,12 @@ async function main() {
         thrown = e;
       }
       check("B. an English-leaking provider under outputLanguage:ar does NOT fail the analysis", thrown === undefined, thrown instanceof AnalysisPipelineError ? `${thrown.stage}: ${thrown.message}` : String(thrown));
-      check("B. providerAttempts is 1 (no second AI call — fallback is deterministic, not a repair retry)", result?.instrumentation.aiCallCount === 1, String(result?.instrumentation.aiCallCount));
+      // Batched: schema is valid (just wrong language), so no repair —
+      // providerAttempts is exactly the primary batch count, never 2x.
+      {
+        const expectedBatches = result ? Math.ceil(result.analysis.dimensions.length / MAX_DIMENSIONS_PER_BATCH) : 0;
+        check("B. providerAttempts equals the primary batch count (no repair retry — fallback is deterministic)", result?.instrumentation.aiCallCount === expectedBatches, `expected ${expectedBatches}, got ${result?.instrumentation.aiCallCount}`);
+      }
       check("B. languageFallbackCount equals the number of dimensions (every one leaked English)", !!result && result.instrumentation.languageFallbackCount === result.analysis.dimensions.length, String(result?.instrumentation.languageFallbackCount));
       check("B. no dimension reason contains the leaked English sentence anymore", !!result && result.analysis.dimensions.every((d) => !d.reason.includes("plain English sentence")));
       check("B. dimension reasons are genuinely Arabic after the fallback", !!result && result.analysis.dimensions.every((d) => /[؀-ۿ]/.test(d.reason)));
@@ -666,6 +680,49 @@ async function main() {
       check("C. an AnthropicProviderError from the provider propagates out AS-IS (not re-wrapped)", thrown instanceof AnthropicProviderError);
       check("C. is NOT wrapped as a generic AnalysisPipelineError", !(thrown instanceof AnalysisPipelineError));
       check("C. its rich diagnostics survive untouched", thrown instanceof AnthropicProviderError && thrown.diagnostics.providerHttpStatus === 401 && thrown.diagnostics.providerErrorType === "authentication_error");
+    }
+
+    // E. CONFIRMED real bug (real-provider smoke test): a single
+    // 13-dimension call hit stop_reason "max_tokens" with `results: []`
+    // on BOTH the primary attempt and its full retry — identically,
+    // since decoding is near-deterministic. Proves the fix: dimension
+    // requests are actually split into ≤MAX_DIMENSIONS_PER_BATCH-sized
+    // calls (never one big one), and a batch that hits max_tokens no
+    // longer takes every OTHER batch's already-valid results down with
+    // it — only the genuinely-failed batch needs a (targeted, small)
+    // repair.
+    {
+      const calls: DimensionId[][] = [];
+      const maxTokensOnFirstBatchProvider = makeStubProvider({
+        analyzeDimensions: async (input): Promise<DimensionAIResult[]> => {
+          calls.push(input.dimensionIds);
+          // Simulate the exact real incident: the very first batch this
+          // provider ever sees hits max_tokens (empty, unusable output);
+          // every other call (including the eventual targeted repair)
+          // succeeds normally.
+          if (calls.length === 1) return [];
+          return input.dimensionIds.map((dimensionId) => ({
+            dimensionId,
+            signalLevel: "mixed",
+            evidencePresent: true,
+            evidenceQuality: "specific",
+            confidence: "medium",
+            evidence: null,
+            reasonCode: "TEST_OK",
+            shortReason: "Synthetic ok result.",
+          }));
+        },
+      });
+      const result = await runAnalysis(baseRequest, { provider: maxTokensOnFirstBatchProvider, knowledgeMode: "fixture", isFixtureRun: true });
+      check("E. dimension requests are split into multiple calls, not one giant call", calls.length > 1, String(calls.length));
+      check(`E. every individual call requests at most ${MAX_DIMENSIONS_PER_BATCH} dimensions`, calls.every((c) => c.length <= MAX_DIMENSIONS_PER_BATCH), calls.map((c) => c.length).join(","));
+      // Total unique dimensions in the final result: no gaps (the failed
+      // batch's dimensions were recovered by the targeted repair) and no
+      // duplicates (the repair only re-requested what was actually
+      // missing, never re-requesting a batch that already succeeded).
+      const finalIds = new Set(result.analysis.dimensions.map((d) => d.dimension));
+      check("E. the final result has no duplicate dimensions", finalIds.size === result.analysis.dimensions.length);
+      check("E. the analysis still completes successfully overall, recovering the failed batch via targeted repair", result.analysis.dimensions.length > 0 && result.instrumentation.retryCount === 1);
     }
   }
 

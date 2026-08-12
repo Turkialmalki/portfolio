@@ -11,20 +11,25 @@
  * rule):
  *
  *   A. Structure           — deterministic (structure.ts). No AI call.
- *   B+C. Rubric evaluation — ONE `provider.analyzeDimensions()` call
- *        covering every dimension `scoring.ts` will actually weight for
- *        this context (universal + contextual — `planWeights` has
- *        already excluded what doesn't apply, so this call never wastes
- *        budget on target-role/keyword rubrics when there's no target
- *        role/JD), using the COMPACT runtime methodology
- *        (compileRuntimeMethodology — Command 05D.2 §6) and the compact
- *        per-dimension contract (analysis/types.ts's `DimensionAIResult`)
- *        instead of the old verbose one. Strengths, issues, quick wins,
- *        and the action plan are NOT separate AI calls at all —
- *        findings.ts derives them deterministically from the
- *        already-validated dimension results (§21–§26 rules), which is
- *        both cheaper and keeps "why is this a critical issue" traceable
- *        to code.
+ *   B+C. Rubric evaluation — `provider.analyzeDimensions()` calls, split
+ *        into small PARALLEL batches (MAX_DIMENSIONS_PER_BATCH below)
+ *        rather than one call covering every dimension at once — a real
+ *        production CV hit `stop_reason: "max_tokens"` on a single
+ *        13-dimension call, identically on its full retry (see that
+ *        constant's own comment). Together the batches still cover
+ *        every dimension `scoring.ts` will actually weight for this
+ *        context (universal + contextual — `planWeights` has already
+ *        excluded what doesn't apply), using the COMPACT runtime
+ *        methodology (compileRuntimeMethodology — Command 05D.2 §6,
+ *        now compiled per batch) and the compact per-dimension contract
+ *        (analysis/types.ts's `DimensionAIResult`). A validation failure
+ *        triggers ONE TARGETED repair — only the dimensions still
+ *        missing/invalid, batched the same way, never the full set
+ *        again. Strengths, issues, quick wins, and the action plan are
+ *        NOT separate AI calls at all — findings.ts derives them
+ *        deterministically from the already-validated dimension results
+ *        (§21–§26 rules), which is both cheaper and keeps "why is this
+ *        a critical issue" traceable to code.
  *   E. Schema validation    — schemaValidation.ts + evidenceValidation.ts.
  *   F. Deterministic scoring — scoring.ts (the ONLY source of overallScore).
  *
@@ -51,12 +56,14 @@ import {
   type AnalysisContext,
   type CareerAnalysis,
   type CvLanguage,
+  type DimensionId,
   type DimensionResult,
   type KeywordFinding,
   type TargetRoleAnalysis,
 } from "../methodology/index.ts";
 import { PRIVACY_SECURITY_EXECUTION_VERIFIED } from "../releaseGates.ts";
 import { OPERATOR_CV_INGESTION_VERSION } from "../knowledge/version.ts";
+import type { RetrievalExample } from "../knowledge/types.ts";
 import { ANALYSIS_PIPELINE_VERSION } from "./version.ts";
 import { preprocessResumeText } from "./preprocess.ts";
 import { redactContactFields } from "./redact.ts";
@@ -87,6 +94,68 @@ function accumulateUsage(instrumentation: AnalysisInstrumentation, provider: Car
   instrumentation.totalInputTokens += usage.inputTokens;
   instrumentation.totalOutputTokens += usage.outputTokens;
   instrumentation.stopReason = usage.stopReason;
+}
+
+/**
+ * A real production CV (Career V2, longer/more senior than the synthetic
+ * fixtures ever exercised) hit `stop_reason: "max_tokens"` on BOTH the
+ * primary call and its one full retry, identically — `results: []`
+ * both times, 13/13 dimensions missing. `thinking: disabled` + no
+ * temperature (anthropicProvider.ts) makes decoding near-deterministic,
+ * so retrying the SAME oversized 13-dimension request just fails the
+ * same way twice; the only two prior fixes (maxOutputTokens 4096→8192)
+ * bought headroom for the fixtures but not for every real CV, and
+ * simply raising it again just chases whatever a longer CV needs next
+ * while eating into providerCallMs/overallAnalysisMs's own budget.
+ *
+ * Real fix: split `dimensionIds` into smaller batches and call the
+ * provider for each IN PARALLEL. Each batch needs proportionally less
+ * output — far below any max_tokens ceiling regardless of how verbose a
+ * given CV's evidence/reasoning turns out to be — and running them
+ * concurrently keeps total wall-clock close to the slowest SINGLE batch,
+ * not the sum, so this is not a "trade truncation risk for latency"
+ * compromise. 6 was chosen to comfortably halve (or better) the typical
+ * 13-15 dimension request while keeping the number of parallel calls
+ * (and therefore duplicated system-prompt/resume-context input cost)
+ * small.
+ */
+export const MAX_DIMENSIONS_PER_BATCH = 6;
+
+function splitIntoBatches<T>(items: readonly T[], batchSize: number): T[][] {
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += batchSize) batches.push(items.slice(i, i + batchSize));
+  return batches;
+}
+
+/**
+ * ONE batch's provider call, usage accounting included. Usage is read
+ * from `provider.lastCallUsage()` synchronously, immediately after THIS
+ * call's own `await` resolves, inside this same function — that's what
+ * keeps it race-free even when several `callBatch` invocations are
+ * in flight together under `Promise.all` below: `lastUsage` is a single
+ * closure-scoped variable another concurrent call could overwrite, but
+ * only ACROSS an `await` boundary, never in the middle of a synchronous
+ * span (JS microtask semantics), and there is no `await` between this
+ * call's own assignment and this function's own synchronous read of it.
+ */
+async function callBatch(
+  provider: CareerAIProvider,
+  batchIds: DimensionId[],
+  normalized: NormalizedResume,
+  context: AnalysisContext,
+  examples: RetrievalExample[],
+  instrumentation: AnalysisInstrumentation,
+  timeoutMessage: string,
+): Promise<unknown[]> {
+  const methodologySections = compileRuntimeMethodology(context, batchIds);
+  const raw = await withTimeout(
+    provider.analyzeDimensions({ normalizedResume: normalized, context, dimensionIds: batchIds, methodologySections, examples }),
+    DEFAULT_TIMEOUTS.providerCallMs,
+    timeoutMessage,
+  );
+  instrumentation.aiCallCount += 1;
+  accumulateUsage(instrumentation, provider);
+  return Array.isArray(raw) ? raw : [];
 }
 
 function buildContext(request: AnalyzeResumeRequest, industry: string | undefined): AnalysisContext {
@@ -250,44 +319,50 @@ async function runStages(
 
   const plan = planWeights(context);
   const dimensionIds = plan.included.map((w) => w.dimension);
-  // Command 05D.2 §6: the COMPACT runtime projection of the same rubrics
-  // compose.ts filters — replaces composeMethodologyContext() for the AI
-  // call. composeMethodologyContext()/compose.ts are unchanged and still
-  // used elsewhere (documentation, tests); this pipeline's live AI call
-  // no longer sends full rubric prose.
-  instrumentation.currentOperation = "methodology_compile";
-  const runtimeMethodology = compileRuntimeMethodology(context, dimensionIds);
 
-  // Stage B+C: ONE compact dimension-evaluation call, with one controlled
-  // repair retry (§29) — unchanged safety net, now expected to be rare
-  // (Command 05D.2 §21: a system that routinely needs repair isn't
-  // production-ready).
+  // Stage B+C: the dimension-evaluation call, split into small PARALLEL
+  // batches (MAX_DIMENSIONS_PER_BATCH — see its own comment for the real
+  // production incident this replaces a single giant call for) instead
+  // of one request covering all 13-15 dimensions at once.
+  // compileRuntimeMethodology (Command 05D.2 §6) is now called per batch
+  // inside callBatch, scoped to just that batch's dimensions — smaller
+  // than the old whole-set call on top of the output-size win.
   instrumentation.currentOperation = "primary_provider_call";
-  let aiRaw = await withTimeout(
-    opts.provider.analyzeDimensions({ normalizedResume: normalized, context, dimensionIds, methodologySections: runtimeMethodology, examples: retrieval.examples }),
-    DEFAULT_TIMEOUTS.providerCallMs,
-    "provider timed out during dimension analysis",
+  const primaryBatches = splitIntoBatches(dimensionIds, MAX_DIMENSIONS_PER_BATCH);
+  const primaryBatchResults = await Promise.all(
+    primaryBatches.map((batchIds) =>
+      callBatch(opts.provider, batchIds, normalized, context, retrieval.examples, instrumentation, "provider timed out during dimension analysis"),
+    ),
   );
-  instrumentation.aiCallCount += 1;
-  accumulateUsage(instrumentation, opts.provider);
+  let aiRaw: unknown[] = primaryBatchResults.flat();
   instrumentation.currentOperation = "primary_schema_validation";
   let validation = validateDimensionAIResults(aiRaw, dimensionIds);
   if (!validation.ok) {
     instrumentation.retryCount += 1;
+    // TARGETED repair — only the dimensions still missing/invalid, never
+    // the full set again. A production incident showed a full-set retry
+    // reproducing the exact same max_tokens truncation identically
+    // (thinking disabled + no temperature ⇒ near-deterministic decoding
+    // on the same oversized ask) — pointless and wasteful. Batching
+    // already makes this the rare path (Command 05D.2 §21: a system
+    // that routinely needs repair isn't production-ready); this makes
+    // the rare case cheap too.
+    const satisfiedIds = new Set(validation.partial.map((r) => r.dimensionId));
+    const missingIds = dimensionIds.filter((id) => !satisfiedIds.has(id));
     instrumentation.currentOperation = "repair_provider_call";
-    aiRaw = await withTimeout(
-      opts.provider.analyzeDimensions({ normalizedResume: normalized, context, dimensionIds, methodologySections: runtimeMethodology, examples: retrieval.examples }),
-      DEFAULT_TIMEOUTS.providerCallMs,
-      "provider timed out during dimension analysis retry",
+    const repairBatches = splitIntoBatches(missingIds, MAX_DIMENSIONS_PER_BATCH);
+    const repairBatchResults = await Promise.all(
+      repairBatches.map((batchIds) =>
+        callBatch(opts.provider, batchIds, normalized, context, retrieval.examples, instrumentation, "provider timed out during dimension analysis retry"),
+      ),
     );
-    instrumentation.aiCallCount += 1;
-    accumulateUsage(instrumentation, opts.provider);
+    aiRaw = [...validation.partial, ...repairBatchResults.flat()];
     instrumentation.currentOperation = "repair_schema_validation";
     validation = validateDimensionAIResults(aiRaw, dimensionIds);
     if (!validation.ok) {
       throw new AnalysisPipelineError(
         "ANALYSIS_FAILED",
-        "AI output failed schema validation after one repair retry",
+        "AI output failed schema validation after one targeted repair retry",
         {
           issues: validation.issues,
           stopReason: instrumentation.stopReason,

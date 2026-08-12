@@ -32,7 +32,7 @@ export { validateDimensionAIResults } from "./schemaValidation.ts";
 export { buildAtsAnalysis, buildFindings, buildIssues, buildMissingEvidenceQuestions, buildQuickWins, buildStrengths } from "./findings.ts";
 export { DEFAULT_TIMEOUTS, newInstrumentation, withTimeout } from "./instrumentation.ts";
 export { retrievalOptionsFor } from "./knowledgeMode.ts";
-export { runAnalysis } from "./pipeline.ts";
+export { MAX_DIMENSIONS_PER_BATCH, runAnalysis } from "./pipeline.ts";
 export {
   AnthropicProviderError,
   buildProviderDiagnosticBody,
