@@ -315,8 +315,8 @@ console.log("\n[7] Prompt composition");
 // ── 8. Release gate ──────────────────────────────────────────────────────
 console.log("\n[8] Release gate");
 check(
-  "PRIVACY_SECURITY_EXECUTION_VERIFIED is still false (A–H/K unexecuted)",
-  PRIVACY_SECURITY_EXECUTION_VERIFIED === false,
+  "PRIVACY_SECURITY_EXECUTION_VERIFIED is true (A–H/K executed and passed)",
+  PRIVACY_SECURITY_EXECUTION_VERIFIED === true,
 );
 
 // ── Summary ──────────────────────────────────────────────────────────────

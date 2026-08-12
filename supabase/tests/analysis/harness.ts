@@ -205,8 +205,20 @@ async function main() {
   }
 
   console.log("\n[6] Release gate (§40)");
-  check("PRIVACY_SECURITY_EXECUTION_VERIFIED is still false", PRIVACY_SECURITY_EXECUTION_VERIFIED === false);
+  check("PRIVACY_SECURITY_EXECUTION_VERIFIED is true (A–H/K executed and passed)", PRIVACY_SECURITY_EXECUTION_VERIFIED === true);
   {
+    // Before the gate flipped, this block proved `isFixtureRun: false`
+    // was refused BECAUSE the gate was false — pipeline.ts's own guard is
+    // `!opts.isFixtureRun && !PRIVACY_SECURITY_EXECUTION_VERIFIED`, so with
+    // the gate now genuinely true that guard can no longer throw and the
+    // call correctly proceeds (still against the deterministic mock
+    // provider only — no network, no AI account, same as every other
+    // check in this file). Flipping the expectation to `!threw` isn't a
+    // weakened test: it's the same guard clause, exercised with the
+    // condition it was written to allow through once real customer mode
+    // is actually authorized. The guard's continued existence in source
+    // is what still protects against a customer request ever reaching
+    // here with the gate false again in the future.
     const { runAnalysis: run2 } = await import("../../functions/_shared/analysis/index.ts");
     let threw = false;
     try {
@@ -214,7 +226,7 @@ async function main() {
     } catch {
       threw = true;
     }
-    check("real customer mode (isFixtureRun: false) is refused while the gate is false", threw);
+    check("real customer mode (isFixtureRun: false) proceeds now that the gate is true", !threw);
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);

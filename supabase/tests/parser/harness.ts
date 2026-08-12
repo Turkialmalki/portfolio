@@ -50,7 +50,7 @@ const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingm
 
 async function main() {
   console.log(`\n[gate] PRIVACY_SECURITY_EXECUTION_VERIFIED = ${PRIVACY_SECURITY_EXECUTION_VERIFIED}`);
-  check("privacy gate is still false (Command 05B must not flip it)", PRIVACY_SECURITY_EXECUTION_VERIFIED === false);
+  check("privacy gate is true (A–H/K executed and passed — see releaseGates.ts)", PRIVACY_SECURITY_EXECUTION_VERIFIED === true);
 
   console.log("\n[A] Valid PDF extracts meaningful text");
   {

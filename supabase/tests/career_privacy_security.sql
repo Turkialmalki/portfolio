@@ -70,17 +70,34 @@ values (
 );
 
 -- ── A. anonymous user cannot access private resume ───────────────────────
+-- career_core.sql grants select/insert/update on public.resumes to
+-- `authenticated` only — `anon` gets no table-level grant at all (see that
+-- file's header comment: "a table with RLS policies but no GRANT denies
+-- everyone"). So the secure, intended outcome here is a permission-denied
+-- error at the grant layer, which never even reaches RLS — that's strictly
+-- stronger than an RLS zero-row result, not a lesser substitute for it, so
+-- it counts as PASS on equal footing with one. This test must never be
+-- "fixed" by adding `grant select on public.resumes to anon` — that would
+-- weaken the exact property it's proving.
 do $$
-declare v_count int;
+declare
+  v_count int;
+  v_denied boolean := false;
 begin
   set local role anon;
   reset request.jwt.claims;
-  select count(*) into v_count from public.resumes where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  begin
+    select count(*) into v_count from public.resumes where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  exception
+    when insufficient_privilege then
+      v_denied := true;
+  end;
   reset role;
-  if v_count <> 0 then
+  if not v_denied and v_count <> 0 then
     raise exception 'FAIL A: anonymous role could read a private resume row';
   end if;
-  raise notice 'PASS: A — anonymous cannot access private resume';
+  raise notice 'PASS: A — anonymous cannot access private resume (%)',
+    case when v_denied then 'denied at grant layer, RLS never reached' else 'RLS returned zero rows' end;
 end $$;
 
 -- ── B. User A cannot access User B resume (and vice versa: B cannot see A's) ──

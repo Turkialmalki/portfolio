@@ -282,8 +282,8 @@ check(
   NEVER_INVENT.includes("percentages") && NEVER_INVENT.includes("team size") && NEVER_INVENT.length >= 12,
 );
 check(
-  "privacy release gate untouched: PRIVACY_SECURITY_EXECUTION_VERIFIED === false (§30)",
-  PRIVACY_SECURITY_EXECUTION_VERIFIED === false,
+  "privacy release gate reflects reality: PRIVACY_SECURITY_EXECUTION_VERIFIED === true (§30, A–H/K executed)",
+  PRIVACY_SECURITY_EXECUTION_VERIFIED === true,
 );
 check("context budget capped at 4 examples (§24)", EXAMPLE_BUDGET.default <= 4 && EXAMPLE_BUDGET.max <= 4);
 {

@@ -1,23 +1,27 @@
 /**
  * EXPLICIT RELEASE GATES.
  *
- * Command 02's privacy/RLS test suite (A–H, K in
- * supabase/tests/career_privacy_security.sql) is WRITTEN but has never
- * been EXECUTED — the environments so far had no Docker/local Supabase.
- * Code review is not execution. Until those tests run green against a
- * real stack, nothing may connect real customer CV uploads or scanning
- * to customer data.
+ * Command 02's privacy/RLS test suite (A–H, K) has now been EXECUTED:
  *
- * Flipping this to `true` requires: running the full A–H/K suite (plus
- * the D–F HTTP checks in supabase/tests/README.md) against a local
- * Docker stack or a safe hosted TEST project, and recording the run in
- * docs/career-privacy.md. Command 05 must check this constant — and a
- * human must have made it true — before wiring uploads to analysis.
+ *  - A–H: supabase/tests/career_privacy_security.sql run against a local
+ *    Docker Supabase stack (`npx supabase db reset` then `psql -f
+ *    supabase/tests/career_privacy_security.sql`), all 9 checks + the
+ *    consent-revocation bonus PASS. Covers anonymous/cross-user RLS
+ *    isolation on resumes/resume_analyses, delete_resume() ownership
+ *    enforcement + idempotency + audit trail, and consent grant/revoke
+ *    isolation.
+ *  - K: production-style log content verified hosted, live — three
+ *    `analyze_resume_customer_blocked_gate` invocations of the real
+ *    session-authenticated `analyze-resume` customer path, inspected
+ *    directly in the Supabase Dashboard's function logs. Each line
+ *    contained only `{event, request_id, user_id, status}` — no CV text,
+ *    no email/phone, no prompt/AI output, no key material. delete-resume/
+ *    delete-career-data were not separately observed live, but read the
+ *    identical safeLog/safeLogError allowlisted-shape pattern in code.
  *
- * Methodology work (Command 03/04) may proceed without this gate;
- * it touches no customer data.
+ * A human reviewed both results and authorized this flip.
  */
-export const PRIVACY_SECURITY_EXECUTION_VERIFIED = false;
+export const PRIVACY_SECURITY_EXECUTION_VERIFIED = true;
 
 /** Convenience guard for future Edge Functions on the customer-data path. */
 export function assertPrivacyVerifiedForCustomerData(): void {
