@@ -1,0 +1,7 @@
+{
+  "// why this exists": "Command 05B's deno.json (parse-resume/deno.json) documented this import map as needed wherever the shared parser modules (_shared/parser/pdfExtract.ts, docxExtract.ts) run under Deno — but analyze-resume/index.ts ALSO calls parseResumeFile() directly in-process (Command 06A.5's handleCustomerAnalysis, real customer mode), and never had its own copy. Deno 2 resolves import maps per-function from a deno.json colocated with that function's entry point — parse-resume's map never applied here. Without it, the bare specifiers `pdfjs-dist/legacy/build/pdf.mjs` / `mammoth` resolved to something that didn't match the expected module shape, so every real customer PDF/DOCX upload failed at parse time with an opaque PARSE_FAILED (debug_error_name: \"TypeError\") — not a per-file issue, a missing-import-map issue that affected 100% of real uploads. Keep this identical to parse-resume/deno.json.",
+  "imports": {
+    "mammoth": "npm:mammoth@1.12.1",
+    "pdfjs-dist/legacy/build/pdf.mjs": "npm:pdfjs-dist@4.10.38/legacy/build/pdf.mjs"
+  }
+}
