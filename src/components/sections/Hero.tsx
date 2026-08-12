@@ -2,9 +2,17 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, type CSSProperties, type ReactNode } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { LuCheck, LuArrowUpRight, LuGraduationCap, LuBadgeCheck } from "react-icons/lu";
+import { useRef, useEffect, type CSSProperties, type ReactNode } from "react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useMotionValue,
+  useSpring,
+  useReducedMotion,
+  type MotionValue,
+} from "framer-motion";
+import { LuArrowUpRight, LuGraduationCap, LuBadgeCheck } from "react-icons/lu";
 import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/i18n/LanguageProvider";
 
@@ -109,105 +117,189 @@ type HeroProps = { ready?: boolean };
 
 export default function Hero({ ready = true }: HeroProps) {
   const sectionRef = useRef<HTMLElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const { t, lang } = useLanguage();
+  const prefersReducedMotion = useReducedMotion();
 
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
+  // ── Scroll handoff: the name loses prominence as the stage scrolls away ──
+  const { scrollYProgress: stageProgress } = useScroll({
+    target: stageRef,
     offset: ["start start", "end start"],
   });
+  const centerScale = useTransform(stageProgress, [0, 1], [1, 0.92]);
+  const centerOpacity = useTransform(stageProgress, [0, 0.85], [1, 0.5]);
 
-  const portraitY = useTransform(scrollYProgress, [0, 1], ["0%", "8%"]);
+  // ── Pointer parallax — fine pointers only, disabled under reduced motion ──
+  const finePointerRef = useRef(false);
+  useEffect(() => {
+    finePointerRef.current = window.matchMedia("(pointer: fine)").matches;
+  }, []);
 
-  const reveal = (delay: number) => ({
-    initial: { opacity: 0, y: 22 },
-    animate: ready ? { opacity: 1, y: 0 } : { opacity: 0, y: 22 },
-    transition: { duration: 0.85, ease: EASE, delay },
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const smx = useSpring(mx, { stiffness: 120, damping: 20, mass: 0.5 });
+  const smy = useSpring(my, { stiffness: 120, damping: 20, mass: 0.5 });
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (prefersReducedMotion || !finePointerRef.current || e.pointerType !== "mouse" || !stageRef.current) return;
+    const rect = stageRef.current.getBoundingClientRect();
+    mx.set((e.clientX - rect.left) / rect.width - 0.5);
+    my.set((e.clientY - rect.top) / rect.height - 0.5);
+  };
+  const handlePointerLeave = () => {
+    mx.set(0);
+    my.set(0);
+  };
+
+  const reveal = (delay: number, duration = 0.6, distance = 14) => ({
+    initial: { opacity: 0, y: distance },
+    animate: ready ? { opacity: 1, y: 0 } : { opacity: 0, y: distance },
+    transition: { duration, ease: EASE, delay },
   });
 
   return (
     <section id="home" ref={sectionRef} className="hero-root">
-      {/* Ambient background — soft glow only */}
-      <div className="hero-bg" aria-hidden="true">
-        <div className="hero-bg-orb hero-bg-orb-a" />
-        <div className="hero-bg-orb hero-bg-orb-b" />
+      {/* Quiet dotted field + one restrained illumination — see §M */}
+      <div className="hero-field" aria-hidden="true">
+        <div className="hero-dots" />
+        <div className="hero-glow" />
       </div>
 
-      <div className="hero-container">
-        <div className="hero-copy">
-          <div className="hero-heading">
-            <div className="hero-heading-line">
-              <motion.h1 {...reveal(0.06)} className="hero-title">
-                {t.hero.greeting}
-              </motion.h1>
-            </div>
-            <div className="hero-heading-line">
-              <motion.h1 {...reveal(0.14)} className="hero-title hero-name">
-                {t.hero.name}
-              </motion.h1>
-            </div>
-          </div>
+      <div
+        className="hero-stage"
+        ref={stageRef}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+      >
+        {/* Floating identity chip — §L */}
+        <motion.div className="hero-chip" {...reveal(0.1, 0.7, -10)}>
+          <span className="hero-chip-avatar">
+            <Image src="/avatar.jpg" alt="" width={34} height={34} />
+          </span>
+          <span className="hero-chip-copy">
+            <strong>{t.hero.name}</strong>
+            <em>{t.hero.identityRole}</em>
+          </span>
+        </motion.div>
 
-          <motion.p {...reveal(0.24)} className="hero-description">
-            {t.hero.description}{" "}
-            <strong>{t.hero.descriptionStrong}</strong>
+        <motion.div className="hero-center" style={{ scale: centerScale, opacity: centerOpacity }}>
+          {!prefersReducedMotion && (
+            <div className="hero-role-cycle" aria-hidden="true">
+              {t.hero.roleWords.map((word, i) => (
+                <span
+                  key={word}
+                  className="hero-role-word"
+                  style={{ animationDelay: `${i * 3}s` }}
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <motion.h1 className="hero-name-title" {...reveal(0.2, 0.5, 12)}>
+            {t.hero.name}
+          </motion.h1>
+
+          <motion.p className="hero-positioning" {...reveal(0.45, 0.45, 10)}>
+            {t.hero.positioning}
           </motion.p>
 
-          <motion.div {...reveal(0.32)} className="hero-actions">
-            <GradientButton
+          <motion.div className="hero-cta-row" {...reveal(0.7, 0.4, 10)}>
+            <Link
               href="/services"
+              className="hero-cta-primary"
               onClick={() => trackEvent("quick_service_cta_click", { location: "hero" })}
             >
-              {t.hero.quickService}
-              <LuArrowUpRight size={17} style={{ flexShrink: 0 }} />
-            </GradientButton>
+              {t.hero.ctaPrimary}
+              <LuArrowUpRight size={16} style={{ flexShrink: 0 }} />
+            </Link>
 
-            <PillButton
+            <Link
               href="/projects"
+              className="hero-cta-secondary"
               onClick={() => trackEvent("portfolio_cta_click", { location: "hero" })}
             >
-              {t.hero.viewPortfolio}
-            </PillButton>
+              {t.hero.ctaSecondary}
+            </Link>
 
-            {/* one restrained Career entry point (06A.1 §26) */}
             <Link
               href="/career"
               className="hero-career-link"
               onClick={() => trackEvent("career_cta_click", { location: "hero" })}
             >
               {t.hero.analyzeCv}
-              <LuArrowUpRight size={14} style={{ flexShrink: 0 }} />
+              <LuArrowUpRight size={13} style={{ flexShrink: 0 }} />
             </Link>
           </motion.div>
+        </motion.div>
 
-          {/* Trust badges */}
-          <motion.ul {...reveal(0.42)} className="hero-trust-badges">
-            {t.hero.trustBadges.map((badge) => (
-              <li key={badge} className="hero-trust-badge">
-                <span className="hero-trust-check">
-                  <LuCheck size={10} strokeWidth={3} aria-hidden="true" />
-                </span>
-                {badge}
-              </li>
-            ))}
-          </motion.ul>
+        {/* Spatial micro-elements — §N, quiet edge fragments of real work */}
+        <div className="hero-micro-field" aria-hidden="true">
+          <MicroSlot className="hero-micro-a" mx={smx} my={smy} depth={10} delay={0.95}>
+            <div className="micro-code">
+              <div className="micro-code-dots">
+                <span />
+                <span />
+                <span />
+              </div>
+              <pre>{"<Product\n  scale=\"enterprise\"\n/>"}</pre>
+            </div>
+          </MicroSlot>
+
+          <MicroSlot className="hero-micro-b" mx={smx} my={smy} depth={7} delay={1.02}>
+            <div className="micro-browser">
+              <div className="micro-browser-bar">
+                <span />
+                <span />
+                <span />
+              </div>
+              <div className="micro-browser-body">
+                <i style={{ width: "72%" }} />
+                <i style={{ width: "46%" }} />
+                <i className="accent" style={{ width: "86%" }} />
+              </div>
+            </div>
+          </MicroSlot>
+
+          <MicroSlot className="hero-micro-c" mx={smx} my={smy} depth={9} delay={1.09}>
+            <div className="micro-tag">
+              <span className="micro-tag-dot" />
+              {PROJECTS[0].name[lang]} · {t.projectMeta.categories.banking}
+            </div>
+          </MicroSlot>
+
+          <MicroSlot className="hero-micro-d" mx={smx} my={smy} depth={6} delay={1.16}>
+            <div className="micro-metric">
+              <strong>+9</strong>
+              <span>{t.hero.yearsExperience}</span>
+            </div>
+          </MicroSlot>
+
+          <MicroSlot className="hero-micro-e" mx={smx} my={smy} depth={11} delay={1.23}>
+            <div className="micro-phone">
+              <div className="micro-phone-notch" />
+              <div className="micro-phone-row" />
+              <div className="micro-phone-row short" />
+              <div className="micro-phone-chip" />
+            </div>
+          </MicroSlot>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 18 }}
-          animate={ready ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.9, y: 18 }}
-          transition={{ duration: 1, ease: EASE, delay: 0.16 }}
-          style={{ y: portraitY }}
-          className="hero-portrait-column"
-        >
-          <HeroPortrait
-            yearsLabel={t.hero.yearsExperience}
-            locationLabel={t.hero.location}
-          />
-        </motion.div>
+        {!prefersReducedMotion && (
+          <motion.div
+            className="hero-scroll-cue"
+            initial={{ opacity: 0 }}
+            animate={ready ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.8, ease: EASE, delay: 1.3 }}
+          >
+            <span />
+          </motion.div>
+        )}
       </div>
 
-      {/* Credential cards — Monshaat & iHash+ */}
-      <motion.div {...reveal(0.52)} className="hero-credentials">
+      {/* Handoff strip — credentials & real project evidence, one quick beat below the fold */}
+      <motion.div {...reveal(0.15, 0.7)} className="hero-credentials">
         <CredentialCard
           href="https://play.google.com/store/apps/details?id=sme.bc.monshaat&hl=ar"
           title={t.hero.monshaatTitle}
@@ -233,7 +325,7 @@ export default function Hero({ ready = true }: HeroProps) {
       </motion.div>
 
       {/* Premium project cards marquee */}
-      <motion.div {...reveal(0.6)} className="hero-gallery">
+      <motion.div {...reveal(0.22, 0.7)} className="hero-gallery">
         <div className="hero-marquee-viewport">
           <div className="hero-marquee-track">
             {TRACK.map((project, index) => (
@@ -254,11 +346,10 @@ export default function Hero({ ready = true }: HeroProps) {
         .hero-root {
           --hero-card-background: rgba(255, 255, 255, 0.72);
           --hero-card-border: rgba(0, 0, 0, 0.06);
-          --hero-badge-background: rgba(255, 255, 255, 0.94);
-          --hero-badge-border: rgba(0, 0, 0, 0.07);
-          --hero-badge-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
           --hero-glass-bg: rgba(255, 255, 255, 0.66);
-          --hero-glass-border: rgba(0, 0, 0, 0.065);
+          --hero-glass-border: rgba(0, 0, 0, 0.08);
+          --hero-dot-color: rgba(0, 0, 0, 0.09);
+          --hero-glow-color: rgba(20, 149, 255, 0.08);
 
           position: relative;
           width: 100%;
@@ -271,112 +362,204 @@ export default function Hero({ ready = true }: HeroProps) {
         :global([data-theme="dark"]) .hero-root {
           --hero-card-background: rgba(29, 31, 35, 0.82);
           --hero-card-border: rgba(255, 255, 255, 0.075);
-          --hero-badge-background: rgba(34, 36, 41, 0.94);
-          --hero-badge-border: rgba(255, 255, 255, 0.09);
-          --hero-badge-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
           --hero-glass-bg: rgba(28, 30, 36, 0.66);
-          --hero-glass-border: rgba(255, 255, 255, 0.08);
+          --hero-glass-border: rgba(255, 255, 255, 0.09);
+          --hero-dot-color: rgba(255, 255, 255, 0.08);
+          --hero-glow-color: rgba(36, 156, 255, 0.14);
         }
 
-        /* ── Ambient background ── */
-        .hero-bg {
+        /* ── Background: quiet dots + one restrained glow ── */
+        .hero-field {
           position: absolute;
           inset: 0;
           pointer-events: none;
           overflow: hidden;
         }
 
-        .hero-bg-orb {
+        .hero-dots {
           position: absolute;
-          border-radius: 50%;
-          filter: blur(110px);
-          opacity: 0.4;
+          inset: 0;
+          background-image: radial-gradient(circle, var(--hero-dot-color) 1px, transparent 1.6px);
+          background-size: 26px 26px;
+          -webkit-mask-image: radial-gradient(ellipse 58% 48% at 50% 40%, transparent 0%, #000 72%);
+          mask-image: radial-gradient(ellipse 58% 48% at 50% 40%, transparent 0%, #000 72%);
         }
 
-        .hero-bg-orb-a {
-          width: 560px;
-          height: 560px;
-          top: -220px;
-          inset-inline-start: -160px;
-          background: radial-gradient(circle, rgba(20, 149, 255, 0.24), transparent 72%);
+        .hero-glow {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse 58% 42% at 50% 34%, var(--hero-glow-color), transparent 70%);
         }
 
-        .hero-bg-orb-b {
-          width: 480px;
-          height: 480px;
-          top: 20px;
-          inset-inline-end: -180px;
-          background: radial-gradient(circle, rgba(9, 205, 164, 0.16), transparent 72%);
-        }
-
-        /* ── Main hero area ── */
-        .hero-container {
+        /* ── Stage: name-first, centered, one intentional viewport ── */
+        .hero-stage {
           position: relative;
-          width: min(1200px, calc(100% - 48px));
+          width: min(980px, calc(100% - 40px));
           margin: 0 auto;
-          padding-top: clamp(136px, 11vw, 172px);
-          padding-bottom: clamp(48px, 5vw, 72px);
-          display: grid;
-          grid-template-columns: minmax(0, 1.28fr) minmax(300px, 0.72fr);
+          min-height: clamp(560px, 90svh, 900px);
+          display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: clamp(64px, 8vw, 120px);
+          justify-content: center;
+          padding-top: clamp(96px, 10vw, 140px);
+          padding-bottom: clamp(48px, 6vw, 88px);
         }
 
-        .hero-copy { min-width: 0; max-width: 700px; }
+        /* ── Identity chip ── */
+        .hero-chip {
+          position: absolute;
+          top: clamp(96px, 9vw, 128px);
+          inset-inline-end: 0;
+          z-index: 3;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 16px 8px 8px;
+          border-radius: 999px;
+          background: var(--hero-glass-bg);
+          border: 1px solid var(--hero-glass-border);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.07);
+        }
 
-        .hero-heading { margin-bottom: clamp(22px, 2.4vw, 30px); }
-        .hero-heading-line { overflow: hidden; }
+        [dir="rtl"] .hero-chip { padding: 8px 8px 8px 16px; }
 
-        .hero-title {
+        .hero-chip-avatar {
+          width: 34px;
+          height: 34px;
+          flex: 0 0 34px;
+          border-radius: 50%;
+          overflow: hidden;
+          display: block;
+        }
+
+        .hero-chip-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }
+
+        .hero-chip-copy { display: flex; flex-direction: column; gap: 1px; line-height: 1.3; }
+        .hero-chip-copy strong { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+        .hero-chip-copy em {
+          font-style: normal;
+          font-size: 10.5px;
+          font-weight: 500;
+          color: var(--text-secondary);
+        }
+
+        /* ── Center: name, positioning, CTAs ── */
+        .hero-center {
+          position: relative;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          transform-origin: center 30%;
+        }
+
+        .hero-role-cycle {
+          position: relative;
+          height: 16px;
+          margin-bottom: clamp(16px, 2vw, 22px);
+          font-size: 11.5px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--text-muted, #888888);
+        }
+
+        [dir="rtl"] .hero-role-cycle { text-transform: none; letter-spacing: 0; }
+
+        .hero-role-word {
+          position: absolute;
+          inset-inline-start: 50%;
+          transform: translateX(-50%);
+          white-space: nowrap;
+          opacity: 0;
+          animation: hero-role-fade 12s ease-in-out infinite;
+        }
+
+        [dir="rtl"] .hero-role-word { transform: translateX(50%); }
+
+        @keyframes hero-role-fade {
+          0%, 2% { opacity: 0; }
+          6%, 20% { opacity: 1; }
+          25%, 100% { opacity: 0; }
+        }
+
+        .hero-name-title {
           margin: 0;
           color: var(--text-primary, #090909);
-          font-size: clamp(44px, 5.6vw, 76px);
+          font-size: clamp(60px, 9vw, 152px);
           font-weight: 900;
-          line-height: 1.16;
+          line-height: 1.08;
           letter-spacing: -0.03em;
           transition: color 300ms ease;
         }
 
-        .hero-name {
-          width: fit-content;
-          margin-top: 6px;
-          background: linear-gradient(100deg, #1495ff 0%, #09cda4 100%);
-          background-clip: text;
-          -webkit-background-clip: text;
-          color: transparent;
-          -webkit-text-fill-color: transparent;
-          padding-bottom: 0.1em; /* keep Arabic descenders unclipped */
+        [dir="rtl"] .hero-name-title {
+          line-height: 1.22;
+          padding-bottom: 0.06em; /* keep Arabic descenders unclipped */
         }
 
-        .hero-description {
-          max-width: 600px;
-          margin: 0 0 36px;
+        .hero-positioning {
+          max-width: 560px;
+          margin: clamp(18px, 2.4vw, 26px) 0 0;
           color: var(--text-secondary, #666666);
-          font-size: clamp(17px, 1.4vw, 21px);
+          font-size: clamp(16px, 1.3vw, 19px);
           font-weight: 400;
-          line-height: 1.65;
+          line-height: 1.6;
           letter-spacing: -0.01em;
-          transition: color 300ms ease;
         }
 
-        .hero-description strong {
-          color: var(--text-primary, #090909);
-          font-weight: 700;
-        }
-
-        .hero-actions {
+        .hero-cta-row {
           display: flex;
           align-items: center;
+          justify-content: center;
           flex-wrap: wrap;
-          gap: 14px;
-          margin-bottom: clamp(32px, 4vw, 44px);
+          gap: 12px;
+          margin-top: clamp(28px, 3.4vw, 40px);
         }
+
+        .hero-cta-primary,
+        .hero-cta-secondary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-height: 50px;
+          padding: 13px 28px;
+          border-radius: 999px;
+          font-size: 15px;
+          font-weight: 700;
+          line-height: 1;
+          white-space: nowrap;
+          text-decoration: none;
+          transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms ease, border-color 260ms ease;
+        }
+
+        .hero-cta-primary {
+          color: var(--bg-primary, #ffffff);
+          background: var(--text-primary, #0d0e12);
+          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+        }
+
+        .hero-cta-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.2); }
+
+        .hero-cta-secondary {
+          color: var(--text-primary, #0d0e12);
+          background: var(--hero-glass-bg);
+          border: 1px solid var(--hero-glass-border);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+        }
+
+        .hero-cta-secondary:hover { transform: translateY(-2px); border-color: var(--accent, #1495ff); }
 
         .hero-career-link {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          font-size: 14.5px;
+          font-size: 14px;
           font-weight: 700;
           color: var(--text-primary, #090909);
           text-decoration: underline;
@@ -387,53 +570,117 @@ export default function Hero({ ready = true }: HeroProps) {
         }
         .hero-career-link:hover { opacity: 0.7; }
 
-        /* ── Trust badges — small, quiet, refined ── */
-        .hero-trust-badges {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
+        /* ── Micro-elements ── */
+        .hero-micro-field {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+        }
+
+        .hero-micro-a, .hero-micro-b, .hero-micro-c, .hero-micro-d, .hero-micro-e {
+          position: absolute;
+        }
+
+        .hero-micro-a { top: 21%; inset-inline-start: 3%; }
+        .hero-micro-b { bottom: 16%; inset-inline-start: 5%; }
+        .hero-micro-c { top: 32%; inset-inline-end: 3%; }
+        .hero-micro-d { bottom: 20%; inset-inline-end: 4%; }
+        .hero-micro-e { top: 58%; inset-inline-end: 0.5%; }
+
+        .micro-code, .micro-browser, .micro-tag, .micro-metric, .micro-phone {
+          border-radius: 16px;
+          background: var(--hero-glass-bg);
+          border: 1px solid var(--hero-glass-border);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
+        }
+
+        .micro-code {
+          padding: 12px 14px;
+          width: 176px;
+          direction: ltr;
+        }
+        .micro-code-dots { display: flex; gap: 5px; margin-bottom: 9px; }
+        .micro-code-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted, #999); opacity: 0.4; }
+        .micro-code pre {
           margin: 0;
-          padding: 0;
-          list-style: none;
+          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+          font-size: 10.5px;
+          line-height: 1.5;
+          color: var(--text-secondary, #666);
+          white-space: pre;
         }
 
-        .hero-trust-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 13px 6px 8px;
-          border-radius: 999px;
-          background: var(--bg-card, #f3f3f3);
-          color: var(--text-secondary, #666666);
-          font-size: 12.5px;
-          font-weight: 500;
-          white-space: nowrap;
-          transition: background-color 300ms ease, color 300ms ease, transform 300ms ease;
-        }
+        .micro-browser { padding: 10px; width: 168px; direction: ltr; }
+        .micro-browser-bar { display: flex; align-items: center; gap: 4px; margin-bottom: 9px; }
+        .micro-browser-bar span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted, #999); opacity: 0.35; }
+        .micro-browser-body { display: flex; flex-direction: column; gap: 6px; }
+        .micro-browser-body i { display: block; height: 5px; border-radius: 3px; background: var(--border-subtle, rgba(0,0,0,0.09)); font-style: normal; }
+        .micro-browser-body i.accent { background: var(--accent, #1495ff); opacity: 0.5; }
 
-        [dir="rtl"] .hero-trust-badge { padding: 6px 8px 6px 13px; }
-
-        .hero-trust-badge:hover { transform: translateY(-1px); }
-
-        .hero-trust-check {
+        .micro-tag {
           display: flex;
           align-items: center;
-          justify-content: center;
-          width: 16px;
-          height: 16px;
-          flex-shrink: 0;
-          border-radius: 50%;
-          background: rgba(9, 205, 164, 0.16);
-          color: #09b491;
+          gap: 7px;
+          padding: 9px 15px;
+          font-size: 11.5px;
+          font-weight: 600;
+          color: var(--text-secondary, #666);
+          white-space: nowrap;
         }
+        .micro-tag-dot { width: 6px; height: 6px; border-radius: 50%; background: #09b491; flex-shrink: 0; }
 
-        :global([data-theme="dark"]) .hero-trust-check { color: #3be0bc; }
+        .micro-metric {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          padding: 10px 16px;
+        }
+        .micro-metric strong { font-size: 19px; font-weight: 900; color: var(--accent, #1495ff); line-height: 1.1; }
+        .micro-metric span { font-size: 10px; color: var(--text-secondary, #666); white-space: nowrap; }
+
+        .micro-phone {
+          width: 74px;
+          height: 108px;
+          padding: 12px 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          align-items: center;
+        }
+        .micro-phone-notch { width: 26px; height: 4px; border-radius: 3px; background: var(--border-subtle, rgba(0,0,0,0.1)); }
+        .micro-phone-row { width: 100%; height: 5px; border-radius: 3px; background: var(--border-subtle, rgba(0,0,0,0.09)); }
+        .micro-phone-row.short { width: 65%; }
+        .micro-phone-chip { margin-top: auto; width: 100%; height: 20px; border-radius: 7px; background: var(--accent, #1495ff); opacity: 0.16; }
+
+        /* ── Scroll cue ── */
+        .hero-scroll-cue {
+          position: absolute;
+          bottom: clamp(14px, 2vw, 24px);
+          inset-inline-start: 50%;
+          transform: translateX(-50%);
+          z-index: 2;
+        }
+        .hero-scroll-cue span {
+          display: block;
+          width: 1px;
+          height: 32px;
+          background: linear-gradient(to bottom, transparent, var(--text-muted, #999) 45%, transparent);
+          opacity: 0.55;
+          animation: hero-scroll-pulse 2.6s ease-in-out infinite;
+        }
+        @keyframes hero-scroll-pulse {
+          0%, 100% { transform: translateY(0); opacity: 0.3; }
+          50% { transform: translateY(8px); opacity: 0.6; }
+        }
 
         /* ── Credential cards — compact, verified-style ── */
         .hero-credentials {
           position: relative;
           width: min(1200px, calc(100% - 48px));
-          margin: clamp(8px, 1vw, 16px) auto 0;
+          margin: 0 auto;
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: clamp(12px, 1.6vw, 18px);
@@ -542,109 +789,13 @@ export default function Hero({ ready = true }: HeroProps) {
           transform: translate(0, 0) scaleX(-1);
         }
 
-        /* ── Portrait — premium glow ring, glass border ── */
-        .hero-portrait-column {
-          min-width: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .hero-portrait-stage {
-          position: relative;
-          width: clamp(280px, 24vw, 350px);
-          aspect-ratio: 1 / 1;
-        }
-
-        .hero-portrait-glow {
-          position: absolute;
-          inset: -30px;
-          z-index: 0;
-          border-radius: 50%;
-          background: conic-gradient(from 180deg, #1495ff, #0cbdda, #09cda4, #1495ff);
-          filter: blur(46px);
-          opacity: 0.3;
-        }
-
-        .hero-portrait {
-          position: absolute;
-          inset: 18px;
-          z-index: 1;
-          overflow: hidden;
-          border-radius: 50%;
-          background: linear-gradient(145deg, #0ba9ff 0%, #05d4aa 100%);
-          border: 4px solid var(--bg-primary, #ffffff);
-          box-shadow: 0 20px 56px rgba(20, 149, 255, 0.22), 0 0 0 1px var(--hero-glass-border);
-        }
-
-        .hero-portrait::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          z-index: 1;
-          pointer-events: none;
-          background: radial-gradient(circle at 52% 35%, rgba(255, 255, 255, 0.15), transparent 58%);
-        }
-
-        .hero-portrait-image {
-          object-fit: cover;
-          object-position: center 22%;
-          transform: scale(1.02);
-        }
-
-        .hero-floating-badge {
-          position: absolute;
-          z-index: 5;
-          display: flex;
-          align-items: center;
-          gap: 9px;
-          padding: 10px 13px;
-          color: var(--text-primary, #090909);
-          background: var(--hero-badge-background);
-          border: 1px solid var(--hero-badge-border);
-          border-radius: 15px;
-          box-shadow: var(--hero-badge-shadow);
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
-          transition: color 300ms ease, background-color 300ms ease, border-color 300ms ease;
-        }
-
-        .hero-experience-badge { top: 22px; inset-inline-start: -14px; }
-        .hero-location-badge { inset-inline-end: -10px; bottom: 20px; }
-
-        .hero-badge-value {
-          margin: 0;
-          color: var(--accent, #1495ff);
-          font-size: 20px;
-          font-weight: 900;
-          line-height: 1;
-        }
-
-        .hero-badge-description {
-          margin: 3px 0 0;
-          color: var(--text-secondary, #666666);
-          font-size: 10px;
-          font-weight: 400;
-          line-height: 1.1;
-          white-space: nowrap;
-        }
-
-        .hero-location-dot {
-          width: 7px;
-          height: 7px;
-          flex: 0 0 auto;
-          border-radius: 50%;
-          background: #ef4444;
-          box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
-        }
-
         /* ── Project cards marquee ── */
         .hero-gallery {
           --hero-gallery-gap: clamp(16px, 1.4vw, 24px);
           --hero-gallery-card-width: clamp(320px, 25vw, 420px);
           position: relative;
           width: 100%;
-          padding-top: clamp(56px, 6vw, 88px);
+          padding-top: clamp(40px, 5vw, 64px);
           padding-bottom: clamp(88px, 9vw, 120px);
           overflow: hidden;
         }
@@ -829,82 +980,69 @@ export default function Hero({ ready = true }: HeroProps) {
           white-space: nowrap;
         }
 
-        /* ── Tablet ── */
+        /* ── Tablet: thin the micro-field, keep the name centered ── */
+        @media (max-width: 1180px) {
+          .hero-micro-b, .hero-micro-e { display: none; }
+        }
+
         @media (max-width: 960px) {
-          .hero-container {
-            grid-template-columns: minmax(0, 1.15fr) minmax(230px, 0.85fr);
-            gap: 42px;
-          }
-          .hero-title { font-size: clamp(42px, 6.4vw, 62px); }
-          .hero-description { font-size: clamp(17px, 2vw, 20px); }
-          .hero-portrait-stage { width: clamp(270px, 31vw, 330px); }
+          .hero-name-title { font-size: clamp(52px, 10vw, 96px); }
+          .hero-positioning { font-size: clamp(16px, 2vw, 18px); }
           .hero-gallery { --hero-gallery-card-width: clamp(285px, 34vw, 350px); }
         }
 
-        /* ── Mobile ── */
+        /* ── Mobile: intentional, not compressed desktop ── */
         @media (max-width: 760px) {
-          .hero-container {
-            width: min(620px, calc(100% - 32px));
-            grid-template-columns: 1fr;
-            padding-top: 92px;
-            padding-bottom: 26px;
-            gap: 34px;
-            text-align: center;
+          .hero-stage {
+            width: min(560px, calc(100% - 32px));
+            min-height: clamp(480px, 82svh, 720px);
+            padding-top: 84px;
+            padding-bottom: 32px;
           }
 
-          .hero-portrait-column { grid-row: 1; }
-          .hero-copy { grid-row: 2; max-width: 600px; margin: 0 auto; }
-          .hero-heading { margin-bottom: 17px; }
-          .hero-title { font-size: clamp(38px, 10vw, 54px); }
-          .hero-name { margin-inline: auto; margin-top: 3px; }
+          .hero-chip { position: static; margin-bottom: 28px; align-self: center; }
 
-          .hero-description {
-            max-width: 560px;
-            margin-inline: auto;
-            margin-bottom: 26px;
-            font-size: 17px;
-            line-height: 1.62;
-          }
+          .hero-role-cycle { margin-bottom: 12px; }
+          .hero-name-title { font-size: clamp(40px, 13vw, 64px); }
+          .hero-positioning { font-size: 16px; line-height: 1.6; margin-top: 16px; }
+          .hero-cta-row { margin-top: 26px; }
+          .hero-cta-primary, .hero-cta-secondary { padding: 12px 22px; font-size: 14px; min-height: 46px; }
 
-          .hero-actions { justify-content: center; }
-          .hero-trust-badges { justify-content: center; }
-
-          .hero-portrait-stage { width: clamp(260px, 72vw, 330px); }
-          .hero-experience-badge { top: 18px; inset-inline-start: 0; }
-          .hero-location-badge { inset-inline-end: 0; bottom: 15px; }
+          /* Mobile keeps 2 quiet fragments, both clear of the fixed TopBar and the CTA row */
+          .hero-micro-a, .hero-micro-b, .hero-micro-d { display: none; }
+          .hero-micro-c { top: auto; bottom: 20px; inset-inline-end: 3%; }
+          .hero-micro-e { display: block; top: auto; bottom: 20px; inset-inline-start: 3%; inset-inline-end: auto; transform: scale(0.8); }
 
           .hero-credentials {
-            width: min(620px, calc(100% - 32px));
+            width: min(560px, calc(100% - 32px));
             grid-template-columns: 1fr;
+            margin-top: 8px;
           }
 
           .hero-gallery {
             --hero-gallery-card-width: clamp(272px, 78vw, 330px);
             --hero-gallery-gap: 13px;
+            padding-top: 28px;
             padding-bottom: 84px;
           }
         }
 
-        /* ── Small mobile ── */
         @media (max-width: 480px) {
-          .hero-container { padding-top: 84px; gap: 28px; }
-          .hero-title { font-size: clamp(34px, 10.5vw, 44px); }
-          .hero-description { font-size: 16px; }
-          .hero-portrait-stage { width: min(280px, calc(100vw - 40px)); }
-          .hero-portrait { inset: 26px; }
-          .hero-floating-badge { padding: 8px 10px; border-radius: 13px; }
-          .hero-badge-value { font-size: 18px; }
-          .hero-trust-badge { font-size: 12px; padding: 7px 12px; }
+          .hero-stage { padding-top: 76px; }
+          .hero-name-title { font-size: clamp(36px, 13.5vw, 52px); }
+          .hero-micro-c, .hero-micro-e { transform: scale(0.72); }
           .hero-gallery { --hero-gallery-card-width: clamp(252px, 82vw, 300px); }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .hero-marquee-track { animation-play-state: paused; }
+          .hero-role-word { animation: none; opacity: 1; }
           .hero-credential-card,
           .hero-project-card,
           .hero-project-cover-image,
           .hero-project-cta,
-          .hero-trust-badge {
+          .hero-cta-primary,
+          .hero-cta-secondary {
             transition: none !important;
           }
         }
@@ -913,51 +1051,33 @@ export default function Hero({ ready = true }: HeroProps) {
   );
 }
 
-function HeroPortrait({
-  yearsLabel,
-  locationLabel,
+function MicroSlot({
+  className,
+  mx,
+  my,
+  depth,
+  delay,
+  children,
 }: {
-  yearsLabel: string;
-  locationLabel: string;
+  className: string;
+  mx: MotionValue<number>;
+  my: MotionValue<number>;
+  depth: number;
+  delay: number;
+  children: ReactNode;
 }) {
+  const x = useTransform(mx, [-0.5, 0.5], [-depth, depth]);
+  const y = useTransform(my, [-0.5, 0.5], [-depth, depth]);
+
   return (
-    <div className="hero-portrait-stage">
-      <div className="hero-portrait-glow" aria-hidden="true" />
-      <div className="hero-portrait">
-        <Image
-          src="/avatar.jpg"
-          alt="Turki Almalki"
-          fill
-          priority
-          sizes="(max-width: 480px) 234px, (max-width: 760px) 284px, 336px"
-          className="hero-portrait-image"
-        />
-      </div>
-
-      <motion.div
-        className="hero-floating-badge hero-experience-badge"
-        initial={{ opacity: 0, x: -14, y: -5 }}
-        animate={{ opacity: 1, x: 0, y: 0 }}
-        transition={{ duration: 0.8, ease: EASE, delay: 0.75 }}
-      >
-        <div>
-          <p className="hero-badge-value">9+</p>
-          <p className="hero-badge-description">{yearsLabel}</p>
-        </div>
-      </motion.div>
-
-      <motion.div
-        className="hero-floating-badge hero-location-badge"
-        initial={{ opacity: 0, x: 14, y: 5 }}
-        animate={{ opacity: 1, x: 0, y: 0 }}
-        transition={{ duration: 0.8, ease: EASE, delay: 0.9 }}
-      >
-        <span className="hero-location-dot" />
-        <div>
-          <p className="hero-badge-description">{locationLabel}</p>
-        </div>
-      </motion.div>
-    </div>
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 14, scale: 0.94 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.6, ease: EASE, delay }}
+    >
+      <motion.div style={{ x, y }}>{children}</motion.div>
+    </motion.div>
   );
 }
 
@@ -1056,91 +1176,5 @@ function HeroProjectCard({
         </div>
       </div>
     </Link>
-  );
-}
-
-function GradientButton({
-  children,
-  href,
-  onClick,
-}: {
-  children: ReactNode;
-  href: string;
-  onClick?: () => void;
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -3, scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.22, ease: EASE }}
-    >
-      <Link
-        href={href}
-        onClick={onClick}
-        className="hero-gradient-btn"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          minHeight: 50,
-          padding: "13px 28px",
-          color: "#ffffff",
-          background: "linear-gradient(100deg, #1495ff 0%, #09cda4 100%)",
-          borderRadius: 999,
-          boxShadow: "0 12px 32px rgba(20, 149, 255, 0.32)",
-          fontSize: 15.5,
-          fontWeight: 700,
-          lineHeight: 1,
-          textDecoration: "none",
-          whiteSpace: "nowrap",
-          transition: "box-shadow 300ms ease",
-        }}
-      >
-        {children}
-      </Link>
-    </motion.div>
-  );
-}
-
-function PillButton({
-  children,
-  href,
-  onClick,
-}: {
-  children: ReactNode;
-  href: string;
-  onClick?: () => void;
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -3, scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.22, ease: EASE }}
-    >
-      <Link
-        href={href}
-        onClick={onClick}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 50,
-          padding: "13px 28px",
-          color: "var(--text-primary, #090909)",
-          background: "transparent",
-          border: "1.5px solid var(--border-subtle, rgba(0,0,0,0.12))",
-          borderRadius: 999,
-          fontSize: 15,
-          fontWeight: 700,
-          lineHeight: 1,
-          textDecoration: "none",
-          whiteSpace: "nowrap",
-          transition: "border-color 300ms ease, color 300ms ease",
-        }}
-      >
-        {children}
-      </Link>
-    </motion.div>
   );
 }

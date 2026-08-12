@@ -49,7 +49,7 @@ export const CAREER_FLAGS = {
    * changes nothing on its own while the server-side gate is false: the
    * Edge Function answers every customer request with `GATED` first.
    */
-  analysisEnabled: false,
+  analysisEnabled: true,
 
   /** Real rewrite generation for the public. Fact-safety validation pending. */
   rewriteEnabled: false,
