@@ -422,6 +422,7 @@ async function handleCustomerAnalysis(
       user_id: user.id,
       error_code: parseResult.code,
       duration_ms: Date.now() - start,
+      ...(parseResult.debugErrorName ? { debug_error_name: parseResult.debugErrorName } : {}),
     });
     await admin.from("resumes").update({ status: "failed" }).eq("id", resumeId);
     return respondError(parseResult.code as SafeErrorCode, headers);

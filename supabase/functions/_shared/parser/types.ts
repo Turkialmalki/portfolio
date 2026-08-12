@@ -74,7 +74,20 @@ export type ParserErrorCode =
   | "PARSE_FAILED"
   | "PARSE_TIMEOUT";
 
-export type ParseResult = { ok: true; resume: ParsedResume } | { ok: false; code: ParserErrorCode };
+export type ParseResult =
+  | { ok: true; resume: ParsedResume }
+  | {
+      ok: false;
+      code: ParserErrorCode;
+      /**
+       * Only ever the THROWN VALUE'S TYPE NAME (e.g. "UnknownErrorException",
+       * "RangeError") — a library-internal error class, never a message,
+       * never file content. Present only on the generic PARSE_FAILED
+       * bucket, to tell apart which unclassified failure mode actually
+       * happened without needing to see the file. Safe to pass to safeLog.
+       */
+      debugErrorName?: string;
+    };
 
 /**
  * The parser's actual input. Deliberately just bytes + what the caller

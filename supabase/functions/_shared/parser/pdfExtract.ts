@@ -197,6 +197,18 @@ export async function extractPdf(bytes: Uint8Array): Promise<PdfExtractionOutcom
 
     return { ok: true, text: reverseArabicRuns(combinedText.trim()), pageCount: pagesToRead, warnings };
   } finally {
-    await doc.destroy();
+    // A throw here would override any return/throw above it (including a
+    // clean `ok: true` return, or the correct PDF_NO_EXTRACTABLE_TEXT
+    // classification) with an uncaught exception — collapsing an already-
+    // correct result into the opaque PARSE_FAILED bucket. destroy() is
+    // cleanup only; a document whose pages already hit unusual internal
+    // states (the exact per-page failures this module now tolerates
+    // above) is a plausible way for destroy() itself to throw, so this
+    // must never be allowed to clobber a real result.
+    try {
+      await doc.destroy();
+    } catch {
+      /* cleanup-only, nothing left to do with a failure here */
+    }
   }
 }

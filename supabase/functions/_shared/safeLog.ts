@@ -31,6 +31,8 @@ export type SafeLogFields = {
   character_count?: number;
   /** Non-fatal parser warning codes, e.g. ["MULTI_COLUMN_ORDER_UNCERTAIN"] — codes only. */
   warning_codes?: string[];
+  /** Only a thrown value's TYPE NAME (e.g. "UnknownErrorException") on an unclassified PARSE_FAILED — never a message, never content. See parser/types.ts's ParseResult.debugErrorName. */
+  debug_error_name?: string;
 };
 
 export function safeLog(fields: SafeLogFields): void {

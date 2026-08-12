@@ -64,7 +64,11 @@ export async function parseResumeFile(input: ParseFileInput, timeoutMs: number =
     return await withTimeout(parseResumeFileInner(input), timeoutMs);
   } catch (err) {
     if (err instanceof Error && err.message === "PARSE_TIMEOUT") return { ok: false, code: "PARSE_TIMEOUT" };
-    return { ok: false, code: "PARSE_FAILED" };
+    // Type name only (e.g. "UnknownErrorException") — never err.message,
+    // which some libraries embed contextual detail into. See ParseResult's
+    // debugErrorName doc comment.
+    const debugErrorName = err instanceof Error ? err.constructor.name : typeof err;
+    return { ok: false, code: "PARSE_FAILED", debugErrorName };
   }
 }
 
