@@ -96,6 +96,8 @@ export const CAREER_COPY = {
     sendToEmailSent: "تم إرسال التقرير ✓",
     sendToEmailCheckInbox: "شيّك بريدك — التقرير وصلك.",
     sendToEmailError: "تعذر إرسال التقرير. حاول مرة ثانية.",
+    sendToEmailConfirmCta: "تأكيد البريد",
+    sendToEmailConfirmPending: "تحقق من بريدك وافتح رابط التأكيد — بعدها بنقدر نرسل لك التقرير.",
 
     // ── free report ──
     dimensionsH: "وين تقف سيرتك",
@@ -315,6 +317,8 @@ export const CAREER_COPY = {
     sendToEmailSent: "Report sent ✓",
     sendToEmailCheckInbox: "Check your inbox — it's on its way.",
     sendToEmailError: "Couldn't send the report. Please try again.",
+    sendToEmailConfirmCta: "Confirm email",
+    sendToEmailConfirmPending: "Check your inbox and open the confirmation link — then we can send you the report.",
 
     dimensionsH: "Where your CV stands",
     dimensionsExpand: "Show all dimensions",

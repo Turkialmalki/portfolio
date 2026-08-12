@@ -433,11 +433,20 @@ export default function CareerClient() {
     [lang],
   );
 
-  /* Not signed in yet: park the file and show the inline sign-in gate
-     instead of failing outright — the visitor stays on the page they
-     were already on (§7, §14). authEnabled mirrors the hosted Auth
-     Dashboard verification (§19) independently of analysisEnabled — a
-     tampered client cannot invent a session the Edge Function's own
+  /* UX fix: no visible sign-in gate before the free result — the visitor
+     sees their score first, every time. No existing session? Sign in
+     ANONYMOUSLY (silent, no email, no prompt) and proceed immediately.
+     RLS is auth.uid()-scoped everywhere in this schema (career_core.sql/
+     career_privacy_foundation.sql), which an anonymous session already
+     satisfies — analysis, storage, and payment all work unchanged under
+     it. A real email is only ever collected later (SendReportByEmail in
+     CareerReport.tsx), at the moment the visitor actually wants the
+     report emailed or wants to pay, via `auth.updateUser({ email })` —
+     Supabase's own upgrade-in-place flow, which keeps this SAME
+     auth.uid() and therefore this exact analysis already on screen, no
+     migration needed. authEnabled mirrors the hosted Auth Dashboard
+     verification (§19) independently of analysisEnabled — a tampered
+     client cannot invent a session the Edge Function's own
      auth.getUser() check would ever accept, so this is honesty, not
      enforcement. */
   const runRealAnalysis = useCallback(
@@ -447,13 +456,21 @@ export default function CareerClient() {
         dispatch({ type: "FAIL", code: "GATED" });
         return;
       }
-      const {
+      let {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        pendingFile.current = file;
-        setNeedsAuth(true);
-        return;
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error || !data.session) {
+          // Rare (e.g. rate-limited) — the old inline gate remains as a
+          // fallback so the visitor still has a path forward instead of
+          // a dead end.
+          pendingFile.current = file;
+          setNeedsAuth(true);
+          return;
+        }
+        session = data.session;
+        trackCareerEvent("career_anonymous_session_started", {});
       }
       await runRealAnalysisWithSession(file, session.user.id);
     },

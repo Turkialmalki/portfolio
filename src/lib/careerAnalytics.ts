@@ -49,7 +49,14 @@ export type CareerEventName =
   | "career_full_review_clicked"
   | "career_full_review_unlocked"
   | "career_service_clicked"
-  | "career_contact_clicked";
+  | "career_contact_clicked"
+  // Anonymous-first flow (see the free result before any sign-in prompt):
+  // an anonymous session is created silently on first upload; a real
+  // email is only ever collected later, when the visitor chooses to
+  // have the report emailed or wants to pay.
+  | "career_anonymous_session_started"
+  | "career_email_upgrade_started"
+  | "career_email_upgrade_confirmed";
 
 const CAREER_EVENT_NAMES: ReadonlySet<CareerEventName> = new Set([
   "career_viewed",
@@ -76,6 +83,9 @@ const CAREER_EVENT_NAMES: ReadonlySet<CareerEventName> = new Set([
   "career_full_review_unlocked",
   "career_service_clicked",
   "career_contact_clicked",
+  "career_anonymous_session_started",
+  "career_email_upgrade_started",
+  "career_email_upgrade_confirmed",
 ]);
 
 /**

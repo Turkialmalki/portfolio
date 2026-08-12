@@ -325,15 +325,30 @@ type SendStatus = "idle" | "sending" | "sent" | "error";
  * blur), backed by a REAL server-side send (send-career-report Edge
  * Function — no mailto, no fake success). Delivery is restricted to the
  * authenticated account's own verified email (Part 16 — security over
- * convenience): the field is prefilled and read-only, never a free-text
- * "send to any address" box.
+ * convenience) — never a free-text "send to any address" box.
+ *
+ * UX fix: the visitor arrives here from an ANONYMOUS session (see
+ * CareerClient.tsx's runRealAnalysis — no sign-in prompt before the free
+ * result). An anonymous session has no email at all, so this panel is
+ * also where a real one gets collected — ONCE, right here, at the exact
+ * moment the visitor actually wants the report — via
+ * `auth.updateUser({ email })`, Supabase's own upgrade-in-place flow
+ * (same auth.uid(), same analysis already on screen, no migration).
+ * Once that email is confirmed, this collapses back to the original
+ * prefilled-read-only send flow.
  */
 function SendReportByEmail({ t, lang, analysisId }: { t: CareerCopy; lang: CareerLang; analysisId?: string }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [status, setStatus] = useState<SendStatus>("idle");
+  const [emailInput, setEmailInput] = useState("");
+  const [upgradeStatus, setUpgradeStatus] = useState<"idle" | "submitting" | "awaiting_confirmation" | "error">("idle");
   const narrow = useIsNarrow();
   const openedTracked = useRef(false);
+  // Read inside the onAuthStateChange closure below without needing to
+  // re-subscribe every time upgradeStatus changes.
+  const upgradeStatusRef = useRef(upgradeStatus);
+  upgradeStatusRef.current = upgradeStatus;
 
   useEffect(() => {
     if (!open || !supabase) return;
@@ -341,10 +356,36 @@ function SendReportByEmail({ t, lang, analysisId }: { t: CareerCopy; lang: Caree
     void supabase.auth.getUser().then(({ data }) => {
       if (!cancelled) setEmail(data.user?.email ?? null);
     });
+    // The real email may arrive later, without a page reload — the
+    // visitor confirms the auth.updateUser({email}) link (possibly in a
+    // different tab) and this session picks up the change live.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (cancelled) return;
+      const confirmedEmail = newSession?.user?.email ?? null;
+      if (confirmedEmail) {
+        setEmail((prev) => {
+          if (!prev && upgradeStatusRef.current === "awaiting_confirmation") {
+            setUpgradeStatus("idle");
+            trackCareerEvent("career_email_upgrade_confirmed", {});
+          }
+          return confirmedEmail;
+        });
+      }
+    });
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
   }, [open]);
+
+  async function handleUpgradeEmail(e: FormEvent) {
+    e.preventDefault();
+    if (!supabase || !emailInput || upgradeStatus === "submitting") return;
+    setUpgradeStatus("submitting");
+    trackCareerEvent("career_email_upgrade_started", {});
+    const { error } = await supabase.auth.updateUser({ email: emailInput });
+    setUpgradeStatus(error ? "error" : "awaiting_confirmation");
+  }
 
   function toggle() {
     setOpen((v) => {
@@ -404,40 +445,74 @@ function SendReportByEmail({ t, lang, analysisId }: { t: CareerCopy; lang: Caree
       <p className="cp-send-email-note">{t.sendToEmailBody}</p>
 
       {analysisId ? (
-        <>
-          <div className="cp-auth-form" dir="ltr">
-            <input
-              type="email"
-              className="cp-auth-input"
-              value={email ?? ""}
-              placeholder={t.sendToEmailPlaceholder}
-              readOnly
-              aria-readonly="true"
-              dir="ltr"
-            />
-            <button
-              type="button"
-              className="cp-cta cp-cta-secondary"
-              onClick={handleSend}
-              disabled={status === "sending" || status === "sent" || !email}
-              aria-busy={status === "sending"}
-            >
-              {status === "sending" ? t.sendToEmailSending : status === "sent" ? t.sendToEmailSentCta : t.sendToEmailSubmit}
-            </button>
-          </div>
-          {status === "sent" && (
-            <p className="cp-send-email-status cp-send-email-success" role="status">
-              {t.sendToEmailSent}
-              <br />
-              {t.sendToEmailCheckInbox}
-            </p>
-          )}
-          {status === "error" && (
-            <p className="cp-send-email-status cp-send-email-error" role="alert">
-              {t.sendToEmailError}
-            </p>
-          )}
-        </>
+        email ? (
+          <>
+            <div className="cp-auth-form" dir="ltr">
+              <input
+                type="email"
+                className="cp-auth-input"
+                value={email}
+                placeholder={t.sendToEmailPlaceholder}
+                readOnly
+                aria-readonly="true"
+                dir="ltr"
+              />
+              <button
+                type="button"
+                className="cp-cta cp-cta-secondary"
+                onClick={handleSend}
+                disabled={status === "sending" || status === "sent"}
+                aria-busy={status === "sending"}
+              >
+                {status === "sending" ? t.sendToEmailSending : status === "sent" ? t.sendToEmailSentCta : t.sendToEmailSubmit}
+              </button>
+            </div>
+            {status === "sent" && (
+              <p className="cp-send-email-status cp-send-email-success" role="status">
+                {t.sendToEmailSent}
+                <br />
+                {t.sendToEmailCheckInbox}
+              </p>
+            )}
+            {status === "error" && (
+              <p className="cp-send-email-status cp-send-email-error" role="alert">
+                {t.sendToEmailError}
+              </p>
+            )}
+          </>
+        ) : upgradeStatus === "awaiting_confirmation" ? (
+          <p className="cp-send-email-status" role="status">
+            {t.sendToEmailConfirmPending}
+          </p>
+        ) : (
+          <>
+            <form className="cp-auth-form" dir="ltr" onSubmit={handleUpgradeEmail}>
+              <input
+                type="email"
+                className="cp-auth-input"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder={t.sendToEmailPlaceholder}
+                required
+                autoComplete="email"
+                dir="ltr"
+              />
+              <button
+                type="submit"
+                className="cp-cta cp-cta-secondary"
+                disabled={upgradeStatus === "submitting"}
+                aria-busy={upgradeStatus === "submitting"}
+              >
+                {upgradeStatus === "submitting" ? t.sendToEmailSending : t.sendToEmailConfirmCta}
+              </button>
+            </form>
+            {upgradeStatus === "error" && (
+              <p className="cp-send-email-status cp-send-email-error" role="alert">
+                {t.sendToEmailError}
+              </p>
+            )}
+          </>
+        )
       ) : (
         <p className="cp-send-email-note">{t.sendToEmailComingSoonBody}</p>
       )}
