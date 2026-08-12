@@ -29,6 +29,7 @@ export function CareerUploader({
   onFile,
   onError,
   onDialogOpen,
+  liveReady,
 }: {
   t: CareerCopy;
   lang: CareerLang;
@@ -41,11 +42,24 @@ export function CareerUploader({
   onFile: (file: File) => void;
   onError: (code: CareerErrorCode) => void;
   onDialogOpen: () => void;
+  /**
+   * Orphaned-upload follow-up: whether the REAL path is actually usable
+   * right now — `CAREER_FLAGS.analysisEnabled` AND the server's own
+   * `PRIVACY_SECURITY_EXECUTION_VERIFIED` mirror (career-health) have
+   * both been confirmed. Defaults to the raw flag so nothing here
+   * changes for synthetic-demo builds (which never pass this prop).
+   * The point: a private upload never becomes possible client-side
+   * while the server would just answer GATED afterward — the visitor
+   * sees the existing "private beta" state instead (no new UI), and no
+   * file/storage/DB write ever happens for a request the server was
+   * always going to refuse.
+   */
+  liveReady?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const demo = CAREER_FLAGS.syntheticDemoMode;
-  const live = CAREER_FLAGS.analysisEnabled;
+  const live = liveReady ?? CAREER_FLAGS.analysisEnabled;
   const actionable = demo || live;
   const trust = CAREER_UPLOAD_MICROCOPY[lang];
 

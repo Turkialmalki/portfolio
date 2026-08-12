@@ -39,7 +39,16 @@ export const CAREER_FULL_REVIEW_PRICE =
   };
 
 export const CAREER_FLAGS = {
-  /** Real customer analysis. Mirrors PRIVACY_SECURITY_EXECUTION_VERIFIED — flip THERE first, then here, never here alone. */
+  /**
+   * Real customer analysis. Mirrors PRIVACY_SECURITY_EXECUTION_VERIFIED —
+   * flip THERE first, then here, never here alone. Command 06A.5 wired
+   * the real code path this flag activates (CareerClient's
+   * `runRealAnalysis` → real upload → `analyze-resume` mode:"customer" →
+   * scoring.ts → real report) — flipping this to `true` is no longer a
+   * no-op waiting for code, it turns on tested, real behavior. It still
+   * changes nothing on its own while the server-side gate is false: the
+   * Edge Function answers every customer request with `GATED` first.
+   */
   analysisEnabled: false,
 
   /** Real rewrite generation for the public. Fact-safety validation pending. */
@@ -53,7 +62,15 @@ export const CAREER_FLAGS = {
     CAREER_USD_PAYMENT_CONFIG.career_cv_full_review,
   ),
 
-  /** Hosted magic-link auth. AUTH_READY = PARTIAL: the UI exists, the QA sign-off does not. */
+  /**
+   * Hosted magic-link auth. AUTH_READY = PARTIAL: `runRealAnalysis`'s
+   * sign-in gate (CareerClient/CareerFlow, Command 06A.5) is real code
+   * against real `supabase.auth.signInWithOtp`/`onAuthStateChange`, but
+   * the hosted Auth Dashboard config (Site URL / Redirect URLs) and one
+   * real end-to-end magic-link delivery have not been attested by a
+   * human yet — see Command 06A.5 §19. Do not flip until that's done,
+   * independent of whether `analysisEnabled` is true.
+   */
   authEnabled: false,
 
   syntheticDemoMode:

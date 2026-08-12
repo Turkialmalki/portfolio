@@ -310,6 +310,28 @@ Deno.serve(async (req) => {
    UPDATE path onto analysis results by design (career_privacy_foundation
    migration) — this function is the only place a customer's `resumes.
    status` or `resume_analyses` row is allowed to change.
+
+   ── ORPHANED-UPLOAD AUDIT (production-safety follow-up) ─────────────────
+   Every failure branch below that runs AFTER the browser has already
+   uploaded the file — download failure, parse failure, request
+   validation failure, AI provider not configured, and the pipeline/
+   provider errors caught at the bottom — sets `resumes.status = "failed"`
+   BEFORE returning. That is a deliberate, inspectable, retry-eligible
+   state, not a silent orphan: nothing here ever leaves a real customer's
+   `resumes` row sitting at "uploaded" or "processing" forever once a
+   terminal outcome is known server-side, and this function places NO
+   status check on `resumeId` — the same id can be resubmitted with
+   `mode:"customer"` to retry, re-parsing and re-analyzing the SAME
+   already-uploaded file rather than requiring a fresh upload. The
+   release-gate rejection (§17 below) is the one outcome that happens
+   BEFORE any of that — it never touches storage, the parser, or
+   `resumes` at all, by construction, so it never marks or orphans
+   anything itself; the frontend's own pre-upload gate check
+   (career-health's `privacyGateVerified`) is what keeps a real upload
+   from happening in the first place while this gate is closed, and the
+   frontend cleans up via `delete-resume` on the rare race where a GATED
+   response arrives after an upload already landed — see CareerClient.
+   tsx's `runRealAnalysisWithSession` for that half of this audit.
    ═══════════════════════════════════════════════════════════════════════ */
 
 async function handleCustomerAnalysis(

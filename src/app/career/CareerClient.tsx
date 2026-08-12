@@ -206,6 +206,29 @@ export default function CareerClient() {
      automatically. Never set/read in synthetic mode. */
   const pendingFile = useRef<File | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
+  /* Orphaned-upload follow-up: null = not checked yet (fails CLOSED —
+     the uploader stays in the existing "private beta" state, same as
+     analysisEnabled=false), true/false = the server's own
+     PRIVACY_SECURITY_EXECUTION_VERIFIED mirror, fetched from
+     career-health BEFORE any file is ever picked up for real upload. */
+  const [gateVerified, setGateVerified] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (CAREER_FLAGS.syntheticDemoMode || !CAREER_FLAGS.analysisEnabled || !supabase) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("career-health");
+        const verified = Boolean((data as { privacyGateVerified?: boolean } | null)?.privacyGateVerified);
+        if (!cancelled) setGateVerified(verified);
+      } catch {
+        if (!cancelled) setGateVerified(false); // network failure reads as "not verified", never as "assume open"
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const liveReady = CAREER_FLAGS.analysisEnabled && gateVerified === true;
 
   useEffect(() => {
     trackCareerEvent("career_viewed", {
@@ -335,6 +358,27 @@ export default function CareerClient() {
           const code = mapBackendErrorCode(backendCode);
           trackCareerEvent("analysis_completed", { mode: "real", status: "error", duration_ms: Date.now() - t0, lang });
           trackCareerEvent("career_error_shown", { code });
+
+          /* Orphaned-upload follow-up: GATED means the feature is OFF, not
+             a transient failure — the `liveReady` precheck above should
+             make this unreachable in the normal case, but if the gate
+             closed in the narrow race between that check and this
+             request, the file already landed in private storage for a
+             feature that isn't running. There's nothing to retry toward,
+             so clean it up now via the SAME deletion path a signed-in
+             customer already has (delete-resume — real storage removal +
+             soft-deleted row + deletion_audit entry), rather than leaving
+             it to sit unexplained. Every other failure below is left in
+             place on purpose — see the catch block's comment. */
+          if (backendCode === "GATED") {
+            void supabase.functions.invoke("delete-resume", { body: { resume_id: resumeId } }).catch(() => {
+              /* best-effort — same failure mode delete-resume's own storage
+                 cleanup already tolerates; a real deletion_audit row exists
+                 only when the RPC actually ran, so nothing here can silently
+                 fabricate "deleted" status */
+            });
+          }
+
           dispatch({ type: "FAIL", code });
           return;
         }
@@ -344,6 +388,19 @@ export default function CareerClient() {
         dispatch({ type: "RESULT", report });
         trackCareerEvent("free_report_viewed", { score_band: report.scoreBand.labelEn, lang });
       } catch {
+        /* Orphaned-upload follow-up: reaches here for (a) the upload/
+           insert failures above (nothing was left behind — the storage
+           object is removed before this throws) and (b) a real network
+           drop AFTER the upload succeeded, where whether analyze-resume
+           ever received the request is genuinely unknown. Deleting here
+           would risk destroying a resume the server is still mid-way
+           through processing. This is the RETRY case, on purpose: the
+           `resumes` row (status "uploaded", or "processing"/"failed" if
+           the server did receive it and then failed — see
+           analyze-resume/index.ts's own failure handling) stays exactly
+           as a retry needs it — `analyze-resume(mode:"customer", { resumeId
+           })` against the SAME resumeId picks the already-uploaded file
+           back up; nothing here forces a fresh upload. */
         trackCareerEvent("career_error_shown", { code: "NETWORK" });
         dispatch({ type: "FAIL", code: "NETWORK" });
       }
@@ -507,6 +564,7 @@ export default function CareerClient() {
                   onFile={startAnalysis}
                   onError={onError}
                   onDialogOpen={() => trackCareerEvent("cv_upload_started", { lang })}
+                  liveReady={liveReady}
                 />
               )}
             </section>
