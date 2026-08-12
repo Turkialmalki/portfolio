@@ -312,9 +312,21 @@ async function main() {
     }
     const valueRequiredFields = ["signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"];
 
+    // A THIRD real production incident (real-provider smoke test, run
+    // against the keyed-object schema above): Anthropic rejected the
+    // request outright — HTTP 400 invalid_request_error, "The compiled
+    // grammar is too large... Simplify your tool schemas or reduce the
+    // number of strict tools." Inlining the same ~7-field value schema
+    // as 13-15 SEPARATE named properties multiplied the compiled grammar
+    // by the dimension count. Fix: `$defs`/`$ref` (both in Anthropic's
+    // supported JSON Schema subset) define the value shape ONCE; every
+    // dimension property is just a `{"$ref": "#/$defs/..."}` pointer.
+    // Same "every dimension required, no others allowed" guarantee as
+    // before — verified below — just not duplicated N times over the wire.
     for (const ids of [DIMENSION_IDS.slice(0, 1), DIMENSION_IDS.slice(0, 5), DIMENSION_IDS.slice(0, 13), [...DIMENSION_IDS]]) {
       const schema = buildDimensionResultSchema(ids) as {
-        properties: { results: { properties: Record<string, { properties: Record<string, { enum?: readonly string[] }>; required: readonly string[]; additionalProperties: boolean }>; required: readonly string[]; additionalProperties: boolean } };
+        $defs: Record<string, { properties: Record<string, { enum?: readonly string[] }>; required: readonly string[]; additionalProperties: boolean }>;
+        properties: { results: { properties: Record<string, { $ref?: string }>; required: readonly string[]; additionalProperties: boolean } };
         additionalProperties: boolean;
       };
       const results = schema.properties.results;
@@ -324,19 +336,28 @@ async function main() {
       check(`${label}: results sets additionalProperties:false (no dimension outside the requested set is a valid key)`, results.additionalProperties === false);
       check(`${label}: top-level schema sets additionalProperties:false`, schema.additionalProperties === false);
 
+      const refTargets = new Set<string>();
       for (const id of ids) {
-        const valueSchema = results.properties[id];
-        check(`${label}: "${id}" is a property of results (its own object, not an array item)`, !!valueSchema);
-        if (!valueSchema) continue;
-        check(`${label}: "${id}"'s value sets additionalProperties:false`, valueSchema.additionalProperties === false);
-        for (const field of valueRequiredFields) {
-          check(`${label}: "${id}"'s value requires "${field}"`, valueSchema.required.includes(field));
-        }
-        check(`${label}: "${id}"'s value has NO "dimensionId" property (the object KEY is the identity — never repeated inside)`, !("dimensionId" in valueSchema.properties));
-        check(`${label}: "${id}"'s signalLevel enum matches SIGNAL_LEVELS exactly`, sameSet(valueSchema.properties.signalLevel?.enum ?? [], SIGNAL_LEVELS));
-        check(`${label}: "${id}"'s evidenceQuality enum matches EVIDENCE_QUALITIES exactly`, sameSet(valueSchema.properties.evidenceQuality?.enum ?? [], EVIDENCE_QUALITIES));
-        check(`${label}: "${id}"'s confidence enum matches AI_CONFIDENCE_VALUES exactly (single shared constant — see types.ts)`, sameSet(valueSchema.properties.confidence?.enum ?? [], AI_CONFIDENCE_VALUES));
+        const propSchema = results.properties[id];
+        check(`${label}: "${id}" is a property of results (its own object, not an array item)`, !!propSchema);
+        if (!propSchema) continue;
+        check(`${label}: "${id}" is a single $ref pointer, not an inlined schema (the fix for the "compiled grammar too large" rejection)`, Object.keys(propSchema).length === 1 && typeof propSchema.$ref === "string");
+        if (typeof propSchema.$ref === "string") refTargets.add(propSchema.$ref);
       }
+      check(`${label}: every dimension's $ref points at the SAME single definition (one shared shape, not N copies)`, refTargets.size === 1);
+
+      const defName = [...refTargets][0]?.replace(/^#\/\$defs\//, "");
+      const def = defName ? schema.$defs[defName] : undefined;
+      check(`${label}: the $ref target exists in $defs`, !!def);
+      if (!def) continue;
+      check(`${label}: shared definition sets additionalProperties:false`, def.additionalProperties === false);
+      for (const field of valueRequiredFields) {
+        check(`${label}: shared definition requires "${field}"`, def.required.includes(field));
+      }
+      check(`${label}: shared definition has NO "dimensionId" property (the object KEY is the identity — never repeated inside)`, !("dimensionId" in def.properties));
+      check(`${label}: signalLevel enum matches SIGNAL_LEVELS exactly`, sameSet(def.properties.signalLevel?.enum ?? [], SIGNAL_LEVELS));
+      check(`${label}: evidenceQuality enum matches EVIDENCE_QUALITIES exactly`, sameSet(def.properties.evidenceQuality?.enum ?? [], EVIDENCE_QUALITIES));
+      check(`${label}: confidence enum matches AI_CONFIDENCE_VALUES exactly (single shared constant — see types.ts)`, sameSet(def.properties.confidence?.enum ?? [], AI_CONFIDENCE_VALUES));
     }
 
     // The adapter boundary (keyedResultsToArray) + runtime validator,

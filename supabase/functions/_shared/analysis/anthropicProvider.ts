@@ -111,8 +111,12 @@ import { callAnthropic } from "./anthropicClient.ts";
  * to essentially never fire post-fix rather than routinely catching a
  * schema that was too loose to prevent them.
  */
+/** `#/$defs/...` name the per-dimension value schema is registered under — referenced by every `results` property via `$ref` instead of being inlined 13-15 times. Exported for the schema-preflight check to dereference against, not for callers to build URLs from. */
+export const DIMENSION_RESULT_DEF_NAME = "dimensionResult";
+const DIMENSION_RESULT_REF = `#/$defs/${DIMENSION_RESULT_DEF_NAME}`;
+
 export function buildDimensionResultSchema(dimensionIds: readonly DimensionId[]) {
-  const resultValueSchema = {
+  const dimensionResultDef = {
     type: "object",
     properties: {
       signalLevel: {
@@ -155,11 +159,26 @@ export function buildDimensionResultSchema(dimensionIds: readonly DimensionId[])
     additionalProperties: false,
   } as const;
 
-  const resultsProperties: Record<string, typeof resultValueSchema> = {};
-  for (const id of dimensionIds) resultsProperties[id] = resultValueSchema;
+  // Real production evidence (real-provider smoke test, after the keyed-
+  // object fix above was already deployed): Anthropic rejected the
+  // request outright with HTTP 400 invalid_request_error —
+  // "The compiled grammar is too large... Simplify your tool schemas or
+  // reduce the number of strict tools." Inlining the same ~7-field
+  // object schema as 13-15 SEPARATE named properties (the previous
+  // version of this function) multiplies the compiled grammar by the
+  // dimension count, even though this file only ever held ONE JS object
+  // reference for it — the duplication happens in the SERIALIZED JSON
+  // Anthropic actually compiles, not in this module's memory. `$defs` +
+  // `$ref` (both explicitly supported by Anthropic's structured-outputs
+  // JSON Schema subset) define the shape ONCE and every dimension
+  // property just points at it — same "every dimension required, no
+  // others allowed" guarantee, far smaller compiled grammar.
+  const resultsProperties: Record<string, { $ref: string }> = {};
+  for (const id of dimensionIds) resultsProperties[id] = { $ref: DIMENSION_RESULT_REF };
 
   return {
     type: "object",
+    $defs: { [DIMENSION_RESULT_DEF_NAME]: dimensionResultDef },
     properties: {
       results: {
         type: "object",
@@ -228,28 +247,42 @@ export function assertGeneratedAnalysisToolSchema(schema: unknown, expectedDimen
   // checked here defensively rather than assumed).
   if (new Set(expectedDimensionIds).size !== expectedDimensionIds.length) fail("expectedDimensionIds itself contains a duplicate");
 
-  const requiredValueFields = ["signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"];
+  // Every dimension property must be a `$ref` pointing at the ONE shared
+  // definition (never an inlined duplicate — see buildDimensionResultSchema's
+  // own comment on why: 13-15 inlined copies is exactly what made
+  // Anthropic reject the request as "compiled grammar too large").
+  const defs = top.$defs as Record<string, unknown> | undefined;
   for (const id of expectedDimensionIds) {
-    const valueSchema = resultsPropsObj[id] as Record<string, unknown> | undefined;
-    if (!valueSchema || typeof valueSchema !== "object") fail(`results.properties["${id}"] is missing`);
-    const valueSchemaObj = valueSchema!;
-    if (valueSchemaObj.type !== "object") fail(`results.properties["${id}"].type must be 'object'`);
-    if (valueSchemaObj.additionalProperties !== false) fail(`results.properties["${id}"].additionalProperties must be false`);
-    const valueProps = valueSchemaObj.properties as Record<string, unknown> | undefined;
-    const valueRequired: unknown[] = Array.isArray(valueSchemaObj.required) ? valueSchemaObj.required : [];
-    if (!valueProps || typeof valueProps !== "object") fail(`results.properties["${id}"].properties is missing`);
-    if (!Array.isArray(valueSchemaObj.required)) fail(`results.properties["${id}"].required is missing`);
-    const valuePropsObj = valueProps!;
-    for (const field of requiredValueFields) {
-      if (!(field in valuePropsObj)) fail(`results.properties["${id}"] is missing property "${field}"`);
-      if (!valueRequired.includes(field)) fail(`results.properties["${id}"].required is missing "${field}"`);
+    const propSchema = resultsPropsObj[id] as Record<string, unknown> | undefined;
+    if (!propSchema || typeof propSchema !== "object") fail(`results.properties["${id}"] is missing`);
+    const keys = Object.keys(propSchema!);
+    if (keys.length !== 1 || typeof propSchema!.$ref !== "string") {
+      fail(`results.properties["${id}"] must be a single {"$ref": "..."} pointer, not an inlined schema (found keys: ${keys.join(",")})`);
     }
-    // Every `required` entry must actually exist in `properties` — the
-    // general form of the check above, catches a future field rename
-    // that updates one list but not the other.
-    for (const field of valueRequired) {
-      if (typeof field !== "string" || !(field in valuePropsObj)) fail(`results.properties["${id}"].required lists "${String(field)}" which is not in its properties`);
-    }
+  }
+  // The referenced target (any one dimension's $ref — they all point at
+  // the same place by construction above) must itself be a real,
+  // well-formed definition. Validated ONCE, not once per dimension —
+  // that's the entire point of sharing it.
+  const refPath = (resultsPropsObj[expectedDimensionIds[0]] as { $ref: string }).$ref;
+  const defName = refPath.replace(/^#\/\$defs\//, "");
+  const dimensionResultDef = defs?.[defName] as Record<string, unknown> | undefined;
+  if (!dimensionResultDef || typeof dimensionResultDef !== "object") fail(`$defs["${defName}"] (referenced by every dimension) is missing`);
+  const defObj = dimensionResultDef!;
+  if (defObj.type !== "object") fail(`$defs["${defName}"].type must be 'object'`);
+  if (defObj.additionalProperties !== false) fail(`$defs["${defName}"].additionalProperties must be false`);
+  const defProps = defObj.properties as Record<string, unknown> | undefined;
+  const defRequired: unknown[] = Array.isArray(defObj.required) ? defObj.required : [];
+  if (!defProps || typeof defProps !== "object") fail(`$defs["${defName}"].properties is missing`);
+  if (!Array.isArray(defObj.required)) fail(`$defs["${defName}"].required is missing`);
+  const defPropsObj = defProps!;
+  const requiredValueFields = ["signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"];
+  for (const field of requiredValueFields) {
+    if (!(field in defPropsObj)) fail(`$defs["${defName}"] is missing property "${field}"`);
+    if (!defRequired.includes(field)) fail(`$defs["${defName}"].required is missing "${field}"`);
+  }
+  for (const field of defRequired) {
+    if (typeof field !== "string" || !(field in defPropsObj)) fail(`$defs["${defName}"].required lists "${String(field)}" which is not in its properties`);
   }
 
   // No non-JSON-serializable value (undefined/NaN/function/Set/Map) and
