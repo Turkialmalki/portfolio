@@ -24,8 +24,21 @@
  * it is never returned, never logged, never passed to a caller.
  */
 import { CAREER_AI_CONFIG } from "./config.ts";
+import { DEFAULT_TIMEOUTS } from "./instrumentation.ts";
 
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
+
+/** 529 (overloaded) and 429 (rate limited) are Anthropic-documented
+ *  transient conditions, not request problems — every other non-2xx
+ *  (400/401/402/403/404/5xx-other) reflects something about our request
+ *  or account and retrying it changes nothing. */
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status === 529;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export interface AnthropicCallDiagnostics {
   providerHttpStatus: number;
@@ -106,13 +119,29 @@ function diagnosticsFromResult(result: RawAnthropicCallResult): AnthropicCallDia
  * on any non-2xx response. On success, returns the parsed body as
  * `unknown` — callers are responsible for extracting only what they need
  * from it (never for logging or returning the whole thing).
+ *
+ * Retries `DEFAULT_TIMEOUTS.maxRetries` times, short fixed backoff, ONLY
+ * for the two Anthropic-documented transient statuses (529 overloaded,
+ * 429 rate limited) — first observed on the first real production CV
+ * (Command 06A.5's live verification), which failed outright on a single
+ * 529 with no retry anywhere in the call path. Every other non-2xx status
+ * still fails immediately, unchanged — retrying a 400/401/402/403/404 or
+ * a non-overload 5xx would just waste the same request budget
+ * (pipeline.ts's providerCallMs) on a call that cannot succeed. Backoff is
+ * short by design: providerCallMs (45s) already has to cover this PLUS a
+ * real ~16-20s call afterward.
  */
 export async function callAnthropic(apiKey: string, body: Record<string, unknown>, stage: string): Promise<unknown> {
-  const result = await callAnthropicRaw(apiKey, body);
-  if (result.status < 200 || result.status >= 300) {
-    throw new AnthropicProviderError(diagnosticsFromResult(result), stage);
+  const backoffMs = [500, 1500];
+  let lastResult: RawAnthropicCallResult | null = null;
+  for (let attempt = 0; attempt <= DEFAULT_TIMEOUTS.maxRetries; attempt++) {
+    const result = await callAnthropicRaw(apiKey, body);
+    if (result.status >= 200 && result.status < 300) return result.json;
+    lastResult = result;
+    if (!isRetryableStatus(result.status) || attempt === DEFAULT_TIMEOUTS.maxRetries) break;
+    await sleep(backoffMs[attempt] ?? backoffMs[backoffMs.length - 1]);
   }
-  return result.json;
+  throw new AnthropicProviderError(diagnosticsFromResult(lastResult!), stage);
 }
 
 /**

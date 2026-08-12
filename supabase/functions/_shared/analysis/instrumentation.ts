@@ -28,7 +28,15 @@ export const DEFAULT_TIMEOUTS = {
    * being a bounded synchronous request, not an open-ended one.
    */
   overallAnalysisMs: 60_000,
-  maxRetries: 1,
+  /**
+   * Now wired up in anthropicClient.ts's `callAnthropic` — retries a 529
+   * (overloaded) / 429 (rate limited) response this many times with short
+   * backoff before giving up. Raised from 1 to 2 (Command 06A.5's first
+   * real production CV hit 529 twice in a row live) — still comfortably
+   * inside providerCallMs (45s) alongside the backoff delays and a real
+   * ~16-20s call.
+   */
+  maxRetries: 2,
   maxSchemaRepairRetries: 1,
 } as const;
 
