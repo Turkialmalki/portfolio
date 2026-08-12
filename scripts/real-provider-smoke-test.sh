@@ -17,29 +17,27 @@
 #   export ADMIN_API_KEY
 #   bash scripts/real-provider-smoke-test.sh
 #
-# Prints ONLY: HTTP_STATUS, SUCCESS, STOP_REASON, SCHEMA_ISSUE_COUNT,
+# Prints: HTTP_STATUS, SUCCESS, STOP_REASON, SCHEMA_ISSUE_COUNT,
 # DIMENSION_COUNT, PROVIDER_ATTEMPTS, SCHEMA_REPAIR_COUNT,
-# PROVIDER_DURATION_MS, TOTAL_DURATION_MS, PASS, and — ONLY on a non-2xx
-# response — the same safe diagnostic fields analyze-resume's fixture/
-# admin path already deliberately returns for exactly this purpose
-# (Command 05D §1, anthropicClient.ts's AnthropicCallDiagnostics /
-# buildProviderDiagnosticBody, an explicit closed allowlist: HTTP status,
-# a fixed Anthropic error-TYPE string like "overloaded_error", a request
-# id, and its own already-sanitized short message — never a prompt, CV
-# text, or model-generated prose): ERROR_CODE, MESSAGE, DIAGNOSTIC_CODE,
-# PROVIDER_HTTP_STATUS, PROVIDER_ERROR_TYPE, PROVIDER_ERROR_MESSAGE,
-# STAGE. Never prints: the CV text, the prompt, any AI-generated prose
+# PROVIDER_DURATION_MS, TOTAL_DURATION_MS, PASS — plus, on a non-2xx
+# response, the safe diagnostic fields analyze-resume's fixture/admin
+# path deliberately returns for exactly this purpose. Two distinct
+# failure shapes exist there, both a closed field allowlist, never a
+# prompt/CV text/AI prose:
+#   - AnthropicProviderError (buildProviderDiagnosticBody, a raw
+#     Anthropic HTTP failure): ERROR_CODE, MESSAGE, DIAGNOSTIC_CODE,
+#     PROVIDER_HTTP_STATUS, PROVIDER_ERROR_TYPE, PROVIDER_ERROR_MESSAGE,
+#     STAGE.
+#   - AnalysisPipelineError (buildPipelineErrorDiagnosticBody, OUR OWN
+#     pipeline/schema/language/timeout logic): ERROR_CODE, MESSAGE,
+#     STAGE, STOP_REASON, SCHEMA_ISSUE_COUNT, PROVIDER_ATTEMPTS,
+#     SCHEMA_REPAIR_COUNT, OVERALL_BUDGET_MS, ELAPSED_MS,
+#     REMAINING_BUDGET_MS. This is the shape a schema-validation or
+#     language-gate failure returns — `diagnosticCode` is absent, which
+#     is exactly how the two shapes are told apart below.
+# Never prints: the CV text, the prompt, any AI-generated prose
 # (reasonCode/shortReason/evidence/dimension content), the API key, or
 # the Authorization/x-admin-key header.
-#
-# `schema_issue_count` is deliberately NOT among the fields
-# analyze-resume ever returns to ANY caller, admin included (see
-# safeLog.ts's schema_issue_sample / analyze-resume/index.ts's catch
-# block) — it only ever reaches the server-side safe log, on purpose, so
-# this script reports it as "0" on success (the pipeline only returns
-# ok:true after validateDimensionAIResults succeeds with zero issues) or
-# "server_log_only" on failure, rather than fabricating a number it was
-# never given.
 #
 # SECURITY NOTE: everything derived from the HTTP response (provider
 # error text included) is parsed and formatted ENTIRELY inside the node
@@ -96,12 +94,21 @@ node -e '
 
   const ok = !!(json && json.ok === true);
   const inst = json && json.instrumentation;
+  // buildProviderDiagnosticBody always sets `diagnosticCode`;
+  // buildPipelineErrorDiagnosticBody never does — presence of that key
+  // is exactly how the two failure envelopes are told apart.
+  const isProviderError = !ok && json && json.diagnosticCode != null;
+  const isPipelineError = !ok && json && !isProviderError && json.error != null;
+
   const dimensionCount = json && json.analysis && Array.isArray(json.analysis.dimensions) ? json.analysis.dimensions.length : null;
-  const stopReason = inst && inst.stopReason ? clip(inst.stopReason) : null;
-  const providerAttempts = inst ? inst.aiCallCount : null;
-  const schemaRepairCount = inst ? inst.retryCount : null;
-  const providerDurationMs = inst ? inst.durationMs : null;
-  const schemaIssueCount = ok ? 0 : "server_log_only";
+  // Each core field has exactly ONE source depending on which of the
+  // three shapes the response is (success / provider error / pipeline
+  // error) — never printed twice with two different values.
+  const stopReason = ok ? (inst && inst.stopReason ? clip(inst.stopReason) : null) : isPipelineError ? (json.stopReason != null ? clip(String(json.stopReason)) : null) : null;
+  const providerAttempts = ok ? (inst ? inst.aiCallCount : null) : isPipelineError ? json.providerAttempts ?? null : null;
+  const schemaRepairCount = ok ? (inst ? inst.retryCount : null) : isPipelineError ? json.schemaRepairCount ?? null : null;
+  const providerDurationMs = ok ? (inst ? inst.durationMs : null) : null;
+  const schemaIssueCount = ok ? 0 : isPipelineError ? json.schemaIssueCount ?? "server_log_only" : "server_log_only";
 
   const pass = ok && stopReason === "tool_use" && Number(dimensionCount) > 0;
 
@@ -115,20 +122,22 @@ node -e '
   line("PROVIDER_DURATION_MS", providerDurationMs);
   line("TOTAL_DURATION_MS", totalDurationMs);
 
-  // Only present on a non-2xx response — buildProviderDiagnosticBody
-  // (a raw AnthropicProviderError: auth/billing/rate-limit/5xx from
-  // Anthropic itself) has `diagnosticCode`; errorCodes.ts`s safeError()
-  // (our own pipeline/validation failure, e.g. ANALYSIS_FAILED/
-  // ANALYSIS_TIMEOUT) never does — that key`s presence is exactly how to
-  // tell the two failure shapes apart.
   if (!ok && json) {
     line("ERROR_CODE", json.error ? clip(json.error) : null);
     line("MESSAGE", json.message ? clip(json.message) : null);
-    line("DIAGNOSTIC_CODE", json.diagnosticCode ? clip(json.diagnosticCode) : null);
-    line("PROVIDER_HTTP_STATUS", json.providerHttpStatus ?? null);
-    line("PROVIDER_ERROR_TYPE", json.providerErrorType ? clip(json.providerErrorType) : null);
-    line("PROVIDER_ERROR_MESSAGE", json.providerErrorMessageSanitized ? clip(json.providerErrorMessageSanitized) : null);
     line("STAGE", json.stage ? clip(json.stage) : null);
+    if (isProviderError) {
+      // Raw Anthropic HTTP failure (auth/billing/rate-limit/5xx).
+      line("DIAGNOSTIC_CODE", clip(json.diagnosticCode));
+      line("PROVIDER_HTTP_STATUS", json.providerHttpStatus ?? null);
+      line("PROVIDER_ERROR_TYPE", json.providerErrorType ? clip(json.providerErrorType) : null);
+      line("PROVIDER_ERROR_MESSAGE", json.providerErrorMessageSanitized ? clip(json.providerErrorMessageSanitized) : null);
+    } else if (isPipelineError) {
+      // Our own pipeline/schema/language/timeout failure.
+      line("OVERALL_BUDGET_MS", json.overallBudgetMs ?? null);
+      line("ELAPSED_MS", json.elapsedMs ?? null);
+      line("REMAINING_BUDGET_MS", json.remainingBudgetMs ?? null);
+    }
   }
 
   line("PASS", pass);

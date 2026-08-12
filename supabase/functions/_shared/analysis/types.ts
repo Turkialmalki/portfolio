@@ -264,15 +264,52 @@ export interface AnalysisRunResult {
 // ── Pipeline failure — never leaks internals to the customer (§35) ────────
 export type AnalysisFailureCode = "ANALYSIS_FAILED" | "ANALYSIS_TIMEOUT";
 
+/**
+ * Fixed, safe vocabulary for WHERE in the pipeline a failure happened —
+ * never a stack trace or free text, so (like `stopReason`) it's safe to
+ * both log and — fixture/admin mode only, same discipline
+ * `buildProviderDiagnosticBody` already uses for a raw provider failure
+ * — return in a diagnostic response body. Deliberately coarser than a
+ * full parallel error-code taxonomy: `AnalysisFailureCode` above already
+ * classifies WHAT a customer-facing response sees (ANALYSIS_FAILED /
+ * ANALYSIS_TIMEOUT); `stage` adds WHERE, without a second vocabulary
+ * that could itself drift out of sync with the first.
+ */
+export type AnalysisFailureStage =
+  | "release_gate"
+  | "primary_provider_call"
+  | "primary_schema_validation"
+  | "repair_provider_call"
+  | "repair_schema_validation"
+  | "language_validation"
+  | "overall_timeout"
+  | "unexpected_error";
+
+export interface AnalysisPipelineErrorOptions {
+  issues?: SchemaIssue[];
+  /** The most recent provider call's Anthropic `stop_reason` (e.g. "max_tokens", "tool_use") — Anthropic's own fixed enum, never model-generated content, so it's safe to log/return. `undefined` for failures unrelated to a provider call (e.g. the release gate). */
+  stopReason?: string | null;
+  stage?: AnalysisFailureStage;
+  /** `instrumentation.aiCallCount` at the moment of failure (1 or 2 — how many times the provider was actually called this run). A production incident (Career V2 email-test verification) showed a bare ANALYSIS_FAILED with none of this metadata attached, making "did the repair even run?" unanswerable after the fact — this and `schemaRepairCount` close that gap. */
+  providerAttempts?: number;
+  /** `instrumentation.retryCount` at the moment of failure — 0 (no repair attempted) or 1 (the one repair retry fired). */
+  schemaRepairCount?: number;
+}
+
 export class AnalysisPipelineError extends Error {
   readonly code: AnalysisFailureCode;
   readonly issues?: SchemaIssue[];
-  /** The most recent provider call's Anthropic `stop_reason` (e.g. "max_tokens", "tool_use") when this failure followed a real-provider schema-validation failure — Anthropic's own fixed enum, never model-generated content, so it's safe to log (see safeLog.ts's `stop_reason` field). `undefined` for failures unrelated to a provider call (e.g. the release-gate check). */
   readonly stopReason?: string | null;
-  constructor(code: AnalysisFailureCode, message: string, issues?: SchemaIssue[], stopReason?: string | null) {
+  readonly stage?: AnalysisFailureStage;
+  readonly providerAttempts?: number;
+  readonly schemaRepairCount?: number;
+  constructor(code: AnalysisFailureCode, message: string, options: AnalysisPipelineErrorOptions = {}) {
     super(message);
     this.code = code;
-    this.issues = issues;
-    this.stopReason = stopReason;
+    this.issues = options.issues;
+    this.stopReason = options.stopReason;
+    this.stage = options.stage;
+    this.providerAttempts = options.providerAttempts;
+    this.schemaRepairCount = options.schemaRepairCount;
   }
 }

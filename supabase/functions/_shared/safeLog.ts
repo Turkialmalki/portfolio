@@ -55,6 +55,12 @@ export type SafeLogFields = {
   schema_issue_sample?: string[];
   /** Anthropic's own `stop_reason` from the failing call (e.g. "max_tokens", "tool_use", "end_turn") — a fixed provider enum, never model-generated content. Logged on a schema-validation failure to distinguish "the model truncated" from "the model produced malformed output" without needing the raw response. */
   stop_reason?: string | null;
+  /** AnalysisPipelineError.stage — fixed vocabulary (AnalysisFailureStage, types.ts) for WHERE in the pipeline a failure happened, e.g. "repair_schema_validation" — never free text. */
+  stage?: string;
+  /** instrumentation.aiCallCount at the moment of failure (1 or 2) — how many times the provider was actually called this run. */
+  provider_attempts?: number;
+  /** instrumentation.retryCount at the moment of failure — 0 or 1. */
+  schema_repair_count?: number;
 };
 
 export function safeLog(fields: SafeLogFields): void {

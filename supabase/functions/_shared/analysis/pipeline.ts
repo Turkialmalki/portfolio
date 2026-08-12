@@ -150,6 +150,7 @@ export async function runAnalysis(request: AnalyzeResumeRequest, opts: AnalysisR
     throw new AnalysisPipelineError(
       "ANALYSIS_FAILED",
       "release gate: real customer analysis is blocked until privacy/RLS tests A–H/K are executed (see releaseGates.ts)",
+      { stage: "release_gate" },
     );
   }
 
@@ -164,9 +165,25 @@ export async function runAnalysis(request: AnalyzeResumeRequest, opts: AnalysisR
     );
   } catch (err) {
     if (err instanceof AnalysisPipelineError) throw err;
+    // A bare `withTimeout` rejection (never an AnalysisPipelineError
+    // itself — that's caught above) — one of the THREE distinct timeout
+    // sites in this file, distinguished only by their fixed messages
+    // (never guessed from a stack trace): the overall budget here, or
+    // one of runStages's own per-call budgets (message text set at each
+    // `withTimeout` call site below). `stage` records which, so "which
+    // timeout was it" never needs re-deriving from raw duration_ms again
+    // the way this exact ambiguity had to be reasoned through by hand
+    // for a real production incident (Career V2 email-test verification).
     const message = err instanceof Error ? err.message : String(err);
     const timedOut = message.includes("time budget") || message.includes("timed out");
-    throw new AnalysisPipelineError(timedOut ? "ANALYSIS_TIMEOUT" : "ANALYSIS_FAILED", message);
+    const stage = message.includes("overall time budget")
+      ? "overall_timeout"
+      : message.includes("retry")
+        ? "repair_provider_call"
+        : message.includes("dimension analysis")
+          ? "primary_provider_call"
+          : "unexpected_error";
+    throw new AnalysisPipelineError(timedOut ? "ANALYSIS_TIMEOUT" : "ANALYSIS_FAILED", message, { stage });
   }
 }
 
@@ -222,8 +239,13 @@ async function runStages(
       throw new AnalysisPipelineError(
         "ANALYSIS_FAILED",
         "AI output failed schema validation after one repair retry",
-        validation.issues,
-        instrumentation.stopReason,
+        {
+          issues: validation.issues,
+          stopReason: instrumentation.stopReason,
+          stage: "repair_schema_validation",
+          providerAttempts: instrumentation.aiCallCount,
+          schemaRepairCount: instrumentation.retryCount,
+        },
       );
     }
   }
@@ -328,6 +350,7 @@ async function runStages(
       throw new AnalysisPipelineError(
         "ANALYSIS_FAILED",
         `Arabic report failed language validation: ${languageCheck.leaks.length} field(s) contained English prose leakage`,
+        { stage: "language_validation", providerAttempts: instrumentation.aiCallCount, schemaRepairCount: instrumentation.retryCount },
       );
     }
   }

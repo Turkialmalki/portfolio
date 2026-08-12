@@ -38,6 +38,7 @@ import {
   buildProviderDiagnosticBody,
   buildUiFreeReport,
   computeAnalysisIdentity,
+  DEFAULT_TIMEOUTS,
   looksLikeCareerAnalysis,
   resolveProvider,
   runAnalysis,
@@ -284,13 +285,64 @@ Deno.serve(async (req) => {
       return jsonResponse(diag, 502, headers);
     }
     if (err instanceof AnalysisPipelineError) {
-      safeLogError({ event: "analyze_resume_pipeline_error", request_id: requestId, error_code: err.code, duration_ms });
-      return respondError(err.code, headers);
+      // Until now this branch discarded everything on `err` beyond
+      // `.code` and fell through to the SAME bare {error,message} a real
+      // customer sees — even in admin/fixture mode, whose whole point
+      // (per this catch block's own header comment) is surfacing safe
+      // diagnostics. Parity with the AnthropicProviderError branch above:
+      // build the equivalent safe, closed-allowlist envelope for our own
+      // pipeline failures too (see buildPipelineErrorDiagnosticBody).
+      const diag = buildPipelineErrorDiagnosticBody(err, duration_ms);
+      safeLogError({
+        event: "analyze_resume_pipeline_error",
+        request_id: requestId,
+        error_code: err.code,
+        duration_ms,
+        pipeline_error_message: err.message.slice(0, 200),
+        ...(err.issues && err.issues.length > 0 ? { schema_issue_count: err.issues.length } : {}),
+        ...(err.stopReason !== undefined ? { stop_reason: err.stopReason } : {}),
+        ...(err.stage ? { stage: err.stage } : {}),
+        ...(err.providerAttempts !== undefined ? { provider_attempts: err.providerAttempts } : {}),
+        ...(err.schemaRepairCount !== undefined ? { schema_repair_count: err.schemaRepairCount } : {}),
+      });
+      return jsonResponse(diag, safeError(err.code).status, headers);
     }
     safeLogError({ event: "analyze_resume_unexpected_error", request_id: requestId, error_code: "INTERNAL_ERROR", duration_ms });
     return respondError("INTERNAL_ERROR", headers);
   }
 });
+
+/**
+ * Command 05D §1's promise ("admin/fixture mode surfaces safe diagnostics
+ * instead of collapsing into a generic 502") previously only applied to
+ * `AnthropicProviderError` (a raw provider HTTP failure, via
+ * `buildProviderDiagnosticBody`) — an `AnalysisPipelineError` (our OWN
+ * pipeline's schema-validation/language-gate/timeout logic) fell through
+ * to the same bare `{error,message}` a real customer sees, discarding
+ * `stage`/`stopReason`/`issues.length`/`providerAttempts`/
+ * `schemaRepairCount` that were sitting right there on `err` — the exact
+ * gap a real production incident (Career V2 email-test verification) hit:
+ * a 502 with no way to tell whether the primary call, the repair retry,
+ * or the language gate had failed. Same closed-allowlist discipline as
+ * `buildProviderDiagnosticBody`: fixed vocabulary, counts, and timings
+ * only — never CV text, a prompt, or AI-generated prose.
+ */
+function buildPipelineErrorDiagnosticBody(err: AnalysisPipelineError, elapsedMs: number) {
+  const overallBudgetMs = DEFAULT_TIMEOUTS.overallAnalysisMs;
+  return {
+    ok: false as const,
+    error: err.code,
+    message: safeError(err.code).body.message,
+    stage: err.stage ?? "unexpected_error",
+    stopReason: err.stopReason ?? null,
+    schemaIssueCount: err.issues ? err.issues.length : 0,
+    providerAttempts: err.providerAttempts ?? null,
+    schemaRepairCount: err.schemaRepairCount ?? null,
+    overallBudgetMs,
+    elapsedMs,
+    remainingBudgetMs: Math.max(0, overallBudgetMs - elapsedMs),
+  };
+}
 
 /* ═══════════════════════════════════════════════════════════════════════
    CUSTOMER MODE (Command 06A.5 §5–§16) — the real production path:
@@ -669,6 +721,9 @@ async function handleCustomerAnalysis(
         pipeline_error_message: err.message.slice(0, 200),
         ...(err.issues ? { schema_issue_count: err.issues.length } : {}),
         ...(err.stopReason !== undefined ? { stop_reason: err.stopReason } : {}),
+        ...(err.stage ? { stage: err.stage } : {}),
+        ...(err.providerAttempts !== undefined ? { provider_attempts: err.providerAttempts } : {}),
+        ...(err.schemaRepairCount !== undefined ? { schema_repair_count: err.schemaRepairCount } : {}),
         // A capped sample (first 6) of "path: issue" — both are fixed,
         // code-authored vocabulary (see SchemaIssue's own doc + safeLog.ts's
         // schema_issue_sample field for exactly why this is safe to log,

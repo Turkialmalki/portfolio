@@ -7,12 +7,14 @@
  */
 import {
   AI_CONFIDENCE_VALUES,
+  AnalysisPipelineError,
   createMockCareerAIProvider,
   DIMENSION_RESULT_SCHEMA,
   runAnalysis,
   validateAnalyzeResumeRequest,
   validateDimensionAIResults,
   type AnalysisRunResult,
+  type CareerAIProvider,
   type DimensionAIResult,
 } from "../../functions/_shared/analysis/index.ts";
 import { DIMENSION_IDS, EVIDENCE_QUALITIES, SIGNAL_LEVELS, type DimensionId } from "../../functions/_shared/methodology/types.ts";
@@ -370,6 +372,82 @@ async function main() {
       !emptyResult.ok && emptyResult.issues.length === DIMENSION_IDS.length,
       !emptyResult.ok ? String(emptyResult.issues.length) : "ok:true",
     );
+  }
+
+  console.log("\n[8] Pipeline failure-path diagnostics — mocked providers only, no real Anthropic call");
+  {
+    // A real production incident (Career V2 email-test verification) hit
+    // a bare 502 ANALYSIS_FAILED with zero diagnostic metadata attached —
+    // `stage`, `stopReason`, `providerAttempts`, and `schemaRepairCount`
+    // (types.ts's AnalysisPipelineError, wired through pipeline.ts and
+    // analyze-resume/index.ts's buildPipelineErrorDiagnosticBody) exist
+    // specifically to close that gap. These tests prove each failure
+    // class actually populates that metadata correctly — with a
+    // deliberately misbehaving MOCK provider, never a real API call, so
+    // they're fast, free, and deterministic in CI.
+    function makeStubProvider(overrides: Partial<CareerAIProvider> & Pick<CareerAIProvider, "analyzeDimensions">): CareerAIProvider {
+      return {
+        name: "test-stub",
+        model: "test-model",
+        generateRewrite: async () => null,
+        lastCallUsage: () => ({ inputTokens: 0, outputTokens: 0, stopReason: "tool_use" }),
+        ...overrides,
+      };
+    }
+    const baseRequest = ALL_ANALYSIS_FIXTURES.find((f) => f.name === "weak_entry_english")!.request;
+
+    // A. Schema validation failure surviving the one repair retry (the
+    // exact production failure shape: a provider that never returns a
+    // usable `results` array — see anthropicProvider.ts's `[]` fallback
+    // and schemaValidation.ts's "missing dimension result" per expected id).
+    {
+      const alwaysEmptyProvider = makeStubProvider({ analyzeDimensions: async () => [] });
+      let thrown: unknown;
+      try {
+        await runAnalysis(baseRequest, { provider: alwaysEmptyProvider, knowledgeMode: "fixture", isFixtureRun: true });
+      } catch (e) {
+        thrown = e;
+      }
+      const err = thrown instanceof AnalysisPipelineError ? thrown : null;
+      check("A. empty-results provider: runAnalysis throws AnalysisPipelineError", !!err);
+      check("A. code is ANALYSIS_FAILED", err?.code === "ANALYSIS_FAILED");
+      check("A. stage is repair_schema_validation", err?.stage === "repair_schema_validation", String(err?.stage));
+      check("A. providerAttempts is 2 (primary call + the one repair retry)", err?.providerAttempts === 2, String(err?.providerAttempts));
+      check("A. schemaRepairCount is 1", err?.schemaRepairCount === 1, String(err?.schemaRepairCount));
+      check("A. issues records one 'missing dimension result' per expected dimension", (err?.issues?.length ?? 0) > 0);
+    }
+
+    // B. The Arabic-output language-leak gate (pipeline.ts, skipped only
+    // for provider.name === "mock" — this stub deliberately uses a
+    // different name so the gate actually runs against it).
+    {
+      const englishLeakProvider = makeStubProvider({
+        name: "test-stub-real-like",
+        analyzeDimensions: async (input): Promise<DimensionAIResult[]> =>
+          input.dimensionIds.map((dimensionId) => ({
+            dimensionId,
+            signalLevel: "mixed",
+            evidencePresent: false,
+            evidenceQuality: "none",
+            confidence: "low",
+            evidence: null,
+            reasonCode: "TEST_STUB",
+            shortReason: "This is a plain English sentence that must never appear in an Arabic-language report.",
+          })),
+      });
+      const arabicRequest = { ...baseRequest, language: "ar" as const, outputLanguage: "ar" as const };
+      let thrown: unknown;
+      try {
+        await runAnalysis(arabicRequest, { provider: englishLeakProvider, knowledgeMode: "fixture", isFixtureRun: true });
+      } catch (e) {
+        thrown = e;
+      }
+      const err = thrown instanceof AnalysisPipelineError ? thrown : null;
+      check("B. English-leaking provider under outputLanguage:ar: runAnalysis throws AnalysisPipelineError", !!err);
+      check("B. code is ANALYSIS_FAILED", err?.code === "ANALYSIS_FAILED");
+      check("B. stage is language_validation", err?.stage === "language_validation", String(err?.stage));
+      check("B. providerAttempts is 1 (no repair retry — this is a post-scoring gate, not a schema failure)", err?.providerAttempts === 1, String(err?.providerAttempts));
+    }
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
