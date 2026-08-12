@@ -669,6 +669,13 @@ async function handleCustomerAnalysis(
         pipeline_error_message: err.message.slice(0, 200),
         ...(err.issues ? { schema_issue_count: err.issues.length } : {}),
         ...(err.stopReason !== undefined ? { stop_reason: err.stopReason } : {}),
+        // A capped sample (first 6) of "path: issue" — both are fixed,
+        // code-authored vocabulary (see SchemaIssue's own doc + safeLog.ts's
+        // schema_issue_sample field for exactly why this is safe to log,
+        // never CV/AI content).
+        ...(err.issues && err.issues.length > 0
+          ? { schema_issue_sample: err.issues.slice(0, 6).map((i) => `${i.path}: ${i.issue}`.slice(0, 160)) }
+          : {}),
       });
       return respondError(err.code, headers);
     }

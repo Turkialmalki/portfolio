@@ -32,9 +32,12 @@
  * entire dimension result over.
  */
 import { DIMENSION_IDS, EVIDENCE_QUALITIES, SIGNAL_LEVELS, type DimensionId } from "../methodology/types.ts";
-import type { DimensionAIResult, SchemaIssue } from "./types.ts";
+import { AI_CONFIDENCE_VALUES, type DimensionAIResult, type SchemaIssue } from "./types.ts";
 
-const CONFIDENCE_VALUES = new Set(["high", "medium", "low"]);
+// `CONFIDENCE_VALUES` is derived from the same `AI_CONFIDENCE_VALUES`
+// anthropicProvider.ts's tool schema enum uses (types.ts) — was two
+// separately hardcoded arrays before; see that constant's own comment.
+const CONFIDENCE_VALUES = new Set<string>(AI_CONFIDENCE_VALUES);
 const DIMENSION_ID_SET = new Set<string>(DIMENSION_IDS);
 const SIGNAL_LEVEL_SET = new Set<string>(SIGNAL_LEVELS);
 const EVIDENCE_QUALITY_SET = new Set<string>(EVIDENCE_QUALITIES);

@@ -81,7 +81,19 @@ export interface NormalizedResume {
 }
 
 // ── §9–§10 AI provider contract ──────────────────────────────────────────
-export type AIConfidence = "high" | "medium" | "low";
+/**
+ * ONE canonical definition, imported by both anthropicProvider.ts (the
+ * tool's `input_schema` enum) and schemaValidation.ts (the runtime
+ * validator's accepted set) — the same single-source-of-truth pattern
+ * `methodology/types.ts`'s `SIGNAL_LEVELS`/`EVIDENCE_QUALITIES` already
+ * use for `signalLevel`/`evidenceQuality`. Before this, `confidence` was
+ * the one field still hardcoded separately in both files (two literal
+ * `["high","medium","low"]` arrays that happened to still agree) — the
+ * exact kind of silent two-contract drift a real production CV's schema
+ * failure (Career V2 email-test verification) prompted auditing for.
+ */
+export const AI_CONFIDENCE_VALUES = ["high", "medium", "low"] as const;
+export type AIConfidence = (typeof AI_CONFIDENCE_VALUES)[number];
 
 /**
  * What a `CareerAIProvider` returns per dimension — the COMPACT contract

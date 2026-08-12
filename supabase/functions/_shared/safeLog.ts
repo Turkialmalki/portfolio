@@ -37,6 +37,22 @@ export type SafeLogFields = {
   pipeline_error_message?: string;
   /** SchemaIssue count from a failed AI-output validation — a number, not the issues themselves. */
   schema_issue_count?: number;
+  /**
+   * A CAPPED sample of SchemaIssue `path`/`issue` pairs from a failed
+   * AI-output validation (schemaValidation.ts) — e.g.
+   * "[2].evidenceQuality: evidenceQuality must be one of none|limited|specific|strong".
+   * Safe to log: `path` is a fixed `[index].fieldName` shape (an array
+   * index + one of DimensionAIResult's own field names, both closed,
+   * code-defined vocabularies) and `issue` is always one of the fixed
+   * static strings validateOne() writes in code — NEITHER ever contains
+   * CV text, AI prose, or a full AI response. The one field value ever
+   * interpolated into an `issue` string is `dimensionId` itself (e.g.
+   * "dimensionId foo was not requested"), which is either a real
+   * DIMENSION_IDS member or a short model-emitted token — never CV
+   * content. Capped short (schemaValidation.ts truncates further) purely
+   * to keep log lines small, not for a safety reason beyond the above.
+   */
+  schema_issue_sample?: string[];
   /** Anthropic's own `stop_reason` from the failing call (e.g. "max_tokens", "tool_use", "end_turn") — a fixed provider enum, never model-generated content. Logged on a schema-validation failure to distinguish "the model truncated" from "the model produced malformed output" without needing the raw response. */
   stop_reason?: string | null;
 };

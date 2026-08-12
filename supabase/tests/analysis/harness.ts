@@ -6,11 +6,16 @@
  * data. Run with: npm run test:analysis
  */
 import {
+  AI_CONFIDENCE_VALUES,
   createMockCareerAIProvider,
+  DIMENSION_RESULT_SCHEMA,
   runAnalysis,
   validateAnalyzeResumeRequest,
+  validateDimensionAIResults,
   type AnalysisRunResult,
+  type DimensionAIResult,
 } from "../../functions/_shared/analysis/index.ts";
+import { DIMENSION_IDS, EVIDENCE_QUALITIES, SIGNAL_LEVELS, type DimensionId } from "../../functions/_shared/methodology/types.ts";
 import { PRIVACY_SECURITY_EXECUTION_VERIFIED } from "../../functions/_shared/releaseGates.ts";
 import { ALL_ANALYSIS_FIXTURES } from "./fixtures.ts";
 
@@ -279,6 +284,92 @@ async function main() {
       threw = true;
     }
     check("real customer mode (isFixtureRun: false) proceeds now that the gate is true", !threw);
+  }
+
+  console.log("\n[7] Contract-drift guard — TS type / Anthropic tool schema / runtime validator must agree");
+  {
+    // A real production CV (Career V2 email-test verification) hit
+    // ANALYSIS_FAILED with schema_issue_count=13 despite stop_reason
+    // "tool_use" (a clean, non-truncated completion) — the tool schema
+    // was never actually enforced (`strict` wasn't set), so it could
+    // silently drift from what schemaValidation.ts requires without any
+    // test ever catching it. This section pins that the three contracts
+    // (DimensionAIResult, DIMENSION_RESULT_SCHEMA, validateOne) agree,
+    // so a future field/enum added to only one of them fails HERE, not
+    // in production against a real customer's CV.
+    const item = DIMENSION_RESULT_SCHEMA.properties.results.items as {
+      required: readonly string[];
+      properties: Record<string, { enum?: readonly string[]; additionalProperties?: boolean }>;
+      additionalProperties: boolean;
+    };
+
+    check(
+      "results array requires at least one item (minItems:1 — the strongest non-empty guarantee strict mode's JSON Schema subset supports; see DIMENSION_RESULT_SCHEMA's own comment on why an exact count isn't expressible there)",
+      (DIMENSION_RESULT_SCHEMA.properties.results as { minItems?: number }).minItems === 1,
+    );
+    // Strict mode requires additionalProperties:false on EVERY object,
+    // top-level and nested — a single missed level silently opts that
+    // level out of grammar-constrained enforcement.
+    check("top-level schema sets additionalProperties:false", DIMENSION_RESULT_SCHEMA.additionalProperties === false);
+    check("each result item sets additionalProperties:false", item.additionalProperties === false);
+    check("nested evidence object sets additionalProperties:false", item.properties.evidence?.additionalProperties === false);
+
+    // Every field validateOne() (schemaValidation.ts) treats as REQUIRED
+    // must be in the tool schema's own `required` list — the exact class
+    // of drift ("runtime validator requires field X, tool schema forgot
+    // it") that caused the production incident this test exists for.
+    const runtimeRequiredFields = ["dimensionId", "signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"];
+    for (const field of runtimeRequiredFields) {
+      check(`tool schema requires "${field}" (runtime validator also requires it)`, item.required.includes(field));
+    }
+
+    // Enum membership must match exactly, not just overlap — a schema
+    // enum missing one runtime-accepted value would let the model never
+    // legally produce it; an extra schema value not in the runtime set
+    // would let a "valid per Anthropic" call still fail our validator.
+    function sameSet(a: readonly string[], b: readonly string[]): boolean {
+      return a.length === b.length && a.every((v) => b.includes(v));
+    }
+    check("dimensionId enum matches DIMENSION_IDS exactly", sameSet(item.properties.dimensionId.enum ?? [], DIMENSION_IDS));
+    check("signalLevel enum matches SIGNAL_LEVELS exactly", sameSet(item.properties.signalLevel.enum ?? [], SIGNAL_LEVELS));
+    check("evidenceQuality enum matches EVIDENCE_QUALITIES exactly", sameSet(item.properties.evidenceQuality.enum ?? [], EVIDENCE_QUALITIES));
+    check("confidence enum matches AI_CONFIDENCE_VALUES exactly (single shared constant — see types.ts)", sameSet(item.properties.confidence.enum ?? [], AI_CONFIDENCE_VALUES));
+
+    // A canonical, fully-valid payload (one item per requested dimension,
+    // every runtime-required field present, real enum values) must pass
+    // the runtime validator — proves the "happy path" the schema is
+    // supposed to guarantee is actually accepted end to end.
+    const canonicalItem = (dimensionId: DimensionId): DimensionAIResult => ({
+      dimensionId,
+      signalLevel: "mixed",
+      evidencePresent: true,
+      evidenceQuality: "specific",
+      confidence: "medium",
+      evidence: { section: "experience", excerpt: "Led a team of 5 engineers." },
+      reasonCode: "TEST_CANONICAL_OK",
+      shortReason: "Synthetic canonical payload for the contract-drift guard.",
+    });
+    const canonicalResult = validateDimensionAIResults(DIMENSION_IDS.map(canonicalItem), [...DIMENSION_IDS]);
+    check("a canonical valid payload (every requested dimension, every required field) passes the runtime validator", canonicalResult.ok, canonicalResult.ok ? "" : JSON.stringify(canonicalResult.issues));
+
+    // Negative control: dropping one required field from one item must be
+    // caught (proves the validator isn't accidentally permissive).
+    const brokenItems = DIMENSION_IDS.map(canonicalItem).map((r, i) => (i === 0 ? ({ ...r, signalLevel: undefined } as unknown as DimensionAIResult) : r));
+    const brokenResult = validateDimensionAIResults(brokenItems, [...DIMENSION_IDS]);
+    check("a payload missing one required field is rejected, not silently accepted", !brokenResult.ok);
+
+    // Pins the EXACT shape of the real production failure: a schema-
+    // shaped-but-EMPTY results array. This is what minItems:1 + strict
+    // now prevents Anthropic from returning at all; this check documents
+    // that if it ever did slip through again, our validator still
+    // catches it deterministically as "missing dimension result" per
+    // expected id, not as a confusing generic failure.
+    const emptyResult = validateDimensionAIResults([], [...DIMENSION_IDS]);
+    check(
+      "an empty results array is rejected with exactly one 'missing dimension result' issue per expected dimension (the real production failure's exact shape)",
+      !emptyResult.ok && emptyResult.issues.length === DIMENSION_IDS.length,
+      !emptyResult.ok ? String(emptyResult.issues.length) : "ok:true",
+    );
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);

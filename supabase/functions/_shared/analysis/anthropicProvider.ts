@@ -31,12 +31,13 @@
  * this adapter is stateless per call).
  */
 import { DIMENSION_IDS, EVIDENCE_QUALITIES, SIGNAL_LEVELS } from "../methodology/types.ts";
-import type {
-  AnalyzeDimensionsInput,
-  CareerAIProvider,
-  DimensionAIResult,
-  RewriteCandidateResult,
-  RewriteGenerationInput,
+import {
+  AI_CONFIDENCE_VALUES,
+  type AnalyzeDimensionsInput,
+  type CareerAIProvider,
+  type DimensionAIResult,
+  type RewriteCandidateResult,
+  type RewriteGenerationInput,
 } from "./types.ts";
 import { CAREER_AI_CONFIG } from "./config.ts";
 import { callAnthropic } from "./anthropicClient.ts";
@@ -61,11 +62,37 @@ import { callAnthropic } from "./anthropicClient.ts";
  * `reasonCode` pattern (a free string, deliberately never enum-enforced;
  * see schemaValidation.ts's note on why that field stays loose).
  */
+/**
+ * `strict: true` (set where this schema is attached to a tool, below) is
+ * Anthropic's grammar-constrained-sampling guarantee that a `tool_use`
+ * block's `input` structurally matches this schema exactly — required
+ * fields present, enums respected, types correct — closing the actual
+ * gap a real production CV hit (Career V2 email-test verification):
+ * `stop_reason: "tool_use"` (a clean, non-truncated completion) with a
+ * `results` array that still failed our runtime validator on all 13
+ * expected dimensions. Without `strict`, the tool schema below was only
+ * ever a STRONG HINT to the model, never an enforced contract — exactly
+ * the gap that let a schema-shaped-but-invalid (or empty) `results`
+ * array through as a "successful" tool call.
+ *
+ * Strict mode's supported JSON Schema subset (see Anthropic's structured
+ * outputs docs) requires `additionalProperties: false` on every object
+ * (top-level and nested — `evidence` below included) and supports array
+ * `minItems` only as 0 or 1 (never an exact/large count, and `maxItems`
+ * isn't supported at all) — so `minItems: 1` below is the strongest
+ * structural guarantee available that `results` is non-empty; it cannot
+ * force exactly `dimensionIds.length` items with exactly the requested
+ * ids. That part remains schemaValidation.ts's job (checking `expected`
+ * membership + "missing dimension result" per id) — a semantic
+ * constraint no JSON Schema dialect expresses, by design left to the
+ * runtime validator, not silently loosened to fit the schema.
+ */
 export const DIMENSION_RESULT_SCHEMA = {
   type: "object",
   properties: {
     results: {
       type: "array",
+      minItems: 1,
       items: {
         type: "object",
         properties: {
@@ -86,7 +113,7 @@ export const DIMENSION_RESULT_SCHEMA = {
             description:
               "How strong the supporting evidence is: none (no checkable quote), limited (present but thin/generic), specific (a clear, concrete instance), strong (multiple or highly concrete instances). Use 'none' whenever evidencePresent is false.",
           },
-          confidence: { type: "string", enum: ["high", "medium", "low"] },
+          confidence: { type: "string", enum: AI_CONFIDENCE_VALUES as unknown as string[] },
           evidence: {
             type: ["object", "null"],
             description: "At most ONE verbatim excerpt from the resume, or null if none applies. Never more than one.",
@@ -95,6 +122,7 @@ export const DIMENSION_RESULT_SCHEMA = {
               excerpt: { type: "string", description: "A short verbatim quote, ideally under ~120 characters." },
             },
             required: ["section", "excerpt"],
+            additionalProperties: false,
           },
           reasonCode: {
             type: "string",
@@ -106,10 +134,12 @@ export const DIMENSION_RESULT_SCHEMA = {
           },
         },
         required: ["dimensionId", "signalLevel", "evidencePresent", "evidenceQuality", "confidence", "reasonCode", "shortReason"],
+        additionalProperties: false,
       },
     },
   },
   required: ["results"],
+  additionalProperties: false,
 } as const;
 
 const REWRITE_RESULT_SCHEMA = {
@@ -117,7 +147,11 @@ const REWRITE_RESULT_SCHEMA = {
   properties: {
     candidate: {
       // Nullable-by-omission: the model returns {} (no `candidate` key) when
-      // no safe rewrite exists, rather than inventing one.
+      // no safe rewrite exists, rather than inventing one. `candidate`
+      // deliberately stays out of the top-level `required` below so
+      // strict mode still allows omitting it entirely (Anthropic's
+      // strict subset: a property absent from `required` is optional,
+      // no nullable-union workaround needed for an object-typed field).
       type: "object",
       properties: {
         before: { type: "string" },
@@ -126,8 +160,10 @@ const REWRITE_RESULT_SCHEMA = {
         note: { type: "string" },
       },
       required: ["before", "after", "classification", "note"],
+      additionalProperties: false,
     },
   },
+  additionalProperties: false,
 } as const;
 
 interface AnthropicMessageResponse {
@@ -162,7 +198,11 @@ async function callAnthropicTool(
       thinking: { type: "disabled" },
       system,
       messages: [{ role: "user", content: userText }],
-      tools: [{ name: toolName, description: `Return ${toolName} as structured JSON.`, input_schema: schema }],
+      // `strict: true` (a top-level property of the tool definition, not
+      // inside input_schema) turns the schema above from a hint into an
+      // enforced grammar — see DIMENSION_RESULT_SCHEMA's own comment for
+      // exactly which production failure this closes.
+      tools: [{ name: toolName, description: `Return ${toolName} as structured JSON.`, input_schema: schema, strict: true }],
       tool_choice: { type: "tool", name: toolName },
     },
     stage,
