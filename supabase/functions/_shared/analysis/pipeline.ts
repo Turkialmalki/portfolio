@@ -70,6 +70,7 @@ import { validateReportLanguage } from "./languageValidator.ts";
 import { DEFAULT_TIMEOUTS, newInstrumentation, withTimeout } from "./instrumentation.ts";
 import type { AnalyzeResumeRequest, AnalysisRunOptions, AnalysisRunResult, AnalysisInstrumentation, CareerAIProvider, NormalizedResume } from "./types.ts";
 import { AnalysisPipelineError } from "./types.ts";
+import { AnthropicProviderError } from "./anthropicClient.ts";
 
 /**
  * Pulls the just-completed call's token usage AND stop_reason (real
@@ -165,6 +166,21 @@ export async function runAnalysis(request: AnalyzeResumeRequest, opts: AnalysisR
     );
   } catch (err) {
     if (err instanceof AnalysisPipelineError) throw err;
+    // CONFIRMED production bug (real-provider smoke test, post the
+    // instrumentation above): an `AnthropicProviderError` (thrown by
+    // anthropicClient.ts's `callAnthropic` on a non-2xx response, WITH
+    // its own rich diagnostics — providerHttpStatus/providerErrorType/
+    // providerRequestId/providerErrorMessageSanitized) is a DIFFERENT
+    // class from `AnalysisPipelineError` above, so it fell through this
+    // catch's generic fallback below — silently downgraded to a bare
+    // `stage: "unexpected_error"` with none of those diagnostics
+    // attached, even though analyze-resume/index.ts's own catch block
+    // has always had correct, complete handling for exactly this error
+    // type (`buildProviderDiagnosticBody`) — it just never got the
+    // chance to run, because this function re-wrapped the error first.
+    // Re-throwing AS-IS (same pattern as the AnalysisPipelineError check
+    // above) lets that existing handling actually see it.
+    if (err instanceof AnthropicProviderError) throw err;
     // A bare `withTimeout` rejection (never an AnalysisPipelineError
     // itself — that's caught above) — one of the THREE distinct timeout
     // sites in this file, distinguished only by their fixed messages

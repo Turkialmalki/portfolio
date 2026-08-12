@@ -8,6 +8,7 @@
 import {
   AI_CONFIDENCE_VALUES,
   AnalysisPipelineError,
+  AnthropicProviderError,
   assertGeneratedAnalysisToolSchema,
   buildDimensionResultSchema,
   createMockCareerAIProvider,
@@ -579,6 +580,30 @@ async function main() {
       check("B. code is ANALYSIS_FAILED", err?.code === "ANALYSIS_FAILED");
       check("B. stage is language_validation", err?.stage === "language_validation", String(err?.stage));
       check("B. providerAttempts is 1 (no repair retry — this is a post-scoring gate, not a schema failure)", err?.providerAttempts === 1, String(err?.providerAttempts));
+    }
+
+    // C. CONFIRMED real bug (real-provider smoke test): an
+    // AnthropicProviderError thrown by the provider must propagate OUT
+    // of runAnalysis AS-IS — not be silently re-wrapped into a generic
+    // AnalysisPipelineError with stage "unexpected_error", which would
+    // discard its providerHttpStatus/providerErrorType/etc. and prevent
+    // analyze-resume/index.ts's own (already-correct)
+    // AnthropicProviderError handling from ever running.
+    {
+      const providerErrorStub = makeStubProvider({
+        analyzeDimensions: async () => {
+          throw new AnthropicProviderError({ providerHttpStatus: 401, providerErrorType: "authentication_error", providerRequestId: "req_test", providerErrorMessageSanitized: "invalid x-api-key" }, "dimension_analysis");
+        },
+      });
+      let thrown: unknown;
+      try {
+        await runAnalysis(baseRequest, { provider: providerErrorStub, knowledgeMode: "fixture", isFixtureRun: true });
+      } catch (e) {
+        thrown = e;
+      }
+      check("C. an AnthropicProviderError from the provider propagates out AS-IS (not re-wrapped)", thrown instanceof AnthropicProviderError);
+      check("C. is NOT wrapped as a generic AnalysisPipelineError", !(thrown instanceof AnalysisPipelineError));
+      check("C. its rich diagnostics survive untouched", thrown instanceof AnthropicProviderError && thrown.diagnostics.providerHttpStatus === 401 && thrown.diagnostics.providerErrorType === "authentication_error");
     }
   }
 
