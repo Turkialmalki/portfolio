@@ -37,6 +37,8 @@ export type SafeLogFields = {
   pipeline_error_message?: string;
   /** SchemaIssue count from a failed AI-output validation — a number, not the issues themselves. */
   schema_issue_count?: number;
+  /** Anthropic's own `stop_reason` from the failing call (e.g. "max_tokens", "tool_use", "end_turn") — a fixed provider enum, never model-generated content. Logged on a schema-validation failure to distinguish "the model truncated" from "the model produced malformed output" without needing the raw response. */
+  stop_reason?: string | null;
 };
 
 export function safeLog(fields: SafeLogFields): void {

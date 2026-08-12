@@ -219,7 +219,12 @@ async function runStages(
     accumulateUsage(instrumentation, opts.provider);
     validation = validateDimensionAIResults(aiRaw, dimensionIds);
     if (!validation.ok) {
-      throw new AnalysisPipelineError("ANALYSIS_FAILED", "AI output failed schema validation after one repair retry", validation.issues);
+      throw new AnalysisPipelineError(
+        "ANALYSIS_FAILED",
+        "AI output failed schema validation after one repair retry",
+        validation.issues,
+        instrumentation.stopReason,
+      );
     }
   }
 

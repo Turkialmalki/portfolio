@@ -255,9 +255,12 @@ export type AnalysisFailureCode = "ANALYSIS_FAILED" | "ANALYSIS_TIMEOUT";
 export class AnalysisPipelineError extends Error {
   readonly code: AnalysisFailureCode;
   readonly issues?: SchemaIssue[];
-  constructor(code: AnalysisFailureCode, message: string, issues?: SchemaIssue[]) {
+  /** The most recent provider call's Anthropic `stop_reason` (e.g. "max_tokens", "tool_use") when this failure followed a real-provider schema-validation failure — Anthropic's own fixed enum, never model-generated content, so it's safe to log (see safeLog.ts's `stop_reason` field). `undefined` for failures unrelated to a provider call (e.g. the release-gate check). */
+  readonly stopReason?: string | null;
+  constructor(code: AnalysisFailureCode, message: string, issues?: SchemaIssue[], stopReason?: string | null) {
     super(message);
     this.code = code;
     this.issues = issues;
+    this.stopReason = stopReason;
   }
 }

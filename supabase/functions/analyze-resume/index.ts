@@ -668,6 +668,7 @@ async function handleCustomerAnalysis(
         // only their count, to stay conservative.
         pipeline_error_message: err.message.slice(0, 200),
         ...(err.issues ? { schema_issue_count: err.issues.length } : {}),
+        ...(err.stopReason !== undefined ? { stop_reason: err.stopReason } : {}),
       });
       return respondError(err.code, headers);
     }

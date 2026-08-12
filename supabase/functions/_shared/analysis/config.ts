@@ -20,8 +20,27 @@ export const CAREER_AI_CONFIG = {
   model: "claude-sonnet-5",
   /** Anthropic Messages API version header (not a package version). */
   apiVersion: "2023-06-01",
-  /** Per-call token ceiling for a dimension-analysis or rewrite response — generous but bounded; real output is a few KB of JSON. */
-  maxOutputTokens: 4096,
+  /**
+   * Per-call token ceiling for a dimension-analysis or rewrite response.
+   * Bumped 4096 → 8192 after a REAL production CV (Career V2 email-test
+   * verification, first live customer analysis after launch) hit this
+   * ceiling on the 13-dimension compact-schema call: both the initial
+   * call and the one repair retry produced stop_reason "max_tokens" mid
+   * tool-call, which yields no usable `results` at all (anthropicProvider.ts
+   * falls back to `[]` rather than trusting a truncated array) — 13/13
+   * "missing dimension result" schema issues, deterministically on both
+   * tries (thinking disabled + no temperature ⇒ near-identical output
+   * length each call). The compact schema (Command 05D.2 §3) fixed the
+   * OLD verbose contract's truncation at this same 4096 ceiling for
+   * SYNTHETIC fixtures; it was never verified against a real, longer
+   * production CV's actual evidence-excerpt/shortReason lengths, which is
+   * exactly the gap fixture/mock-provider tests can't catch (they never
+   * call the real API — see mockProvider.ts's header). 8192 gives ~2x
+   * headroom for the same 13-item compact array; see safeLog.ts's
+   * `stop_reason` field for how a future recurrence gets diagnosed
+   * without needing to guess again.
+   */
+  maxOutputTokens: 8192,
   /**
    * NOT sent as a request parameter (Command 05C §2 fix). `claude-sonnet-5`
    * rejects any non-default `temperature`/`top_p`/`top_k` with a 400 — this
