@@ -38,7 +38,25 @@ export type PaymentLinkConfig = {
   type: "payment-link";
   /** The exact, single PayPal Payment Link URL — never duplicated in a UI component. */
   url: string;
-  expectedPrice: { amount: number; currency: "SAR" };
+  expectedPrice: { amount: number; currency: "SAR" | "USD" };
+};
+
+/**
+ * A price prepared but NOT yet wired to any checkout. `url` is `null` on
+ * purpose — Command 05C §14 requires the actual PayPal payment link to
+ * charge exactly this amount in this currency BEFORE anything reads this
+ * config to render a checkout button. No dynamic SAR↔USD conversion is
+ * ever performed anywhere in this codebase; each currency has its own
+ * fixed, manually-set price. `enabled: false` is the second gate — even
+ * once a real link exists, flipping this to `true` is a deliberate,
+ * separate step, not a side effect of adding the URL.
+ */
+export type PendingPaymentLinkConfig = {
+  provider: "paypal";
+  type: "payment-link";
+  url: string | null;
+  expectedPrice: { amount: number; currency: "SAR" | "USD" };
+  enabled: false;
 };
 
 /**
@@ -67,5 +85,30 @@ export const CAREER_PAYMENT_CONFIG: Partial<
     type: "payment-link",
     url: "https://www.paypal.com/ncp/payment/QNQ6Z525NZC7J",
     expectedPrice: { amount: 19, currency: "SAR" },
+  },
+};
+
+/**
+ * USD product direction (Command 05C §14) — "Career Full Review" priced at
+ * a fixed $5 USD, no SAR conversion. NOT the live product: `enabled: false`
+ * and `url: null` until a real PayPal payment link exists that charges
+ * exactly $5.00 USD. Nothing in this codebase reads this constant yet
+ * (Career/Build UI is out of scope for this command) — it exists so the
+ * price is written down in exactly one place ahead of that work, per this
+ * file's own stated discipline.
+ *
+ * To activate once the link exists: set `url`, flip `enabled: true`, and
+ * only then wire a checkout surface to read it — each step deliberate,
+ * never automatic from the other.
+ */
+export const CAREER_USD_PAYMENT_CONFIG: Partial<
+  Record<"career_cv_full_review", PendingPaymentLinkConfig>
+> = {
+  career_cv_full_review: {
+    provider: "paypal",
+    type: "payment-link",
+    url: null,
+    expectedPrice: { amount: 5, currency: "USD" },
+    enabled: false,
   },
 };

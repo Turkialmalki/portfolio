@@ -39,10 +39,19 @@ import type {
   RewriteGenerationInput,
 } from "./types.ts";
 import { CAREER_AI_CONFIG } from "./config.ts";
+import { callAnthropic } from "./anthropicClient.ts";
 
-const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
-
-const DIMENSION_RESULT_SCHEMA = {
+/**
+ * COMPACT dimension-result schema (Command 05D.2 §3) — replaces the old
+ * evidence[]/reason/recommendations[] shape. At most ONE evidence item per
+ * dimension, a coarse `reasonCode` bucket, and one short free-text
+ * sentence. This is the schema Command 05D.1's real-provider diagnostic
+ * conclusively showed was needed: the old per-dimension contract couldn't
+ * complete generation for 12 dimensions within any reasonable output
+ * budget (measured: 4096/4096 output tokens, stop_reason "max_tokens",
+ * zero dimensions successfully returned).
+ */
+export const DIMENSION_RESULT_SCHEMA = {
   type: "object",
   properties: {
     results: {
@@ -54,21 +63,24 @@ const DIMENSION_RESULT_SCHEMA = {
           score: { type: "number", minimum: 0, maximum: 100 },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
           evidence: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                section: { type: "string" },
-                text: { type: "string" },
-                role: { type: "string" },
-              },
-              required: ["section", "text"],
+            type: ["object", "null"],
+            description: "At most ONE verbatim excerpt from the resume, or null if none applies. Never more than one.",
+            properties: {
+              section: { type: "string" },
+              excerpt: { type: "string", description: "A short verbatim quote, ideally under ~120 characters." },
             },
+            required: ["section", "excerpt"],
           },
-          reason: { type: "string" },
-          recommendations: { type: "array", items: { type: "string" } },
+          reasonCode: {
+            type: "string",
+            description: "A short bucket label for why this score, e.g. STRONG_ROLE_IDENTITY, RESPONSIBILITY_WITHOUT_OUTCOME, INSUFFICIENT_EVIDENCE. Pick the closest fit or OTHER.",
+          },
+          shortReason: {
+            type: "string",
+            description: "ONE short sentence of nuance, under ~160 characters. Never a paragraph.",
+          },
         },
-        required: ["dimensionId", "score", "confidence", "evidence", "reason", "recommendations"],
+        required: ["dimensionId", "score", "confidence", "reasonCode", "shortReason"],
       },
     },
   },
@@ -96,6 +108,8 @@ const REWRITE_RESULT_SCHEMA = {
 interface AnthropicMessageResponse {
   content: Array<{ type: string; input?: unknown }>;
   usage?: { input_tokens: number; output_tokens: number };
+  /** Anthropic's own enum, e.g. "end_turn" | "max_tokens" | "tool_use" — never model-generated content. Command 05D.3. */
+  stop_reason?: string;
 }
 
 async function callAnthropicTool(
@@ -104,85 +118,107 @@ async function callAnthropicTool(
   userText: string,
   toolName: string,
   schema: unknown,
-): Promise<{ input: unknown; usage?: { input_tokens: number; output_tokens: number } }> {
-  const res = await fetch(ANTHROPIC_MESSAGES_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": CAREER_AI_CONFIG.apiVersion,
-    },
-    body: JSON.stringify({
+  stage: string,
+): Promise<{ input: unknown; usage?: { input_tokens: number; output_tokens: number }; stopReason: string | null }> {
+  // On a non-2xx response, callAnthropic throws AnthropicProviderError with
+  // safe diagnostics (status/type/requestId/sanitized message) only — see
+  // anthropicClient.ts. Nothing here catches it; it propagates to the
+  // pipeline and, ultimately, to the fixture/admin-mode response (§1).
+  const raw = await callAnthropic(
+    apiKey,
+    {
       model: CAREER_AI_CONFIG.model,
       max_tokens: CAREER_AI_CONFIG.maxOutputTokens,
-      temperature: CAREER_AI_CONFIG.temperature,
+      // NOT `temperature`: claude-sonnet-5 400s on any non-default sampling
+      // parameter (temperature/top_p/top_k) — see config.ts's note on
+      // CAREER_AI_CONFIG.temperature. Determinism for this structured-
+      // extraction call comes from `thinking: disabled` + the forced
+      // tool_choice below, not from a sampling parameter.
+      thinking: { type: "disabled" },
       system,
       messages: [{ role: "user", content: userText }],
       tools: [{ name: toolName, description: `Return ${toolName} as structured JSON.`, input_schema: schema }],
       tool_choice: { type: "tool", name: toolName },
-    }),
-  });
+    },
+    stage,
+  );
 
-  if (!res.ok) {
-    const bodyText = await res.text().catch(() => "");
-    // §18: never log raw CV content or prompt bodies — only status/shape.
-    throw new Error(`anthropic_api_error status=${res.status} bodyLength=${bodyText.length}`);
-  }
-
-  const data = (await res.json()) as AnthropicMessageResponse;
+  const data = raw as AnthropicMessageResponse;
   const toolUse = data.content.find((block) => block.type === "tool_use");
   if (!toolUse) throw new Error("anthropic_no_tool_use_block");
-  return { input: toolUse.input, usage: data.usage };
+  return { input: toolUse.input, usage: data.usage, stopReason: data.stop_reason ?? null };
 }
 
-const SYSTEM_PROMPT =
+export const SYSTEM_PROMPT =
   "You are the evaluation engine behind a CV analysis product. You will be given " +
-  "methodology rubrics and a structured resume. Score strictly against the given " +
-  "rubrics and dimensions only. Every claim you make must be backed by a VERBATIM " +
-  "quote from the resume text you were given — never invent metrics, team sizes, " +
-  "titles, technologies, or achievements not present in the source text. If the " +
-  "resume does not support a dimension, say so with low confidence rather than " +
-  "inventing evidence. You never compute or return an overall score — only " +
-  "per-dimension scores.";
+  "compact methodology rubrics and a structured resume. Score strictly against the " +
+  "given rubrics and dimensions only. Any evidence you cite must be a VERBATIM quote " +
+  "from the resume text you were given — never invent metrics, team sizes, titles, " +
+  "technologies, or achievements not present in the source text. If the resume does " +
+  "not support a dimension, say so with low confidence rather than inventing " +
+  "evidence. You never compute or return an overall score — only per-dimension " +
+  "scores. BE CONCISE: at most one evidence excerpt per dimension (or none), one " +
+  "short reasonCode bucket, and one short sentence (shortReason, under ~160 " +
+  "characters) — never a paragraph, never a list of recommendations. This budget is " +
+  "deliberately tight so every requested dimension fits in the response.";
 
-function buildDimensionsPrompt(input: AnalyzeDimensionsInput): string {
+export function buildDimensionsPrompt(input: AnalyzeDimensionsInput): string {
   return JSON.stringify({
     task: "analyze_dimensions",
     dimensionIds: input.dimensionIds,
     context: input.context,
-    methodologySections: input.methodologySections,
+    // §6: the COMPACT runtime methodology (methodology/runtimeMethodology.ts)
+    // — a projection of the same rubrics compose.ts uses, trimmed for this
+    // call only. See that file's header for why the full rubric objects
+    // were the actual source of the Command 05D.1 truncation, not
+    // sending redundant seniority/language levels (compose.ts already
+    // filtered those correctly).
+    runtimeMethodology: input.methodologySections,
     examples: input.examples,
     normalizedResume: input.normalizedResume,
   });
 }
 
 function buildRewritePrompt(input: RewriteGenerationInput): string {
+  // §18: minimal context only — the original bullet plus role/seniority/
+  // language, not the full normalized resume or the methodology. The
+  // rewrite task only needs the ONE bullet's own words plus fact-
+  // preservation guidance (§19, sent via SYSTEM_PROMPT's shared rules —
+  // no separate methodology payload needed for a single-bullet rewrite).
   return JSON.stringify({
     task: "generate_rewrite",
     dimension: input.dimension,
-    context: input.context,
+    seniority: input.context.seniority,
+    language: input.context.language,
     candidateBefore: input.candidateBefore,
     instruction:
       "Rewrite candidateBefore into a stronger bullet using ONLY facts already present " +
-      "in candidateBefore or normalizedResume — do not add any new fact. If no safe, " +
+      "in candidateBefore — do not add any new fact (no metric, team size, revenue, " +
+      "technology, title, date, or outcome not already stated). If no safe, " +
       "fact-preserving rewrite is possible, return an empty object (omit `candidate`).",
-    normalizedResume: input.normalizedResume,
   });
 }
 
 export function createAnthropicCareerAIProvider(apiKey: string): CareerAIProvider {
+  // Closure-scoped, not module-scoped: a fresh provider instance is created
+  // per Edge Function invocation (see provider.ts's resolveProvider), so
+  // this never leaks usage between unrelated requests.
+  let lastUsage: { inputTokens: number; outputTokens: number; stopReason: string | null } | undefined;
+
   return {
     name: "anthropic",
     model: CAREER_AI_CONFIG.model,
 
     async analyzeDimensions(input: AnalyzeDimensionsInput): Promise<DimensionAIResult[]> {
-      const { input: raw } = await callAnthropicTool(
+      const { input: raw, usage, stopReason } = await callAnthropicTool(
         apiKey,
         SYSTEM_PROMPT,
         buildDimensionsPrompt(input),
         "submit_dimension_analysis",
         DIMENSION_RESULT_SCHEMA,
+        "dimension_analysis",
       );
+      lastUsage = usage ? { inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, stopReason } : { inputTokens: 0, outputTokens: 0, stopReason };
       const results = (raw as { results?: unknown }).results;
       // Deliberately returned as-is, untyped-cast at the boundary only —
       // schemaValidation.ts (§13/§29) is the sole authority on whether
@@ -193,15 +229,21 @@ export function createAnthropicCareerAIProvider(apiKey: string): CareerAIProvide
     },
 
     async generateRewrite(input: RewriteGenerationInput): Promise<RewriteCandidateResult | null> {
-      const { input: raw } = await callAnthropicTool(
+      const { input: raw, usage, stopReason } = await callAnthropicTool(
         apiKey,
         SYSTEM_PROMPT,
         buildRewritePrompt(input),
         "submit_rewrite_candidate",
         REWRITE_RESULT_SCHEMA,
+        "rewrite_generation",
       );
+      lastUsage = usage ? { inputTokens: usage.input_tokens, outputTokens: usage.output_tokens, stopReason } : { inputTokens: 0, outputTokens: 0, stopReason };
       const candidate = (raw as { candidate?: unknown }).candidate;
       return candidate ? (candidate as RewriteCandidateResult) : null;
+    },
+
+    lastCallUsage(): { inputTokens: number; outputTokens: number; stopReason: string | null } | undefined {
+      return lastUsage;
     },
   };
 }

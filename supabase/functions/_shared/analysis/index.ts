@@ -17,3 +17,15 @@ export { buildAtsAnalysis, buildFindings, buildIssues, buildMissingEvidenceQuest
 export { DEFAULT_TIMEOUTS, newInstrumentation, withTimeout } from "./instrumentation.ts";
 export { retrievalOptionsFor } from "./knowledgeMode.ts";
 export { runAnalysis } from "./pipeline.ts";
+export {
+  AnthropicProviderError,
+  buildProviderDiagnosticBody,
+  mapAnthropicStatusToDiagnosticCode,
+  type AnthropicCallDiagnostics,
+  type AnthropicDiagnosticCode,
+} from "./anthropicClient.ts";
+export { runBasicSmokeTest, runToolSmokeTest, type SmokeTestResult } from "./smokeTest.ts";
+export { runDimensionAnalysisDiagnostic, DIAGNOSTIC_TIMEOUTS, type DimensionDiagnosticResult } from "./dimensionDiagnostic.ts";
+export { runFirstCallDiagnostic, FIRST_CALL_DIAGNOSTIC_TIMEOUTS, type FirstCallDiagnosticResult } from "./firstCallDiagnostic.ts";
+export { runCompactAnalysisDiagnostic, COMPACT_DIAGNOSTIC_TIMEOUTS, type CompactAnalysisDiagnosticResult } from "./compactAnalysisDiagnostic.ts";
+export { MODEL_RATES_USD, estimateCostUsd, type ModelRateUsd, type CostEstimate } from "./pricing.ts";

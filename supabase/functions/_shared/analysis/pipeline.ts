@@ -5,8 +5,10 @@
  * KNOWLEDGE + AI REASONING → VALIDATED DIMENSION EVALUATIONS →
  * DETERMINISTIC SCORING ENGINE → CareerAnalysis.
  *
- * Stages, and why there are exactly two AI calls (§8's "minimum number of
- * AI calls that produces reliable structured results"):
+ * Stages (Command 05D.2 §17 removed the old "exactly two AI calls"
+ * constraint — correctness and free-result latency matter more than a
+ * fixed call count, per that command's explicit product-architecture
+ * rule):
  *
  *   A. Structure           — deterministic (structure.ts). No AI call.
  *   B+C. Rubric evaluation — ONE `provider.analyzeDimensions()` call
@@ -14,20 +16,23 @@
  *        this context (universal + contextual — `planWeights` has
  *        already excluded what doesn't apply, so this call never wastes
  *        budget on target-role/keyword rubrics when there's no target
- *        role/JD). Splitting universal vs contextual into two calls would
- *        double latency/cost for no reliability gain: both need the same
- *        resume text and methodology context, and neither depends on the
- *        other's output.
- *   D. Rewrite candidate    — ONE `provider.generateRewrite()` call,
- *        because it's a different task shape (generation, not scoring)
- *        best kept as its own small, auditable call. Strengths, issues,
- *        quick wins, and the action plan are NOT separate AI calls at
- *        all — findings.ts derives them deterministically from the
+ *        role/JD), using the COMPACT runtime methodology
+ *        (compileRuntimeMethodology — Command 05D.2 §6) and the compact
+ *        per-dimension contract (analysis/types.ts's `DimensionAIResult`)
+ *        instead of the old verbose one. Strengths, issues, quick wins,
+ *        and the action plan are NOT separate AI calls at all —
+ *        findings.ts derives them deterministically from the
  *        already-validated dimension results (§21–§26 rules), which is
  *        both cheaper and keeps "why is this a critical issue" traceable
  *        to code.
  *   E. Schema validation    — schemaValidation.ts + evidenceValidation.ts.
  *   F. Deterministic scoring — scoring.ts (the ONLY source of overallScore).
+ *
+ * Rewrite generation is DELIBERATELY NOT a stage of `runAnalysis()`
+ * anymore (Command 05D.2 §17) — see `generateRewriteForCandidate()` at
+ * the bottom of this file. The free result (score + dimensions + issues +
+ * strengths + quick win) is complete and returned without it; a caller
+ * generates the rewrite separately, after the score is already visible.
  *
  * Real customer mode is refused twice, independently: here (defense in
  * depth) and again in the Edge Function (§2, §40) — so a bug in either
@@ -38,7 +43,7 @@ import {
   aggregateConfidence,
   bandForScore,
   buildActionPlan,
-  composeMethodologyContext,
+  compileRuntimeMethodology,
   computeOverallScore,
   planWeights,
   type AnalysisContext,
@@ -60,8 +65,24 @@ import { verifyDimensionEvidence } from "./evidenceValidation.ts";
 import { detectMetricConflicts, enforceRewriteFactPreservation } from "./factCheck.ts";
 import { buildFindings } from "./findings.ts";
 import { DEFAULT_TIMEOUTS, newInstrumentation, withTimeout } from "./instrumentation.ts";
-import type { AnalyzeResumeRequest, AnalysisRunOptions, AnalysisRunResult, NormalizedResume } from "./types.ts";
+import type { AnalyzeResumeRequest, AnalysisRunOptions, AnalysisRunResult, AnalysisInstrumentation, CareerAIProvider, NormalizedResume } from "./types.ts";
 import { AnalysisPipelineError } from "./types.ts";
+
+/**
+ * Pulls the just-completed call's token usage AND stop_reason (real
+ * provider only) into `instrumentation` — see CareerAIProvider.lastCallUsage.
+ * `stopReason` is overwritten with each call (not accumulated — it
+ * describes the MOST RECENT call only, matching the interface doc), so
+ * after a repair retry it reflects the retry's own stop reason, not the
+ * first attempt's.
+ */
+function accumulateUsage(instrumentation: AnalysisInstrumentation, provider: CareerAIProvider): void {
+  const usage = provider.lastCallUsage?.();
+  if (!usage) return;
+  instrumentation.totalInputTokens += usage.inputTokens;
+  instrumentation.totalOutputTokens += usage.outputTokens;
+  instrumentation.stopReason = usage.stopReason;
+}
 
 function buildContext(request: AnalyzeResumeRequest, industry: string | undefined): AnalysisContext {
   return {
@@ -161,34 +182,57 @@ async function runStages(
 
   const plan = planWeights(context);
   const dimensionIds = plan.included.map((w) => w.dimension);
-  const methodologySections = composeMethodologyContext(context);
+  // Command 05D.2 §6: the COMPACT runtime projection of the same rubrics
+  // compose.ts filters — replaces composeMethodologyContext() for the AI
+  // call. composeMethodologyContext()/compose.ts are unchanged and still
+  // used elsewhere (documentation, tests); this pipeline's live AI call
+  // no longer sends full rubric prose.
+  const runtimeMethodology = compileRuntimeMethodology(context, dimensionIds);
 
-  // Stage B+C: one dimension-evaluation call, with one controlled repair retry (§29).
+  // Stage B+C: ONE compact dimension-evaluation call, with one controlled
+  // repair retry (§29) — unchanged safety net, now expected to be rare
+  // (Command 05D.2 §21: a system that routinely needs repair isn't
+  // production-ready).
   let aiRaw = await withTimeout(
-    opts.provider.analyzeDimensions({ normalizedResume: normalized, context, dimensionIds, methodologySections, examples: retrieval.examples }),
+    opts.provider.analyzeDimensions({ normalizedResume: normalized, context, dimensionIds, methodologySections: runtimeMethodology, examples: retrieval.examples }),
     DEFAULT_TIMEOUTS.providerCallMs,
     "provider timed out during dimension analysis",
   );
   instrumentation.aiCallCount += 1;
+  accumulateUsage(instrumentation, opts.provider);
   let validation = validateDimensionAIResults(aiRaw, dimensionIds);
   if (!validation.ok) {
     instrumentation.retryCount += 1;
     aiRaw = await withTimeout(
-      opts.provider.analyzeDimensions({ normalizedResume: normalized, context, dimensionIds, methodologySections, examples: retrieval.examples }),
+      opts.provider.analyzeDimensions({ normalizedResume: normalized, context, dimensionIds, methodologySections: runtimeMethodology, examples: retrieval.examples }),
       DEFAULT_TIMEOUTS.providerCallMs,
       "provider timed out during dimension analysis retry",
     );
     instrumentation.aiCallCount += 1;
+    accumulateUsage(instrumentation, opts.provider);
     validation = validateDimensionAIResults(aiRaw, dimensionIds);
     if (!validation.ok) {
       throw new AnalysisPipelineError("ANALYSIS_FAILED", "AI output failed schema validation after one repair retry", validation.issues);
     }
   }
 
-  // Stage E: evidence verification (§11).
+  // Stage E: evidence verification (§11), then expand the compact AI
+  // result into the full DimensionResult shape scoring.ts/findings.ts
+  // already consume unchanged. `recommendations` is always [] here —
+  // findings.ts (buildIssues) falls back to
+  // rubricFor(dimension).recommendationRules[0] deterministically, which
+  // is exactly the "derive from code, not another AI call" behavior
+  // Command 05D.2 §14 asks for.
   const verifiedResults: DimensionResult[] = validation.value.map((r) => {
     const { result } = verifyDimensionEvidence(r, normalized.rawTextReference);
-    return { dimension: result.dimensionId, score: result.score, confidence: result.confidence, evidence: result.evidence, reason: result.reason, recommendations: result.recommendations };
+    return {
+      dimension: result.dimensionId,
+      score: result.score,
+      confidence: result.confidence,
+      evidence: result.evidence ? [{ section: result.evidence.section, text: result.evidence.excerpt }] : [],
+      reason: result.shortReason,
+      recommendations: [],
+    };
   });
 
   // Stage F: deterministic scoring — the ONLY source of overallScore (§9).
@@ -203,19 +247,14 @@ async function runStages(
   const { issues, strengths, quickWins, missingEvidenceQuestions, atsAnalysis } = buildFindings(verifiedResults, context, factConflicts);
   const actionPlan = buildActionPlan(issues);
 
-  // §24: exactly one rewrite candidate, fact-checked before it's trusted (§12).
-  const candidateBullet = normalized.experience.flatMap((e) => e.bullets).find((b) => /^(was responsible for|responsible for|worked on|helped with|participated in)/i.test(b.trim()));
-  let rewriteExamples: CareerAnalysis["rewriteExamples"] = [];
-  if (candidateBullet) {
-    const raw = await withTimeout(
-      opts.provider.generateRewrite({ normalizedResume: normalized, context, candidateBefore: candidateBullet, dimension: "experience_quality" }),
-      DEFAULT_TIMEOUTS.providerCallMs,
-      "provider timed out during rewrite generation",
-    );
-    instrumentation.aiCallCount += 1;
-    const checked = raw ? enforceRewriteFactPreservation(raw) : null;
-    if (checked) rewriteExamples = [checked];
-  }
+  // Command 05D.2 §17: rewrite generation has LEFT the free critical path.
+  // The free result (score, dimensions, issues, strengths, quick win) is
+  // now complete without it. `rewriteExamples` is always [] from this
+  // call — see `generateRewriteForCandidate()` below for the separate,
+  // deferred call a caller makes AFTER the free result is already
+  // delivered (own TIME_TO_REWRITE measurement, own optional failure that
+  // never blocks the score the user is already looking at).
+  const rewriteExamples: CareerAnalysis["rewriteExamples"] = [];
 
   const targetRoleResult = verifiedResults.find((r) => r.dimension === "target_role_alignment");
   const targetRoleAnalysis = buildTargetRoleAnalysis(request, normalized, targetRoleResult);
@@ -255,4 +294,38 @@ async function runStages(
     instrumentation,
     factConflicts,
   };
+}
+
+const REWRITE_CANDIDATE_RE = /^(was responsible for|responsible for|worked on|helped with|participated in)/i;
+
+/** Finds the same weak-verb-opener bullet the old inline rewrite step looked for — used by callers of `generateRewriteForCandidate` below. */
+export function findRewriteCandidateBullet(normalized: NormalizedResume): string | null {
+  return normalized.experience.flatMap((e) => e.bullets).find((b) => REWRITE_CANDIDATE_RE.test(b.trim())) ?? null;
+}
+
+/**
+ * Command 05D.2 §17–§18: the rewrite call, deliberately OUTSIDE
+ * `runAnalysis()`. A caller invokes this AFTER the free result is already
+ * returned to the user — e.g. to show "Generating your example…" once the
+ * score is already visible. Own timeout, own TIME_TO_REWRITE measurement
+ * (the caller times this call itself), own failure mode that never
+ * blocks or retries the score.
+ */
+export async function generateRewriteForCandidate(
+  candidateBullet: string,
+  context: AnalysisContext,
+  normalized: NormalizedResume,
+  provider: CareerAIProvider,
+): Promise<CareerAnalysis["rewriteExamples"][number] | null> {
+  const raw = await withTimeout(
+    // `normalized` is part of the typed input for callers that need it
+    // (e.g. fact-checking against the full document later), but
+    // anthropicProvider.ts's buildRewritePrompt only puts
+    // `candidateBullet` + context on the wire (§18) — the full resume is
+    // never sent for a single-bullet rewrite.
+    provider.generateRewrite({ normalizedResume: normalized, context, candidateBefore: candidateBullet, dimension: "experience_quality" }),
+    DEFAULT_TIMEOUTS.providerCallMs,
+    "provider timed out during rewrite generation",
+  );
+  return raw ? enforceRewriteFactPreservation(raw) : null;
 }

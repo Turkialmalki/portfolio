@@ -139,12 +139,12 @@ async function main() {
       dimensionId: "achievement_impact" as const,
       score: 80,
       confidence: "high" as const,
-      evidence: [{ section: "Experience", text: "Led 20 engineers to a record quarter" }],
-      reason: "test",
-      recommendations: [],
+      evidence: { section: "Experience", excerpt: "Led 20 engineers to a record quarter" },
+      reasonCode: "STRONG_EVIDENCE",
+      shortReason: "test",
     };
     const { result, rejectedCount } = verifyDimensionEvidence(fabricated, "This CV never mentions leading any engineers.");
-    check("I. fabricated evidence is stripped and confidence lowered", result.evidence.length === 0 && result.confidence === "low" && rejectedCount === 1);
+    check("I. fabricated evidence is stripped and confidence lowered", result.evidence === null && result.confidence === "low" && rejectedCount === 1);
   }
 
   // J. invented rewrite facts are rejected.

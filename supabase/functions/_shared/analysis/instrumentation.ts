@@ -26,6 +26,9 @@ export function newInstrumentation(inputCharCount: number, provider: string, mod
     durationMs: 0,
     provider,
     model,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    stopReason: null,
   };
 }
 

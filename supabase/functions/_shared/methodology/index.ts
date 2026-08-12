@@ -59,3 +59,5 @@ export {
 } from "./contextPatterns.ts";
 export { projectFreeReport, projectFullReport, type FreeReport } from "./projection.ts";
 export { composeMethodologyContext, type MethodologySection } from "./compose.ts";
+export { compileRuntimeMethodology, type CompactRubric, type RuntimeMethodologyContext } from "./runtimeMethodology.ts";
+export { KNOWN_REASON_CODES, reasonCodeLabel, type KnownReasonCode } from "./reasonCodes.ts";

@@ -80,19 +80,43 @@ export interface NormalizedResume {
 export type AIConfidence = "high" | "medium" | "low";
 
 /**
- * What a `CareerAIProvider` returns per dimension. Deliberately has no
- * `overallScore` field — if a provider implementation is tempted to add
- * one, TypeScript gives it nowhere to put it. If raw provider JSON
- * contains one anyway (a misbehaving model), schemaValidation.ts drops it
- * before this type is ever constructed (§9 hard rule).
+ * What a `CareerAIProvider` returns per dimension — the COMPACT contract
+ * (Command 05D.2 §3), replacing the old dimensionId/score/confidence/
+ * evidence[]/reason/recommendations[] shape after the real-provider
+ * diagnostic (Command 05D.1) proved the old contract's per-dimension
+ * output was too large to complete within a usable token budget (12
+ * dimensions × a long free-text reason + a recommendations array +
+ * multiple evidence quotes routinely exceeded max_tokens before finishing
+ * even one dimension).
+ *
+ * Deliberately has no `overallScore` field — if a provider implementation
+ * is tempted to add one, TypeScript gives it nowhere to put it. If raw
+ * provider JSON contains one anyway (a misbehaving model),
+ * schemaValidation.ts drops it before this type is ever constructed (§9
+ * hard rule — unchanged by this contract shrink).
+ *
+ * What got REMOVED and why it's safe:
+ *   - `evidence: Evidence[]` → `evidence: {section, excerpt} | null` (at
+ *     most one quote). Multiple evidence quotes per dimension were never
+ *     required for scoring or for evidenceValidation.ts's verification —
+ *     one verifiable quote is exactly as load-bearing as three.
+ *   - `recommendations: string[]` → removed entirely. findings.ts
+ *     (`buildIssues`) already falls back to
+ *     `rubricFor(dimension).recommendationRules[0]` whenever an AI result
+ *     carries no recommendations — a fixed, code-owned fallback, not a
+ *     capability loss.
+ *   - `reason: string` (long, LLM-generated prose) → `reasonCode` (a
+ *     coarse, mostly-fixed bucket — see methodology/reasonCodes.ts) +
+ *     `shortReason` (one short sentence of nuance, length-guided but not
+ *     hard-truncated by validation — see schemaValidation.ts).
  */
 export interface DimensionAIResult {
   dimensionId: DimensionId;
   score: number;
   confidence: AIConfidence;
-  evidence: Evidence[];
-  reason: string;
-  recommendations: string[];
+  evidence: { section: string; excerpt: string } | null;
+  reasonCode: string;
+  shortReason: string;
 }
 
 export interface AnalyzeDimensionsInput {
@@ -130,6 +154,18 @@ export interface CareerAIProvider {
   readonly model: string;
   analyzeDimensions(input: AnalyzeDimensionsInput): Promise<DimensionAIResult[]>;
   generateRewrite(input: RewriteGenerationInput): Promise<RewriteCandidateResult | null>;
+  /**
+   * Token usage + provider stop reason for the MOST RECENT call only
+   * (either method above) — counts and a short fixed-vocabulary status
+   * string, never content (§34's "no raw content" discipline extends
+   * here — `stopReason` is Anthropic's own enum value, e.g. "end_turn" /
+   * "max_tokens" / "tool_use", never model output). Optional because
+   * mockProvider.ts has no real usage to report. pipeline.ts reads this
+   * immediately after each call and accumulates into `instrumentation` —
+   * see Command 05C §5 (token usage / cost measurement) and Command
+   * 05D.3 (stop_reason surfaced for the real-AI reliability suite).
+   */
+  lastCallUsage?(): { inputTokens: number; outputTokens: number; stopReason: string | null } | undefined;
 }
 
 // ── §0 knowledge mode ─────────────────────────────────────────────────────
@@ -170,6 +206,11 @@ export interface AnalysisInstrumentation {
   durationMs: number;
   provider: string;
   model: string;
+  /** Summed across every AI call this run made (real provider only — 0 on the mock). */
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  /** Anthropic's own stop_reason from the MOST RECENT dimension call (real provider only) — a short fixed-vocabulary string, never model output. Command 05D.3. */
+  stopReason: string | null;
 }
 
 // ── §39 reproducibility metadata ──────────────────────────────────────────

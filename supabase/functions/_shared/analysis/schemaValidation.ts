@@ -1,5 +1,6 @@
 /**
- * AI JSON SCHEMA VALIDATION (Command 05 §29, §9).
+ * AI JSON SCHEMA VALIDATION (Command 05 §29, §9; compact contract per
+ * Command 05D.2 §3).
  *
  * AI JSON is never trusted. Every field is checked against the typed
  * contract; anything invalid, missing, out-of-range, duplicated, or
@@ -9,10 +10,18 @@
  *
  * §9 hard rule, enforced structurally: this validator reads exactly the
  * fields of `DimensionAIResult` (dimensionId, score, confidence, evidence,
- * reason, recommendations) and nothing else. If a provider's raw JSON
+ * reasonCode, shortReason) and nothing else. If a provider's raw JSON
  * includes an `overallScore` field, it is simply never read here — there
  * is no code path from raw AI JSON to `CareerAnalysis.overallScore` that
  * doesn't go through scoring.ts's `computeOverallScore`.
+ *
+ * `reasonCode` is validated as a non-empty string only, NOT against the
+ * closed list in methodology/reasonCodes.ts — rejecting an otherwise
+ * valid result because the model chose a reasonable code outside a fixed
+ * list would recreate Command 05D.1's schema-validation-failure problem.
+ * `shortReason` is length-guided, not hard-capped: an over-length reason
+ * is still real content, not a structural defect worth discarding an
+ * entire dimension result over.
  */
 import { DIMENSION_IDS, type DimensionId } from "../methodology/types.ts";
 import type { DimensionAIResult, SchemaIssue } from "./types.ts";
@@ -20,16 +29,11 @@ import type { DimensionAIResult, SchemaIssue } from "./types.ts";
 const CONFIDENCE_VALUES = new Set(["high", "medium", "low"]);
 const DIMENSION_ID_SET = new Set<string>(DIMENSION_IDS);
 
-function isValidEvidenceItem(e: unknown): e is { section: string; text: string; role?: string } {
-  if (typeof e !== "object" || e === null) return false;
+function isValidEvidence(e: unknown): e is { section: string; excerpt: string } | null {
+  if (e === null || e === undefined) return true;
+  if (typeof e !== "object") return false;
   const o = e as Record<string, unknown>;
-  return (
-    typeof o.section === "string" &&
-    o.section.length > 0 &&
-    typeof o.text === "string" &&
-    o.text.length > 0 &&
-    (o.role === undefined || typeof o.role === "string")
-  );
+  return typeof o.section === "string" && o.section.length > 0 && typeof o.excerpt === "string" && o.excerpt.length > 0;
 }
 
 function validateOne(raw: unknown, index: number, expected: Set<DimensionId>): { value?: DimensionAIResult; issues: SchemaIssue[] } {
@@ -51,14 +55,15 @@ function validateOne(raw: unknown, index: number, expected: Set<DimensionId>): {
   if (typeof o.confidence !== "string" || !CONFIDENCE_VALUES.has(o.confidence)) {
     issues.push({ path: `${path}.confidence`, issue: "confidence must be high|medium|low" });
   }
-  if (!Array.isArray(o.evidence) || !o.evidence.every(isValidEvidenceItem)) {
-    issues.push({ path: `${path}.evidence`, issue: "evidence must be an array of {section, text, role?}" });
+  // evidence is OPTIONAL and NULLABLE — at most one item, never an array.
+  if ("evidence" in o && !isValidEvidence(o.evidence)) {
+    issues.push({ path: `${path}.evidence`, issue: "evidence must be {section, excerpt} or null" });
   }
-  if (typeof o.reason !== "string" || o.reason.trim().length === 0) {
-    issues.push({ path: `${path}.reason`, issue: "reason must be a non-empty string" });
+  if (typeof o.reasonCode !== "string" || o.reasonCode.trim().length === 0) {
+    issues.push({ path: `${path}.reasonCode`, issue: "reasonCode must be a non-empty string" });
   }
-  if (!Array.isArray(o.recommendations) || !o.recommendations.every((r) => typeof r === "string")) {
-    issues.push({ path: `${path}.recommendations`, issue: "recommendations must be an array of strings" });
+  if (typeof o.shortReason !== "string" || o.shortReason.trim().length === 0) {
+    issues.push({ path: `${path}.shortReason`, issue: "shortReason must be a non-empty string" });
   }
 
   if (issues.length > 0) return { issues };
@@ -69,9 +74,9 @@ function validateOne(raw: unknown, index: number, expected: Set<DimensionId>): {
       dimensionId: o.dimensionId as DimensionId,
       score: o.score as number,
       confidence: o.confidence as DimensionAIResult["confidence"],
-      evidence: o.evidence as DimensionAIResult["evidence"],
-      reason: o.reason as string,
-      recommendations: o.recommendations as string[],
+      evidence: (o.evidence as DimensionAIResult["evidence"]) ?? null,
+      reasonCode: o.reasonCode as string,
+      shortReason: o.shortReason as string,
       // Note: any `overallScore` key present on `o` is deliberately never read (§9).
     },
   };

@@ -22,7 +22,15 @@ export const CAREER_AI_CONFIG = {
   apiVersion: "2023-06-01",
   /** Per-call token ceiling for a dimension-analysis or rewrite response — generous but bounded; real output is a few KB of JSON. */
   maxOutputTokens: 4096,
-  /** analyzeDimensions/generateRewrite are structured-extraction tasks, not creative writing — kept low and deterministic-leaning on purpose. */
+  /**
+   * NOT sent as a request parameter (Command 05C §2 fix). `claude-sonnet-5`
+   * rejects any non-default `temperature`/`top_p`/`top_k` with a 400 — this
+   * field records the deterministic-leaning INTENT
+   * (analyzeDimensions/generateRewrite are structured-extraction tasks, not
+   * creative writing) for anyone reading this config, but anthropicProvider.ts
+   * must never put it on the wire. Determinism is steered by disabling
+   * thinking + the forced tool_choice instead — see anthropicProvider.ts.
+   */
   temperature: 0.2,
   /** Per-provider-call budget (§35) — reused from instrumentation.ts so there is exactly one number. */
   analysisTimeoutMs: DEFAULT_TIMEOUTS.providerCallMs,
