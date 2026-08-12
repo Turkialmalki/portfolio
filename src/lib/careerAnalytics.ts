@@ -26,7 +26,16 @@ export type CareerEventName =
   | "analysis_started"
   | "analysis_completed"
   | "free_report_viewed"
-  | "unlock_clicked";
+  | "unlock_clicked"
+  // Command 06A §44 — the /career product surface. Same discipline: names
+  // are allowlisted here first, payloads stay primitive and PII-free.
+  | "career_score_revealed"
+  | "career_issue_expanded"
+  | "career_full_review_viewed"
+  | "career_checkout_clicked"
+  | "career_auth_started"
+  | "career_auth_completed"
+  | "career_error_shown";
 
 const CAREER_EVENT_NAMES: ReadonlySet<CareerEventName> = new Set([
   "career_viewed",
@@ -36,6 +45,13 @@ const CAREER_EVENT_NAMES: ReadonlySet<CareerEventName> = new Set([
   "analysis_completed",
   "free_report_viewed",
   "unlock_clicked",
+  "career_score_revealed",
+  "career_issue_expanded",
+  "career_full_review_viewed",
+  "career_checkout_clicked",
+  "career_auth_started",
+  "career_auth_completed",
+  "career_error_shown",
 ]);
 
 /**

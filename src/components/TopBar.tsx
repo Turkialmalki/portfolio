@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import { FiSun, FiMoon } from "react-icons/fi";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import type { Language } from "@/i18n/translations";
@@ -53,7 +54,9 @@ export default function TopBar() {
       >
         {/* Start: Avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
-          <div
+          <Link
+            href="/"
+            aria-label="Turki Almalki — Home"
             className="topbar-avatar-wrapper"
             style={{ border: "1.5px solid var(--border-subtle)" }}
           >
@@ -64,7 +67,7 @@ export default function TopBar() {
               height={52}
               className="topbar-avatar-img"
             />
-          </div>
+          </Link>
         </div>
 
         {/* End: Theme Toggle + Language Switcher + Connect */}

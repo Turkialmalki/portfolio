@@ -167,6 +167,16 @@ export default function Hero({ ready = true }: HeroProps) {
             >
               {t.hero.viewPortfolio}
             </PillButton>
+
+            {/* one restrained Career entry point (06A.1 §26) */}
+            <Link
+              href="/career"
+              className="hero-career-link"
+              onClick={() => trackEvent("career_cta_click", { location: "hero" })}
+            >
+              {t.hero.analyzeCv}
+              <LuArrowUpRight size={14} style={{ flexShrink: 0 }} />
+            </Link>
           </motion.div>
 
           {/* Trust badges */}
@@ -361,6 +371,21 @@ export default function Hero({ ready = true }: HeroProps) {
           gap: 14px;
           margin-bottom: clamp(32px, 4vw, 44px);
         }
+
+        .hero-career-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 14.5px;
+          font-weight: 700;
+          color: var(--text-primary, #090909);
+          text-decoration: underline;
+          text-underline-offset: 5px;
+          text-decoration-thickness: 1.5px;
+          padding: 8px 4px;
+          transition: opacity 0.2s ease;
+        }
+        .hero-career-link:hover { opacity: 0.7; }
 
         /* ── Trust badges — small, quiet, refined ── */
         .hero-trust-badges {

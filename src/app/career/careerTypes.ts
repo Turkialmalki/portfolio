@@ -1,0 +1,154 @@
+/**
+ * FRONTEND MIRROR of the Career backend's free-tier report contract.
+ *
+ * The authoritative shapes live in the Edge Function code —
+ * `supabase/functions/_shared/methodology/projection.ts` (FreeReport) and
+ * `.../methodology/types.ts` — but those files are Deno modules with `.ts`
+ * import specifiers and cannot be imported into the Next.js static-export
+ * bundle. This file re-states ONLY what the UI consumes, field for field,
+ * so a backend contract change shows up as a loud type break here rather
+ * than a silent rendering bug.
+ *
+ * NOTHING in this file computes. Scores, bands and findings arrive from
+ * the backend (or from the synthetic fixtures that stand in for it while
+ * the privacy gate is closed) — the frontend never recomputes a score,
+ * never re-derives a band, and never invents a finding (§16, §22).
+ */
+
+export type CareerLang = "ar" | "en";
+
+export type Severity = "critical" | "high" | "medium" | "low";
+
+/** The 15 methodology dimensions — mirror of methodology/types.ts DIMENSION_IDS. */
+export type DimensionId =
+  | "positioning"
+  | "professional_summary"
+  | "experience_quality"
+  | "achievement_impact"
+  | "career_progression"
+  | "leadership_ownership"
+  | "skills_relevance"
+  | "ats_readability"
+  | "target_role_alignment"
+  | "keyword_coverage"
+  | "evidence_specificity"
+  | "language_quality"
+  | "content_prioritization"
+  | "redundancy_noise"
+  | "seniority_alignment";
+
+/** Display titles — mirror of methodology/dimensions.ts titleAr/titleEn. */
+export const DIMENSION_TITLES: Record<DimensionId, { ar: string; en: string }> = {
+  positioning: { ar: "التموضع المهني", en: "Positioning" },
+  professional_summary: { ar: "الملخص المهني", en: "Professional Summary" },
+  experience_quality: { ar: "جودة الخبرات", en: "Experience Quality" },
+  achievement_impact: { ar: "الإنجاز والأثر", en: "Achievement / Impact" },
+  career_progression: { ar: "التدرج المهني", en: "Career Progression" },
+  leadership_ownership: { ar: "القيادة وتحمّل المسؤولية", en: "Leadership / Ownership" },
+  skills_relevance: { ar: "ملاءمة المهارات", en: "Skills Relevance" },
+  ats_readability: { ar: "قابلية القراءة الآلية (ATS)", en: "ATS Readability" },
+  target_role_alignment: { ar: "التوافق مع الدور المستهدف", en: "Target Role Alignment" },
+  keyword_coverage: { ar: "تغطية الكلمات المفتاحية", en: "Keyword Coverage" },
+  evidence_specificity: { ar: "الأدلة والتحديد", en: "Evidence / Specificity" },
+  language_quality: { ar: "جودة اللغة", en: "Language Quality" },
+  content_prioritization: { ar: "ترتيب أولويات المحتوى", en: "Content Prioritization" },
+  redundancy_noise: { ar: "التكرار والحشو", en: "Redundancy / Noise" },
+  seniority_alignment: { ar: "التوافق مع مستوى الأقدمية", en: "Seniority Alignment" },
+};
+
+export interface UiScoreBand {
+  min: number;
+  labelEn: string;
+  labelAr: string;
+}
+
+export interface UiDimensionSummary {
+  dimension: DimensionId;
+  score: number;
+  /** One line, in the language of the analyzed CV — a single string, exactly as the backend projects it. */
+  summary: string;
+}
+
+export interface UiIssue {
+  dimension: DimensionId;
+  severity: Severity;
+  summary: string;
+}
+
+export interface UiStrength {
+  dimension: DimensionId;
+  summary: string;
+}
+
+export interface UiQuickWin {
+  dimension: DimensionId;
+  action: string;
+  why: string;
+}
+
+export interface UiRewriteExample {
+  before: string;
+  after: string;
+  note: string;
+}
+
+/**
+ * What the paid Full Review contains for THIS analysis, as counts only —
+ * used by the locked paywall preview (§27: only numbers the backend
+ * actually produced, never invented for drama).
+ */
+export interface UiFullReviewCounts {
+  recommendations: number;
+  highPriority: number;
+  sectionsToRewrite: number;
+  missingEvidenceQuestions: number;
+}
+
+/** Mirror of projection.ts FreeReport, plus UI-only context fields. */
+export interface UiFreeReport {
+  overallScore: number;
+  scoreBand: UiScoreBand;
+  confidence: "high" | "medium" | "low";
+  dimensionSummary: UiDimensionSummary[];
+  topIssues: UiIssue[];
+  topStrengths: UiStrength[];
+  rewriteExample: UiRewriteExample | null;
+  quickWin: UiQuickWin | null;
+  /** Language the analyzed CV (and therefore all finding text) is written in. */
+  reportLang: CareerLang;
+  fullReviewCounts: UiFullReviewCounts;
+}
+
+/**
+ * The explicit product state machine (§58). One field, one source of truth
+ * — never a pile of booleans.
+ */
+export type CareerPhase =
+  | { name: "LANDING" }
+  | { name: "UPLOADING"; fileName: string }
+  | { name: "PROCESSING"; fileName: string; startedAt: number }
+  | { name: "FREE_RESULT"; report: UiFreeReport; fileName: string; revealed: boolean }
+  | { name: "ERROR"; code: CareerErrorCode; fileName?: string };
+
+/**
+ * Safe error vocabulary the UI maps to bilingual human copy — a subset of
+ * supabase/functions/_shared/errorCodes.ts plus client-side pre-checks.
+ * Raw backend codes are never printed (§15).
+ */
+export type CareerErrorCode =
+  | "UNSUPPORTED_FILE"
+  | "FILE_TOO_LARGE"
+  | "FILE_TOO_SMALL"
+  | "PARSE_FAILED"
+  | "ANALYSIS_FAILED"
+  | "ANALYSIS_TIMEOUT"
+  | "NETWORK"
+  | "GATED";
+
+/** Mirror of PARSER_LIMITS (supabase/functions/_shared/parser/limits.ts) — display + pre-check only; the server re-checks. */
+export const CAREER_UPLOAD_LIMITS = {
+  maxFileBytes: 8 * 1024 * 1024,
+  minFileBytes: 200,
+  acceptExtensions: [".pdf", ".docx"] as const,
+  acceptAttr: ".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+} as const;

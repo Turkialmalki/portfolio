@@ -17,6 +17,7 @@ const translations = {
     },
     nav: {
       home: "الرئيسية",
+      career: "السيرة الذاتية",
       portfolio: "الأعمال",
       services: "الخدمات",
       about: "عنّي",
@@ -37,6 +38,7 @@ const translations = {
       descriptionStrong: "منتجات رقمية قابلة للتوسع، سهلة الاستخدام، وعالية الأثر.",
       viewPortfolio: "استعرض أعمالي",
       quickService: "اطلب خدمة سريعة",
+      analyzeCv: "حلّل سيرتك",
       yearsExperience: "سنوات خبرة",
       location: "الرياض، السعودية",
       trustBadges: [
@@ -130,6 +132,7 @@ const translations = {
     },
     nav: {
       home: "Home",
+      career: "Career",
       portfolio: "Portfolio",
       services: "Services",
       about: "About",
@@ -150,6 +153,7 @@ const translations = {
       descriptionStrong: "scalable, intuitive, and impactful digital products.",
       viewPortfolio: "View Portfolio",
       quickService: "Request a Quick Service",
+      analyzeCv: "Analyze your CV",
       yearsExperience: "Years Experience",
       location: "Riyadh, Saudi Arabia",
       trustBadges: [
