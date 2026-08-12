@@ -34,7 +34,11 @@ export function CareerUploader({
   lang: CareerLang;
   fixture: CareerFixtureKey;
   onFixture: (k: CareerFixtureKey) => void;
-  onFile: (fileName: string) => void;
+  /** The real File object (Command 06A.5): synthetic mode reads only
+   *  `.name` from it, real mode uploads the bytes. Never read anywhere
+   *  in THIS component beyond validation — the caller decides whether
+   *  the file is actually sent anywhere. */
+  onFile: (file: File) => void;
   onError: (code: CareerErrorCode) => void;
   onDialogOpen: () => void;
 }) {
@@ -52,7 +56,7 @@ export function CareerUploader({
       if (!okExt) return onError("UNSUPPORTED_FILE");
       if (file.size > CAREER_UPLOAD_LIMITS.maxFileBytes) return onError("FILE_TOO_LARGE");
       if (file.size < CAREER_UPLOAD_LIMITS.minFileBytes) return onError("FILE_TOO_SMALL");
-      onFile(file.name);
+      onFile(file);
     },
     [onError, onFile],
   );
@@ -160,6 +164,66 @@ export function CareerUploader({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ───────────────────────── auth gate (Command 06A.5 §7, §14) ───────────────────────── */
+
+/**
+ * Shown IN PLACE of the uploader, on the landing page, when a real
+ * analysis is about to start but no Supabase session exists yet. Reuses
+ * the same magic-link surface CareerReport.tsx's `AuthPrompt` already
+ * defines the CSS for (`.cp-auth-*`) — no new visual language. The
+ * caller (CareerClient) is what actually calls `supabase.auth.
+ * signInWithOtp` and resumes the pending upload once a session appears;
+ * this component only collects the email and reports it back.
+ */
+export function CareerAuthGate({
+  t,
+  onSubmitEmail,
+}: {
+  t: CareerCopy;
+  onSubmitEmail: (email: string) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+
+  return (
+    <div className="cp-beta" role="status">
+      <p className="cp-beta-title">{t.authH}</p>
+      {!sent ? (
+        <form
+          className="cp-auth-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!email) return;
+            onSubmitEmail(email);
+            setSent(true);
+          }}
+        >
+          <label className="cp-visually-hidden" htmlFor="career-signin-email">
+            {t.authEmail}
+          </label>
+          <input
+            id="career-signin-email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder={t.authEmail}
+            className="cp-auth-input"
+            dir="ltr"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button type="submit" className="cp-cta cp-cta-secondary">
+            {t.authCta}
+          </button>
+        </form>
+      ) : (
+        <p className="cp-beta-body">{t.authCheckEmail}</p>
+      )}
+      <p className="cp-auth-hint">{t.authNoPassword}</p>
     </div>
   );
 }

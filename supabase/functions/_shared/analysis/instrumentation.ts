@@ -9,10 +9,25 @@
 import type { AnalysisInstrumentation } from "./types.ts";
 
 export const DEFAULT_TIMEOUTS = {
-  /** Per-provider-call budget. A mock provider never approaches this; a real adapter must respect it. */
-  providerCallMs: 20_000,
-  /** Whole-analysis budget across every stage (§35). */
-  overallAnalysisMs: 45_000,
+  /**
+   * Per-provider-call budget. Command 05D.3's 11-fixture real-provider
+   * suite measured latency of median 16.5s / P75 17.5s / max 20.5s for the
+   * compact single dimension-analysis call — the old 20_000ms budget left
+   * near-zero headroom above the observed max (one fixture reached
+   * ~20.5s, i.e. already past a 20s ceiling). Raised to 45s (Command
+   * 06A.5 §13) so a normal real call has real headroom instead of racing
+   * its own measured worst case; still far short of a "multi-minute
+   * synchronous timeout".
+   */
+  providerCallMs: 45_000,
+  /**
+   * Whole-analysis budget across every stage (§35): validation + parse +
+   * structure + retrieval + the provider call above + one possible repair
+   * retry + scoring/findings. Sized to comfortably contain
+   * providerCallMs even if a repair retry fires (two calls), while still
+   * being a bounded synchronous request, not an open-ended one.
+   */
+  overallAnalysisMs: 60_000,
   maxRetries: 1,
   maxSchemaRepairRetries: 1,
 } as const;

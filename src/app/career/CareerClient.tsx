@@ -18,9 +18,10 @@ import { CareerHeroWorldStyles } from "./CareerHeroWorld";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import { trackCareerEvent } from "@/lib/careerAnalytics";
 import { CAREER_FLAGS } from "@/config/careerFlags";
+import { supabase } from "@/lib/supabaseClient";
 import CareerHero from "./CareerHero";
 import CareerReport from "./CareerReport";
-import { CareerErrorState, CareerProcessing, CareerUploader } from "./CareerFlow";
+import { CareerAuthGate, CareerErrorState, CareerProcessing, CareerUploader } from "./CareerFlow";
 import { CAREER_COPY } from "./careerCopy";
 import type { CareerErrorCode, CareerPhase, UiFreeReport } from "./careerTypes";
 import {
@@ -28,6 +29,39 @@ import {
   defaultFixtureFor,
   type CareerFixtureKey,
 } from "./careerFixtures";
+
+/**
+ * Maps the Edge Function's `SafeErrorCode` vocabulary
+ * (supabase/functions/_shared/errorCodes.ts) onto the frontend's narrower
+ * `CareerErrorCode` (Command 06A.5 §24 — never a raw backend code shown
+ * to a customer). Parser-content failures all read as "we couldn't read
+ * that file" (PARSE_FAILED already covers corrupted/encrypted/scanned
+ * PDFs in careerCopy.ts); anything genuinely unexpected on the server
+ * side reads as a generic analysis failure rather than a false "check
+ * your connection" (reserved for actual fetch/network exceptions below).
+ */
+function mapBackendErrorCode(code: string | undefined): CareerErrorCode {
+  switch (code) {
+    case "UNSUPPORTED_FILE":
+    case "INVALID_FILE":
+      return "UNSUPPORTED_FILE";
+    case "FILE_TOO_LARGE":
+      return "FILE_TOO_LARGE";
+    case "FILE_CORRUPTED":
+    case "FILE_ENCRYPTED":
+    case "PDF_NO_EXTRACTABLE_TEXT":
+    case "SCAN_REQUIRES_TEXT_PDF":
+    case "PARSE_FAILED":
+      return "PARSE_FAILED";
+    case "PARSE_TIMEOUT":
+    case "ANALYSIS_TIMEOUT":
+      return "ANALYSIS_TIMEOUT";
+    case "GATED":
+      return "GATED";
+    default:
+      return "ANALYSIS_FAILED";
+  }
+}
 
 /* ═══════════════════════════════════════════════════════════════════════
    /career — one seamless product flow (Command 06A §4, §58).
@@ -167,6 +201,11 @@ export default function CareerClient() {
   const [resultReady, setResultReady] = useState(false);
   const pendingReport = useRef<UiFreeReport | null>(null);
   const timers = useRef<number[]>([]);
+  /* Command 06A.5 §7, §14 — real flow only: a file picked before a
+     session exists waits here until sign-in completes, then resumes
+     automatically. Never set/read in synthetic mode. */
+  const pendingFile = useRef<File | null>(null);
+  const [needsAuth, setNeedsAuth] = useState(false);
 
   useEffect(() => {
     trackCareerEvent("career_viewed", {
@@ -185,19 +224,13 @@ export default function CareerClient() {
     [],
   );
 
-  /* ── THE analysis entry point ──
-     Today: synthetic demo only. The file is never read — a fixture report
-     stands in, on a delay matched to the REAL measured 15–20s pipeline so
-     the processing experience is designed against reality (§12). When
-     PRIVACY_SECURITY_EXECUTION_VERIFIED flips and analyze-resume grows a
-     customer path, this is the single function that changes. */
-  const startAnalysis = useCallback(
+  /* ── synthetic path — SAFE_SYNTHETIC_DEMO_MODE ──
+     The file is never read — a fixture report stands in, on a delay
+     matched to the REAL measured 15–20s pipeline so the processing
+     experience is designed against reality (§12). Always labeled (the
+     demo badge, §3) and never reachable once syntheticDemoMode is off. */
+  const runSyntheticAnalysis = useCallback(
     (fileName: string) => {
-      if (!CAREER_FLAGS.syntheticDemoMode && !CAREER_FLAGS.analysisEnabled) {
-        trackCareerEvent("career_error_shown", { code: "GATED" });
-        dispatch({ type: "FAIL", code: "GATED" });
-        return;
-      }
       dispatch({ type: "FILE_SELECTED", fileName });
       trackCareerEvent("cv_upload_completed", { mode: "synthetic", lang });
       setResultReady(false);
@@ -240,6 +273,142 @@ export default function CareerClient() {
       );
     },
     [fixture, lang],
+  );
+
+  /* ── real path (Command 06A.5) — REAL FILE → VALIDATION (already done
+     in CareerFlow's accept()) → AUTH → PRIVATE STORAGE → RESUME RECORD →
+     analyze-resume(mode:"customer") → scoring.ts's own overallScore,
+     rendered exactly as the backend returned it (§15). Every write goes
+     through Supabase RLS under the caller's own session — this function
+     holds no elevated credential of any kind. */
+  const runRealAnalysisWithSession = useCallback(
+    async (file: File, userId: string) => {
+      if (!supabase) {
+        dispatch({ type: "FAIL", code: "NETWORK" });
+        return;
+      }
+      const fileName = file.name;
+      dispatch({ type: "FILE_SELECTED", fileName });
+      const t0 = Date.now();
+
+      const resumeId =
+        typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const ext = (fileName.split(".").pop() || "pdf").toLowerCase();
+      const storagePath = `${userId}/${resumeId}/original.${ext}`;
+
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from("career-resumes")
+          .upload(storagePath, file, { contentType: file.type || undefined, upsert: false });
+        if (uploadError) throw new Error("upload_failed");
+
+        const { error: insertError } = await supabase.from("resumes").insert({
+          id: resumeId,
+          user_id: userId,
+          original_filename: fileName,
+          storage_path: storagePath,
+          mime_type: file.type || "application/octet-stream",
+          file_size: file.size,
+          language: lang === "ar" ? "ar" : "en",
+          status: "uploaded",
+        });
+        if (insertError) {
+          await supabase.storage.from("career-resumes").remove([storagePath]);
+          throw new Error("upload_failed");
+        }
+
+        dispatch({ type: "UPLOAD_DONE" });
+        trackCareerEvent("cv_upload_completed", { mode: "real", lang });
+        trackCareerEvent("analysis_started", { mode: "real", lang });
+
+        const { data, error } = await supabase.functions.invoke("analyze-resume", {
+          body: { mode: "customer", resumeId },
+        });
+
+        if (error || !data || (data as { ok?: boolean }).ok !== true) {
+          const backendCode =
+            data && typeof (data as { error?: unknown }).error === "string"
+              ? ((data as { error: string }).error)
+              : undefined;
+          const code = mapBackendErrorCode(backendCode);
+          trackCareerEvent("analysis_completed", { mode: "real", status: "error", duration_ms: Date.now() - t0, lang });
+          trackCareerEvent("career_error_shown", { code });
+          dispatch({ type: "FAIL", code });
+          return;
+        }
+
+        const report = (data as { report: UiFreeReport }).report;
+        trackCareerEvent("analysis_completed", { mode: "real", status: "ok", duration_ms: Date.now() - t0, lang });
+        dispatch({ type: "RESULT", report });
+        trackCareerEvent("free_report_viewed", { score_band: report.scoreBand.labelEn, lang });
+      } catch {
+        trackCareerEvent("career_error_shown", { code: "NETWORK" });
+        dispatch({ type: "FAIL", code: "NETWORK" });
+      }
+    },
+    [lang],
+  );
+
+  /* Not signed in yet: park the file and show the inline sign-in gate
+     instead of failing outright — the visitor stays on the page they
+     were already on (§7, §14). authEnabled mirrors the hosted Auth
+     Dashboard verification (§19) independently of analysisEnabled — a
+     tampered client cannot invent a session the Edge Function's own
+     auth.getUser() check would ever accept, so this is honesty, not
+     enforcement. */
+  const runRealAnalysis = useCallback(
+    async (file: File) => {
+      if (!supabase || !CAREER_FLAGS.authEnabled) {
+        trackCareerEvent("career_error_shown", { code: "GATED" });
+        dispatch({ type: "FAIL", code: "GATED" });
+        return;
+      }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        pendingFile.current = file;
+        setNeedsAuth(true);
+        return;
+      }
+      await runRealAnalysisWithSession(file, session.user.id);
+    },
+    [runRealAnalysisWithSession],
+  );
+
+  /* resumes automatically once sign-in completes (magic-link callback) */
+  useEffect(() => {
+    if (!supabase || !CAREER_FLAGS.analysisEnabled) return;
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (newSession && pendingFile.current) {
+        const file = pendingFile.current;
+        pendingFile.current = null;
+        setNeedsAuth(false);
+        trackCareerEvent("career_auth_completed", {});
+        void runRealAnalysisWithSession(file, newSession.user.id);
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [runRealAnalysisWithSession]);
+
+  /* ── THE analysis entry point — the single function that changes when
+     PRIVACY_SECURITY_EXECUTION_VERIFIED / analysisEnabled flip (§14). */
+  const startAnalysis = useCallback(
+    (file: File) => {
+      if (CAREER_FLAGS.syntheticDemoMode) {
+        runSyntheticAnalysis(file.name);
+        return;
+      }
+      if (!CAREER_FLAGS.analysisEnabled) {
+        trackCareerEvent("career_error_shown", { code: "GATED" });
+        dispatch({ type: "FAIL", code: "GATED" });
+        return;
+      }
+      void runRealAnalysis(file);
+    },
+    [runSyntheticAnalysis, runRealAnalysis],
   );
 
   const onError = useCallback((code: CareerErrorCode) => {
@@ -315,15 +484,31 @@ export default function CareerClient() {
             <section className="cp-upload-sec">
               {/* §33 — the handoff: the demo sheet had its turn; now yours */}
               <p className="cp-now-yours">{t.uploadNowYours}</p>
-              <CareerUploader
-                t={t}
-                lang={lang}
-                fixture={fixture}
-                onFixture={setFixtureChoice}
-                onFile={startAnalysis}
-                onError={onError}
-                onDialogOpen={() => trackCareerEvent("cv_upload_started", { lang })}
-              />
+              {needsAuth ? (
+                <CareerAuthGate
+                  t={t}
+                  onSubmitEmail={(email) => {
+                    trackCareerEvent("career_auth_started", {});
+                    void supabase?.auth.signInWithOtp({
+                      email,
+                      options: {
+                        emailRedirectTo:
+                          typeof window !== "undefined" ? `${window.location.origin}/career` : undefined,
+                      },
+                    });
+                  }}
+                />
+              ) : (
+                <CareerUploader
+                  t={t}
+                  lang={lang}
+                  fixture={fixture}
+                  onFixture={setFixtureChoice}
+                  onFile={startAnalysis}
+                  onError={onError}
+                  onDialogOpen={() => trackCareerEvent("cv_upload_started", { lang })}
+                />
+              )}
             </section>
 
             <section className="cp-sec cp-method cp-method-landing" aria-label={t.methodH}>

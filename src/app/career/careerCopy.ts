@@ -100,6 +100,7 @@ export const CAREER_COPY = {
     authCta: "متابعة",
     authNoPassword: "بدون كلمة مرور.",
     authPending: "تسجيل الدخول يفتح مع الإطلاق — قريباً.",
+    authCheckEmail: "أرسلنا رابط دخول لبريدك — افتحه لإكمال تحليل سيرتك.",
 
     // ── methodology / trust ──
     methodH: "كيف نراجع سيرتك",
@@ -211,6 +212,7 @@ export const CAREER_COPY = {
     authCta: "Continue",
     authNoPassword: "No password needed.",
     authPending: "Sign-in opens at launch — soon.",
+    authCheckEmail: "We sent a sign-in link to your email — open it to continue your analysis.",
 
     methodH: "How we review your CV",
     methodBody:

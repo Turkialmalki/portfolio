@@ -38,7 +38,10 @@ export type SafeErrorCode =
   | "PDF_NO_EXTRACTABLE_TEXT"
   | "SCAN_REQUIRES_TEXT_PDF"
   | "PARSE_FAILED"
-  | "PARSE_TIMEOUT";
+  | "PARSE_TIMEOUT"
+  // ── Command 06A.5: real customer analysis path ───────────────────────────
+  /** The release gate (PRIVACY_SECURITY_EXECUTION_VERIFIED) is still false — real customer analysis is not open yet. Never a client-side-only state: the server enforces this too. */
+  | "GATED";
 
 const SAFE_MESSAGES: Record<SafeErrorCode, string> = {
   INVALID_FILE: "The uploaded file could not be processed.",
@@ -58,6 +61,7 @@ const SAFE_MESSAGES: Record<SafeErrorCode, string> = {
   SCAN_REQUIRES_TEXT_PDF: "This looks like a scanned image, not selectable text. Please upload a text-based PDF or DOCX.",
   PARSE_FAILED: "This file could not be parsed. Please try a different file.",
   PARSE_TIMEOUT: "This file took too long to process. Please try a smaller file.",
+  GATED: "Real CV analysis is in private beta and isn't open yet. Please check back soon.",
 };
 
 const STATUS_BY_CODE: Record<SafeErrorCode, number> = {
@@ -78,6 +82,7 @@ const STATUS_BY_CODE: Record<SafeErrorCode, number> = {
   SCAN_REQUIRES_TEXT_PDF: 422,
   PARSE_FAILED: 422,
   PARSE_TIMEOUT: 504,
+  GATED: 503,
 };
 
 /** Builds the exact, safe JSON body + status for a given code — no other fields ever added. */

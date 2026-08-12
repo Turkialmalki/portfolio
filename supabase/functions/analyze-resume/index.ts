@@ -1,29 +1,37 @@
 /**
  * analyze-resume — the trusted server-side entry point for the Career
- * Analysis Engine (Command 05 §2, §40).
+ * Analysis Engine (Command 05 §2, §40; Command 06A.5 §4–§11).
  *
- * REAL CUSTOMER MODE IS BLOCKED. `PRIVACY_SECURITY_EXECUTION_VERIFIED`
- * (releaseGates.ts) is still `false` — the privacy/RLS test suite A–H/K
- * has never been executed. Until a human flips that gate after actually
- * running those tests, this function accepts EXACTLY ONE thing: an
- * explicit, admin-key-gated fixture/test-mode request. There is no
- * "customer" code path here to accidentally leave enabled — it doesn't
- * exist yet. Wiring uploads, entitlements, and real resume storage to
- * this function is future work, gated on the same release gate the rest
- * of the Career backend already respects (see grantEntitlement.ts,
- * retention.ts, and career_privacy_security.sql).
+ * TWO CLASSES OF REQUEST:
  *
- * Auth model: same pattern as verify-payment — an `x-admin-key` header
- * checked with a timing-safe comparison against the `ADMIN_API_KEY`
- * secret. There is deliberately no browser-reachable auth path (no user
- * session grants access here), because there is no customer-facing UI
- * for this function yet (§42) and none should be built against it while
- * the gate is false.
+ *   1. `mode: "customer"` — the REAL production path (Command 06A.5). A
+ *      logged-in user's OWN previously-uploaded resume gets parsed and
+ *      analyzed for real. Authenticated by the caller's Supabase session
+ *      (`Authorization: Bearer <access_token>`), never by ADMIN_API_KEY —
+ *      the browser must never hold that secret. Still hard-blocked by
+ *      `PRIVACY_SECURITY_EXECUTION_VERIFIED` (releaseGates.ts): while that
+ *      gate is false this branch answers every request with `GATED`
+ *      before touching storage, the parser, or the AI provider. See
+ *      `handleCustomerAnalysis` below.
+ *
+ *   2. Every other `mode` (fixture_test / smoke_test_* / diagnostic_*) —
+ *      unchanged from Command 05C–05D.3: admin-key-gated, used for
+ *      operator testing and CI, never reachable from a real customer
+ *      session. `x-admin-key` is checked with a timing-safe comparison
+ *      against the `ADMIN_API_KEY` secret.
+ *
+ * The two auth models are mutually exclusive by construction: the
+ * `mode` field is read once, before either auth check runs, and only one
+ * of "has a valid user session" / "has ADMIN_API_KEY" is ever required
+ * for a given request — neither path can satisfy the other's check.
  */
+import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { safeError, type SafeErrorCode } from "../_shared/errorCodes.ts";
+import { safeError, classifyRpcError, type SafeErrorCode } from "../_shared/errorCodes.ts";
 import { safeLog, safeLogError } from "../_shared/safeLog.ts";
 import { PRIVACY_SECURITY_EXECUTION_VERIFIED } from "../_shared/releaseGates.ts";
+import { parseResumeFile } from "../_shared/parser/index.ts";
+import { SENIORITY_LEVELS, projectFreeReport } from "../_shared/methodology/index.ts";
 import {
   AnalysisPipelineError,
   AnthropicProviderError,
@@ -36,9 +44,15 @@ import {
   runFirstCallDiagnostic,
   runToolSmokeTest,
   validateAnalyzeResumeRequest,
+  LIMITS,
 } from "../_shared/analysis/index.ts";
 
 const ADMIN_API_KEY = Deno.env.get("ADMIN_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const BUCKET = "career-resumes";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -64,15 +78,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
   if (req.method !== "POST") return respondError("METHOD_NOT_ALLOWED", headers);
 
-  // §31: real customer mode does not exist yet. Every call must be an
-  // explicit, credentialed fixture-test invocation — no session, no
-  // stolen token, and no forged body field can reach real-customer
-  // behavior, because that behavior has not been implemented (§2, §40).
-  const providedKey = req.headers.get("x-admin-key");
-  if (!ADMIN_API_KEY || !providedKey || !timingSafeEqual(providedKey, ADMIN_API_KEY)) {
-    return respondError("NOT_AUTHORIZED", headers);
-  }
-
   let body: unknown;
   try {
     body = await req.json();
@@ -81,6 +86,23 @@ Deno.serve(async (req) => {
   }
 
   const bodyRecord = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+
+  // ── Command 06A.5: the real customer path — session-authenticated, no
+  // admin key, checked FIRST so a customer request never has to carry
+  // (and the browser never has to hold) ADMIN_API_KEY. Every other mode
+  // below is unchanged and stays admin-key-gated.
+  if (bodyRecord.mode === "customer") {
+    return await handleCustomerAnalysis(req, bodyRecord, headers, requestId, start);
+  }
+
+  // §31 (unchanged): every non-customer mode is an explicit,
+  // credentialed fixture/diagnostic-test invocation — no session, no
+  // stolen token, and no forged body field can reach this branch without
+  // ADMIN_API_KEY.
+  const providedKey = req.headers.get("x-admin-key");
+  if (!ADMIN_API_KEY || !providedKey || !timingSafeEqual(providedKey, ADMIN_API_KEY)) {
+    return respondError("NOT_AUTHORIZED", headers);
+  }
 
   // ── Command 05D §2–§6: temporary admin-only diagnostic paths ────────────
   // Isolate "does the API key/billing/model access even work" and "does
@@ -266,3 +288,276 @@ Deno.serve(async (req) => {
     return respondError("INTERNAL_ERROR", headers);
   }
 });
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CUSTOMER MODE (Command 06A.5 §5–§16) — the real production path:
+
+     REAL FILE (already uploaded to storage by the browser, RLS-owned)
+       → AUTH (Supabase session, verified here)
+       → OWNERSHIP (resumes row loaded through the user's OWN RLS-scoped
+         client — a cross-user id can select nothing, never a 403 that
+         confirms existence)
+       → PRIVACY RELEASE GATE (checked before any storage/parser/AI work)
+       → PARSE (existing parser/index.ts, same limits as parse-resume)
+       → REAL ANALYSIS (runAnalysis, real Anthropic provider, "approved"
+         knowledge mode)
+       → resume_analyses ROW (service role — the client can never write
+         its own score)
+       → FREE REPORT (projectFreeReport — same shape the fixtures use)
+
+   Every write happens under the SERVICE ROLE client, deliberately: the
+   `resumes`/`resume_analyses` RLS policies give the browser no INSERT/
+   UPDATE path onto analysis results by design (career_privacy_foundation
+   migration) — this function is the only place a customer's `resumes.
+   status` or `resume_analyses` row is allowed to change.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+async function handleCustomerAnalysis(
+  req: Request,
+  bodyRecord: Record<string, unknown>,
+  headers: HeadersInit,
+  requestId: string,
+  start: number,
+): Promise<Response> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) {
+    return respondError("NOT_AUTHORIZED", headers);
+  }
+
+  const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const {
+    data: { user },
+    error: userError,
+  } = await userClient.auth.getUser();
+  if (userError || !user) {
+    return respondError("NOT_AUTHORIZED", headers);
+  }
+
+  // §6, §17: the release gate is checked BEFORE any storage read, parse,
+  // or AI call — a customer request never touches the CV or spends a
+  // provider call while the gate is closed. There is no way to reach
+  // this line and still be blocked below by the pipeline's own gate
+  // check (pipeline.ts) except as a defense-in-depth belt-and-suspenders,
+  // which is intentional — see that file's header comment.
+  if (!PRIVACY_SECURITY_EXECUTION_VERIFIED) {
+    safeLog({ event: "analyze_resume_customer_blocked_gate", request_id: requestId, user_id: user.id, status: 503 });
+    return respondError("GATED", headers);
+  }
+
+  const resumeId = bodyRecord.resumeId;
+  if (typeof resumeId !== "string" || !UUID_RE.test(resumeId)) {
+    return respondError("INVALID_REQUEST", headers);
+  }
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  // Ownership: read through the CALLER's own RLS-scoped client
+  // (resumes_select_own), not the service-role client with a manual
+  // user_id filter — a cross-user id selects zero rows here structurally,
+  // the same double-enforcement pattern delete-resume already uses.
+  const { data: resume, error: resumeError } = await userClient
+    .from("resumes")
+    .select("id, user_id, storage_path, mime_type, original_filename, deleted_at")
+    .eq("id", resumeId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (resumeError || !resume || resume.user_id !== user.id) {
+    safeLog({ event: "analyze_resume_customer_resume_not_found", request_id: requestId, user_id: user.id, status: 404 });
+    return respondError("NOT_FOUND", headers);
+  }
+
+  // Storage read also goes through the user's own client — the
+  // career_resumes_select_own storage policy scopes it to the caller's
+  // own folder, so this can never read another user's object even if
+  // storage_path were somehow guessed or forged.
+  const { data: fileBlob, error: downloadError } = await userClient.storage
+    .from(BUCKET)
+    .download(resume.storage_path);
+
+  if (downloadError || !fileBlob) {
+    safeLogError({ event: "analyze_resume_customer_download_failed", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: "UPLOAD_FAILED", duration_ms: Date.now() - start });
+    await admin.from("resumes").update({ status: "failed" }).eq("id", resumeId);
+    return respondError("UPLOAD_FAILED", headers);
+  }
+
+  await admin.from("resumes").update({ status: "processing" }).eq("id", resumeId);
+
+  const bytes = new Uint8Array(await fileBlob.arrayBuffer());
+  const parseResult = await parseResumeFile({
+    bytes,
+    declaredFilename: resume.original_filename,
+    declaredMimeType: resume.mime_type,
+  });
+
+  if (!parseResult.ok) {
+    safeLogError({
+      event: "analyze_resume_customer_parse_failed",
+      request_id: requestId,
+      resume_id: resumeId,
+      user_id: user.id,
+      error_code: parseResult.code,
+      duration_ms: Date.now() - start,
+    });
+    await admin.from("resumes").update({ status: "failed" }).eq("id", resumeId);
+    return respondError(parseResult.code as SafeErrorCode, headers);
+  }
+
+  safeLog({
+    event: "analyze_resume_customer_parsed",
+    request_id: requestId,
+    resume_id: resumeId,
+    user_id: user.id,
+    parser_version: parseResult.resume.parserVersion,
+    format: parseResult.resume.sourceFormat,
+    character_count: parseResult.resume.characterCount,
+    warning_codes: parseResult.resume.warnings,
+  });
+
+  // §9 input-schema limits are shorter than the parser's own extraction
+  // ceiling (parser/limits.ts's maxExtractedChars is far larger, sized to
+  // guard against decompression abuse, not to describe a normal CV) — a
+  // very long real document is truncated rather than hard-rejected, so an
+  // unusually long CV still gets a free result instead of an error.
+  const resumeText = parseResult.resume.text.slice(0, LIMITS.resumeTextMax);
+  const detected = parseResult.resume.detectedLanguage;
+  const language = detected === "ar" || detected === "en" || detected === "bilingual" ? detected : "en";
+
+  // No seniority/target-role/JD picker exists in the current /career
+  // upload UI (Command 06A.5 explicitly keeps the hero/upload UI
+  // untouched) — a caller MAY pass an optional `seniority` override
+  // later if that UI grows one; until then every real customer analysis
+  // runs at "mid", the same neutral default the operator fixtures use
+  // for CVs without an explicit level. This is a known, documented
+  // simplification, not a silent guess baked into scoring.ts itself.
+  const seniorityInput = bodyRecord.seniority;
+  const seniority = typeof seniorityInput === "string" && (SENIORITY_LEVELS as readonly string[]).includes(seniorityInput)
+    ? (seniorityInput as (typeof SENIORITY_LEVELS)[number])
+    : "mid";
+
+  const validated = validateAnalyzeResumeRequest({
+    resumeText,
+    language,
+    seniority,
+    targetRole: typeof bodyRecord.targetRole === "string" ? bodyRecord.targetRole : undefined,
+    roleFamily: typeof bodyRecord.roleFamily === "string" ? bodyRecord.roleFamily : undefined,
+    industry: typeof bodyRecord.industry === "string" ? bodyRecord.industry : undefined,
+    jobDescription: typeof bodyRecord.jobDescription === "string" ? bodyRecord.jobDescription : undefined,
+  });
+  if (!validated.ok) {
+    safeLog({ event: "analyze_resume_customer_validation_failed", request_id: requestId, resume_id: resumeId, user_id: user.id, status: 400 });
+    await admin.from("resumes").update({ status: "failed" }).eq("id", resumeId);
+    return respondError("INVALID_REQUEST", headers);
+  }
+
+  const { provider, realProviderConfigured } = resolveProvider((name) => Deno.env.get(name));
+  if (!realProviderConfigured) {
+    // A real customer must never receive a mock-provider result —
+    // AI_PROVIDER_API_KEY missing means the product isn't actually wired
+    // yet, which is an operator-facing configuration failure, not
+    // something to paper over with fixture data (§3, §28).
+    safeLogError({ event: "analyze_resume_customer_ai_not_configured", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: "ANALYSIS_FAILED", duration_ms: Date.now() - start });
+    await admin.from("resumes").update({ status: "failed" }).eq("id", resumeId);
+    return respondError("ANALYSIS_FAILED", headers);
+  }
+
+  try {
+    const result = await runAnalysis(validated.request, {
+      provider,
+      knowledgeMode: "approved",
+      isFixtureRun: false,
+    });
+
+    const analysis = result.analysis;
+    const free = projectFreeReport(analysis);
+
+    const { data: inserted, error: insertError } = await admin
+      .from("resume_analyses")
+      .insert({
+        resume_id: resumeId,
+        user_id: user.id,
+        overall_score: analysis.overallScore,
+        analysis_version: result.engineMetadata.analysisPipelineVersion,
+        result_json: analysis,
+        status: "complete",
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !inserted) {
+      const code = classifyRpcError(insertError?.message ?? "");
+      safeLogError({ event: "analyze_resume_customer_persist_failed", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: code, duration_ms: Date.now() - start });
+      await admin.from("resumes").update({ status: "failed" }).eq("id", resumeId);
+      return respondError(code, headers);
+    }
+
+    await admin.from("resumes").update({ status: "analyzed" }).eq("id", resumeId);
+
+    // §15: the frontend renders this exact shape (UiFreeReport in
+    // careerTypes.ts) without recomputing anything — fullReviewCounts are
+    // all deterministic counts already produced by the real analysis,
+    // never invented for the paywall preview.
+    const uiReport = {
+      overallScore: free.overallScore,
+      scoreBand: free.scoreBand,
+      confidence: free.confidence,
+      reportLang: analysis.context.language === "ar" ? "ar" : "en",
+      dimensionSummary: free.dimensionSummary,
+      topIssues: free.topIssues,
+      topStrengths: free.topStrengths,
+      rewriteExample: free.rewriteExample,
+      quickWin: free.quickWin,
+      fullReviewCounts: {
+        recommendations: analysis.actionPlan.length,
+        highPriority: analysis.issues.filter((i) => i.severity === "critical" || i.severity === "high").length,
+        sectionsToRewrite: new Set(analysis.issues.map((i) => i.dimension)).size,
+        missingEvidenceQuestions: analysis.missingEvidenceQuestions.length,
+      },
+    };
+
+    const duration_ms = Date.now() - start;
+    safeLog({
+      event: "analyze_resume_customer_completed",
+      request_id: requestId,
+      resume_id: resumeId,
+      analysis_id: inserted.id,
+      user_id: user.id,
+      status: 200,
+      duration_ms,
+    });
+
+    return jsonResponse(
+      {
+        ok: true,
+        mode: "customer",
+        resumeId,
+        analysisId: inserted.id,
+        report: uiReport,
+        analysisLatencyMs: duration_ms,
+      },
+      200,
+      headers,
+    );
+  } catch (err) {
+    const duration_ms = Date.now() - start;
+    await admin.from("resumes").update({ status: "failed" }).eq("id", resumeId);
+
+    if (err instanceof AnthropicProviderError) {
+      const diag = buildProviderDiagnosticBody(err);
+      safeLogError({ event: "analyze_resume_customer_provider_error", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: diag.diagnosticCode, status: diag.providerHttpStatus, duration_ms });
+      // §15/§28: the browser never sees provider diagnostics — those are
+      // an admin-diagnostic-only surface (see the fixture/diagnostic
+      // branches above). A customer gets the same safe vocabulary as any
+      // other failure.
+      return respondError(diag.providerHttpStatus === 504 ? "ANALYSIS_TIMEOUT" : "ANALYSIS_FAILED", headers);
+    }
+    if (err instanceof AnalysisPipelineError) {
+      safeLogError({ event: "analyze_resume_customer_pipeline_error", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: err.code, duration_ms });
+      return respondError(err.code, headers);
+    }
+    safeLogError({ event: "analyze_resume_customer_unexpected_error", request_id: requestId, resume_id: resumeId, user_id: user.id, error_code: "INTERNAL_ERROR", duration_ms });
+    return respondError("INTERNAL_ERROR", headers);
+  }
+}
