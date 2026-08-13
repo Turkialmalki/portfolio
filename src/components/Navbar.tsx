@@ -24,7 +24,7 @@ export default function Navbar() {
 
   const NAV_ITEMS = [
     { Icon: LuHouse, label: t.nav.home, href: "/" },
-    { Icon: LuFileText, label: t.nav.career, href: "/career" },
+    // { Icon: LuFileText, label: t.nav.career, href: "/career" },
     { Icon: LuBriefcase, label: t.nav.portfolio, href: "/projects" },
     { Icon: LuSparkles, label: t.nav.services, href: "/services" },
     { Icon: LuUserRound, label: t.nav.about, href: "/about" },
