@@ -184,18 +184,18 @@ export default function Hero({ ready = true }: HeroProps) {
         onPointerLeave={handlePointerLeave}
       >
         {/* Floating identity chip — §L */}
-      <motion.div className="hero-chip" {...reveal(0.1, 0.7, -10)}>
-  <div className="hero-photo-mask">
-    <Image
-      src="/avatar.jpg"
-      alt={t.hero.name}
-      fill
-      sizes="112px"
-      quality={100}
-      priority
-    />
-  </div>
-</motion.div>
+        <motion.div className="hero-chip" {...reveal(0.1, 0.7, -10)}>
+          <div className="hero-photo-mask">
+            <Image
+              src="/avatar.jpg"
+              alt={t.hero.name}
+              fill
+              sizes="112px"
+              quality={100}
+              priority
+            />
+          </div>
+        </motion.div>
 
         <motion.div
           className="hero-center"
@@ -512,32 +512,6 @@ export default function Hero({ ready = true }: HeroProps) {
   border-radius: 50% !important;
 }
 
-@media (max-width: 760px) {
-  .hero-chip {
-    position: static;
-    align-self: center;
-    margin-bottom: 28px;
-  }
-}
-
-        .hero-chip-copy { display: flex; flex-direction: column; gap: 1px; line-height: 1.3; }
-        .hero-chip-copy strong { font-size: 16px; font-weight: 700; color: var(--text-primary); }
-        .hero-chip-copy em {
-          font-style: normal;
-          font-size: 13x;
-          font-weight: 500;
-          color: var(--text-secondary);
-        }
-
-      @media (max-width: 760px) {
-  .hero-chip {
-    position: static;
-    align-self: center;
-    margin-bottom: 28px;
-  }
-}
-}
-
         /* ── Center: name, positioning, CTAs ── */
         .hero-center {
           position: relative;
@@ -545,6 +519,10 @@ export default function Hero({ ready = true }: HeroProps) {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
+          width: 100%;
+          max-width: 760px;
+          margin-inline: auto;
           text-align: center;
           transform-origin: center 30%;
         }
@@ -580,23 +558,28 @@ export default function Hero({ ready = true }: HeroProps) {
         }
 
         .hero-name-title {
-          margin: 0;
+          display: block;
+          width: 100%;
+          margin: 0 auto;
           color: var(--text-primary, #090909);
           font-size: clamp(60px, 9vw, 152px);
           font-weight: 900;
           line-height: 1.08;
           letter-spacing: -0.03em;
+          text-align: center;
           transition: color 300ms ease;
         }
 
         [dir="rtl"] .hero-name-title {
           line-height: 1.22;
           padding-bottom: 0.22em; /* keep Arabic descenders unclipped */
+          letter-spacing: 0;
         }
 
         .hero-positioning {
+          width: 100%;
           max-width: 560px;
-          margin: clamp(18px, 2.4vw, 26px) 0 0;
+          margin: clamp(18px, 2.4vw, 26px) auto 0;
           color: var(--text-secondary, #666666);
           font-size: clamp(16px, 1.3vw, 19px);
           font-weight: 400;
@@ -609,6 +592,7 @@ export default function Hero({ ready = true }: HeroProps) {
           align-items: center;
           justify-content: center;
           flex-wrap: wrap;
+          width: 100%;
           gap: 12px;
           margin-top: clamp(28px, 3.4vw, 40px);
         }
@@ -1084,32 +1068,111 @@ export default function Hero({ ready = true }: HeroProps) {
           .hero-gallery { --hero-gallery-card-width: clamp(285px, 34vw, 350px); }
         }
 
-        /* ── Mobile: intentional, not compressed desktop ── */
+        /* ── Mobile: preserve the centered desktop hierarchy ── */
         @media (max-width: 760px) {
-          .hero-stage {
-            width: min(560px, calc(100% - 32px));
-            min-height: clamp(480px, 82svh, 720px);
-            padding-top: 84px;
-            padding-bottom: 32px;
+          .hero-root {
+            min-height: auto;
+            padding-bottom: 110px;
+            overflow-x: hidden;
           }
 
-          .hero-chip { position: static; margin-bottom: 28px; align-self: center; }
+          .hero-stage {
+            width: 100%;
+            min-height: auto;
+            padding: 132px 20px 56px;
+            box-sizing: border-box;
+            justify-content: flex-start;
+          }
 
-          .hero-role-cycle { margin-bottom: 12px; }
-          .hero-name-title { font-size: clamp(40px, 13vw, 64px); }
-          .hero-positioning { font-size: 16px; line-height: 1.6; margin-top: 16px; }
-          .hero-cta-row { margin-top: 26px; }
-          .hero-cta-primary, .hero-cta-secondary { padding: 12px 22px; font-size: 14px; min-height: 46px; }
+          .hero-chip {
+            position: relative;
+            inset: auto;
+            width: 104px;
+            height: 104px;
+            margin: 0 auto 30px;
+            padding: 6px;
+            align-self: center;
+            flex-shrink: 0;
+          }
 
-          /* Mobile keeps 2 quiet fragments, both clear of the fixed TopBar and the CTA row */
-          .hero-micro-a, .hero-micro-b, .hero-micro-d { display: none; }
-          .hero-micro-c { top: auto; bottom: 20px; inset-inline-end: 3%; }
-          .hero-micro-e { display: block; top: auto; bottom: 20px; inset-inline-start: 3%; inset-inline-end: auto; transform: scale(0.8); }
+          .hero-photo-mask {
+            width: 92px !important;
+            height: 92px !important;
+            flex-basis: 92px !important;
+          }
+
+          .hero-center {
+            width: 100%;
+            max-width: 390px;
+            margin-inline: auto;
+          }
+
+          .hero-role-cycle {
+            width: 100%;
+            height: 24px;
+            margin: 0 0 12px;
+          }
+
+          .hero-name-title {
+            width: 100%;
+            margin: 0 auto;
+            padding-bottom: 0.16em;
+            font-size: clamp(60px, 20vw, 82px);
+            line-height: 1.15;
+            text-align: center;
+          }
+
+          .hero-positioning {
+            width: 100%;
+            max-width: 350px;
+            margin: 10px auto 0;
+            font-size: 16px;
+            line-height: 1.7;
+            text-align: center;
+          }
+
+          .hero-cta-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
+            max-width: 350px;
+            margin: 28px auto 0;
+            gap: 10px;
+          }
+
+          .hero-cta-primary,
+          .hero-cta-secondary {
+            width: 100%;
+            min-width: 0;
+            min-height: 50px;
+            padding: 12px 14px;
+            box-sizing: border-box;
+            font-size: 14px;
+            white-space: nowrap;
+          }
+
+          .hero-career-link {
+            grid-column: 1 / -1;
+            justify-self: center;
+            width: auto;
+            margin-top: 8px;
+          }
+
+          .hero-micro-field,
+          .hero-micro-a,
+          .hero-micro-b,
+          .hero-micro-c,
+          .hero-micro-d,
+          .hero-micro-e,
+          .hero-scroll-cue {
+            display: none;
+          }
 
           .hero-credentials {
-            width: min(560px, calc(100% - 32px));
+            width: calc(100% - 32px);
             grid-template-columns: 1fr;
-            margin-top: 8px;
+            margin: 0 auto;
+            gap: 12px;
           }
 
           .hero-gallery {
@@ -1121,9 +1184,10 @@ export default function Hero({ ready = true }: HeroProps) {
         }
 
         @media (max-width: 480px) {
-          .hero-stage { padding-top: 76px; }
-          .hero-name-title { font-size: clamp(36px, 13.5vw, 52px); }
-          .hero-micro-c, .hero-micro-e { transform: scale(0.72); }
+          .hero-stage { padding: 124px 16px 48px; }
+          .hero-name-title { font-size: clamp(56px, 20vw, 74px); }
+          .hero-positioning { font-size: 15px; }
+          .hero-cta-row { max-width: 330px; }
           .hero-gallery { --hero-gallery-card-width: clamp(252px, 82vw, 300px); }
         }
 
