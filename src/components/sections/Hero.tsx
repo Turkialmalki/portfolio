@@ -18,7 +18,13 @@ import { useLanguage } from "@/i18n/LanguageProvider";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-type CategoryKey = "banking" | "fintech" | "government" | "travel" | "platform" | "social";
+type CategoryKey =
+  | "banking"
+  | "fintech"
+  | "government"
+  | "travel"
+  | "platform"
+  | "social";
 
 type HeroProject = {
   name: { ar: string; en: string };
@@ -141,7 +147,13 @@ export default function Hero({ ready = true }: HeroProps) {
   const smy = useSpring(my, { stiffness: 120, damping: 20, mass: 0.5 });
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (prefersReducedMotion || !finePointerRef.current || e.pointerType !== "mouse" || !stageRef.current) return;
+    if (
+      prefersReducedMotion ||
+      !finePointerRef.current ||
+      e.pointerType !== "mouse" ||
+      !stageRef.current
+    )
+      return;
     const rect = stageRef.current.getBoundingClientRect();
     mx.set((e.clientX - rect.left) / rect.width - 0.5);
     my.set((e.clientY - rect.top) / rect.height - 0.5);
@@ -172,17 +184,23 @@ export default function Hero({ ready = true }: HeroProps) {
         onPointerLeave={handlePointerLeave}
       >
         {/* Floating identity chip — §L */}
-        <motion.div className="hero-chip" {...reveal(0.1, 0.7, -10)}>
-          <span className="hero-chip-avatar">
-            <Image src="/avatar.jpg" alt="" width={34} height={34} />
-          </span>
-          <span className="hero-chip-copy">
-            <strong>{t.hero.name}</strong>
-            <em>{t.hero.identityRole}</em>
-          </span>
-        </motion.div>
+      <motion.div className="hero-chip" {...reveal(0.1, 0.7, -10)}>
+  <div className="hero-photo-mask">
+    <Image
+      src="/avatar.jpg"
+      alt={t.hero.name}
+      fill
+      sizes="112px"
+      quality={100}
+      priority
+    />
+  </div>
+</motion.div>
 
-        <motion.div className="hero-center" style={{ scale: centerScale, opacity: centerOpacity }}>
+        <motion.div
+          className="hero-center"
+          style={{ scale: centerScale, opacity: centerOpacity }}
+        >
           {!prefersReducedMotion && (
             <div className="hero-role-cycle" aria-hidden="true">
               {t.hero.roleWords.map((word, i) => (
@@ -209,16 +227,20 @@ export default function Hero({ ready = true }: HeroProps) {
             <Link
               href="/services"
               className="hero-cta-primary"
-              onClick={() => trackEvent("quick_service_cta_click", { location: "hero" })}
+              onClick={() =>
+                trackEvent("quick_service_cta_click", { location: "hero" })
+              }
             >
               {t.hero.ctaPrimary}
-              <LuArrowUpRight size={16} style={{ flexShrink: 0 }} />
+              {/* <LuArrowUpRight size={16} style={{ flexShrink: 0 }} /> */}
             </Link>
 
             <Link
               href="/projects"
               className="hero-cta-secondary"
-              onClick={() => trackEvent("portfolio_cta_click", { location: "hero" })}
+              onClick={() =>
+                trackEvent("portfolio_cta_click", { location: "hero" })
+              }
             >
               {t.hero.ctaSecondary}
             </Link>
@@ -226,28 +248,42 @@ export default function Hero({ ready = true }: HeroProps) {
             <Link
               href="/career"
               className="hero-career-link"
-              onClick={() => trackEvent("career_cta_click", { location: "hero" })}
+              onClick={() =>
+                trackEvent("career_cta_click", { location: "hero" })
+              }
             >
-              {t.hero.analyzeCv}
-              <LuArrowUpRight size={13} style={{ flexShrink: 0 }} />
+              {/* {t.hero.analyzeCv} */}
+              {/* <LuArrowUpRight size={13} style={{ flexShrink: 0 }} /> */}
             </Link>
           </motion.div>
         </motion.div>
 
         {/* Spatial micro-elements — §N, quiet edge fragments of real work */}
         <div className="hero-micro-field" aria-hidden="true">
-          <MicroSlot className="hero-micro-a" mx={smx} my={smy} depth={10} delay={0.95}>
+          <MicroSlot
+            className="hero-micro-a"
+            mx={smx}
+            my={smy}
+            depth={10}
+            delay={0.95}
+          >
             <div className="micro-code">
               <div className="micro-code-dots">
                 <span />
                 <span />
                 <span />
               </div>
-              <pre>{"<Product\n  scale=\"enterprise\"\n/>"}</pre>
+              <pre>{'<Product\n  scale="enterprise"\n/>'}</pre>
             </div>
           </MicroSlot>
 
-          <MicroSlot className="hero-micro-b" mx={smx} my={smy} depth={7} delay={1.02}>
+          <MicroSlot
+            className="hero-micro-b"
+            mx={smx}
+            my={smy}
+            depth={7}
+            delay={1.02}
+          >
             <div className="micro-browser">
               <div className="micro-browser-bar">
                 <span />
@@ -262,21 +298,39 @@ export default function Hero({ ready = true }: HeroProps) {
             </div>
           </MicroSlot>
 
-          <MicroSlot className="hero-micro-c" mx={smx} my={smy} depth={9} delay={1.09}>
+          <MicroSlot
+            className="hero-micro-c"
+            mx={smx}
+            my={smy}
+            depth={9}
+            delay={1.09}
+          >
             <div className="micro-tag">
               <span className="micro-tag-dot" />
               {PROJECTS[0].name[lang]} · {t.projectMeta.categories.banking}
             </div>
           </MicroSlot>
 
-          <MicroSlot className="hero-micro-d" mx={smx} my={smy} depth={6} delay={1.16}>
+          <MicroSlot
+            className="hero-micro-d"
+            mx={smx}
+            my={smy}
+            depth={6}
+            delay={1.16}
+          >
             <div className="micro-metric">
               <strong>+9</strong>
               <span>{t.hero.yearsExperience}</span>
             </div>
           </MicroSlot>
 
-          <MicroSlot className="hero-micro-e" mx={smx} my={smy} depth={11} delay={1.23}>
+          <MicroSlot
+            className="hero-micro-e"
+            mx={smx}
+            my={smy}
+            depth={11}
+            delay={1.23}
+          >
             <div className="micro-phone">
               <div className="micro-phone-notch" />
               <div className="micro-phone-row" />
@@ -307,7 +361,12 @@ export default function Hero({ ready = true }: HeroProps) {
           tag={t.hero.monshaatTag}
           logo={
             <span className="hero-credential-logo">
-              <Image src="/monshaat.jpg" alt="Monshaat" width={44} height={44} />
+              <Image
+                src="/monshaat.jpg"
+                alt="Monshaat"
+                width={44}
+                height={44}
+              />
             </span>
           }
         />
@@ -406,44 +465,78 @@ export default function Hero({ ready = true }: HeroProps) {
         }
 
         /* ── Identity chip ── */
-        .hero-chip {
-          position: absolute;
-          top: clamp(96px, 9vw, 128px);
-          inset-inline-end: 0;
-          z-index: 3;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 8px 16px 8px 8px;
-          border-radius: 999px;
-          background: var(--hero-glass-bg);
-          border: 1px solid var(--hero-glass-border);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.07);
-        }
+ .hero-chip {
+  position: absolute;
+  top: clamp(96px, 9vw, 128px);
+  inset-inline-end: 0;
+  z-index: 3;
 
-        [dir="rtl"] .hero-chip { padding: 8px 8px 8px 16px; }
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-        .hero-chip-avatar {
-          width: 34px;
-          height: 34px;
-          flex: 0 0 34px;
-          border-radius: 50%;
-          overflow: hidden;
-          display: block;
-        }
+  width: 128px;
+  height: 128px;
+  padding: 8px;
+  box-sizing: border-box;
 
-        .hero-chip-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
+
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.1);
+}
+
+/* This masks the rectangular photo into a circle */
+.hero-photo-mask {
+  position: relative !important;
+
+  width: 112px !important;
+  height: 112px !important;
+  flex: 0 0 112px !important;
+
+  overflow: hidden !important;
+  border-radius: 50% !important;
+}
+
+.hero-photo-mask img {
+  position: absolute !important;
+  inset: 0 !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  object-fit: cover !important;
+  object-position: center 28% !important;
+
+  border-radius: 50% !important;
+}
+
+@media (max-width: 760px) {
+  .hero-chip {
+    position: static;
+    align-self: center;
+    margin-bottom: 28px;
+  }
+}
 
         .hero-chip-copy { display: flex; flex-direction: column; gap: 1px; line-height: 1.3; }
-        .hero-chip-copy strong { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+        .hero-chip-copy strong { font-size: 16px; font-weight: 700; color: var(--text-primary); }
         .hero-chip-copy em {
           font-style: normal;
-          font-size: 10.5px;
+          font-size: 13x;
           font-weight: 500;
           color: var(--text-secondary);
         }
+
+      @media (max-width: 760px) {
+  .hero-chip {
+    position: static;
+    align-self: center;
+    margin-bottom: 28px;
+  }
+}
+}
 
         /* ── Center: name, positioning, CTAs ── */
         .hero-center {
@@ -498,7 +591,7 @@ export default function Hero({ ready = true }: HeroProps) {
 
         [dir="rtl"] .hero-name-title {
           line-height: 1.22;
-          padding-bottom: 0.06em; /* keep Arabic descenders unclipped */
+          padding-bottom: 0.22em; /* keep Arabic descenders unclipped */
         }
 
         .hero-positioning {
@@ -1106,12 +1199,20 @@ function CredentialCard({
       <div className="hero-credential-copy">
         <h3 className="hero-credential-title">
           {title}
-          <LuBadgeCheck size={14} className="hero-credential-verified" aria-hidden="true" />
+          <LuBadgeCheck
+            size={14}
+            className="hero-credential-verified"
+            aria-hidden="true"
+          />
         </h3>
         <p className="hero-credential-body">{body}</p>
         <span className="hero-credential-tag">{tag}</span>
       </div>
-      <LuArrowUpRight size={15} className="hero-credential-arrow" aria-hidden="true" />
+      <LuArrowUpRight
+        size={15}
+        className="hero-credential-arrow"
+        aria-hidden="true"
+      />
     </a>
   );
 }
@@ -1138,7 +1239,9 @@ function HeroProjectCard({
       aria-label={name}
       dir={lang === "ar" ? "rtl" : "ltr"}
       style={{ "--project-scale": project.imageScale ?? 1 } as CSSProperties}
-      onClick={() => trackEvent("hero_project_card_click", { project: project.name.en })}
+      onClick={() =>
+        trackEvent("hero_project_card_click", { project: project.name.en })
+      }
     >
       <div className="hero-project-cover">
         <Image
@@ -1171,7 +1274,9 @@ function HeroProjectCard({
 
         <div className="hero-project-meta">
           {project.stack.map((tech) => (
-            <span key={tech} className="hero-project-chip">{tech}</span>
+            <span key={tech} className="hero-project-chip">
+              {tech}
+            </span>
           ))}
         </div>
       </div>

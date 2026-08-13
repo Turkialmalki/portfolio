@@ -24,7 +24,10 @@ export default function TopBar() {
   const toggleTheme = () => {
     const next = !dark;
     setDark(next);
-    document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
+    document.documentElement.setAttribute(
+      "data-theme",
+      next ? "dark" : "light",
+    );
     localStorage.setItem("portfolio-theme", next ? "dark" : "light");
   };
 
@@ -53,7 +56,7 @@ export default function TopBar() {
         }}
       >
         {/* Start: Avatar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
+        {/* <div style={{ display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
           <Link
             href="/"
             aria-label="Turki Almalki — Home"
@@ -61,17 +64,69 @@ export default function TopBar() {
             style={{ border: "1.5px solid var(--border-subtle)" }}
           >
             <Image
-              src="/avatar.jpg"
+              src="/newlogo.png"
               alt="Turki Almalki"
-              width={52}
-              height={52}
+              width={160}
+              height={64}
               className="topbar-avatar-img"
+              priority
             />
           </Link>
-        </div>
+        </div> */}
+    {/* Start: Rounded logo */}
+<div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    pointerEvents: "auto",
+  }}
+>
+  <Link
+    href="/"
+    aria-label="Turki Almalki — Home"
+    style={{
+      width: 64,
+      height: 64,
+      padding: 5,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+      overflow: "hidden",
+      borderRadius: "50%",
+      background: "#ffffff",
+      border: "1px solid rgba(0, 0, 0, 0.10)",
+      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.10)",
+    }}
+  >
+    <Image
+      src="/newlogo.png"
+      alt="Turki Almalki"
+      width={54}
+      height={54}
+      priority
+      style={{
+        display: "block",
+        width: "100%",
+        height: "100%",
+        borderRadius: "50%",
+        objectFit: "contain",
+        objectPosition: "center",
+        transform: "scale(2.1)",
+      }}
+    />
+  </Link>
+</div>
 
         {/* End: Theme Toggle + Language Switcher + Connect */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, pointerEvents: "auto" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            pointerEvents: "auto",
+          }}
+        >
           <motion.button
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
@@ -108,7 +163,9 @@ export default function TopBar() {
             whileTap={{ scale: 0.96 }}
             transition={{ type: "spring", stiffness: 400, damping: 22 }}
             onClick={() =>
-              document.querySelector("footer")?.scrollIntoView({ behavior: "smooth" })
+              document
+                .querySelector("footer")
+                ?.scrollIntoView({ behavior: "smooth" })
             }
             style={{
               background: "var(--text-primary)",
@@ -149,8 +206,8 @@ function LanguageSwitcher({
   ariaLabel: string;
 }) {
   const options: { value: Language; label: string }[] = [
-    { value: "ar", label: "العربية" },
-    { value: "en", label: "English" },
+    { value: "ar", label: "ع" },
+    { value: "en", label: "E" },
   ];
 
   return (
@@ -186,7 +243,9 @@ function LanguageSwitcher({
               fontSize: 12.5,
               fontWeight: active ? 700 : 500,
               fontFamily: "inherit",
-              color: active ? "var(--bg-primary)" : "var(--topbar-toggle-color)",
+              color: active
+                ? "var(--bg-primary)"
+                : "var(--topbar-toggle-color)",
               whiteSpace: "nowrap",
               transition: "color 0.3s ease",
             }}
