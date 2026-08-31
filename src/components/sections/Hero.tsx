@@ -2,18 +2,26 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useEffect, type CSSProperties, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   motion,
-  useScroll,
-  useTransform,
+  useMotionTemplate,
   useMotionValue,
+  useScroll,
   useSpring,
-  useReducedMotion,
+  useTransform,
+  useVelocity,
   type MotionValue,
 } from "framer-motion";
-import { LuArrowUpRight, LuGraduationCap, LuBadgeCheck } from "react-icons/lu";
 import { trackEvent } from "@/lib/analytics";
+import { useSafeReducedMotion } from "@/hooks/useSafeReducedMotion";
 import { useLanguage } from "@/i18n/LanguageProvider";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -26,6 +34,32 @@ type CategoryKey =
   | "platform"
   | "social";
 
+/** Art direction of a floating hero object. Each one is a different physical object. */
+type Placement = {
+  /** horizontal offset from stage centre — clamped so it can never widen the page */
+  dx: string;
+  /** vertical offset from stage centre */
+  dy: string;
+  /** rendered width of the object */
+  w: string;
+  rotate: number;
+  /** pointer-parallax strength (px) */
+  depth: number;
+};
+
+type HeroObjectConfig = {
+  desktop: Placement;
+  mobile: Placement & { delayed?: boolean };
+  /** mid-scroll separation, in vw / vh */
+  separate: { x: number; y: number };
+  /**
+   * Scroll-out path. Every object converges toward the page centre as it
+   * falls, which is exactly where the flight path's entry curve begins — so
+   * the cards read as settling onto the route rather than drifting off it.
+   */
+  exit: { x: number; y: number; rotate: number; scale: number };
+};
+
 type HeroProject = {
   name: { ar: string; en: string };
   category: CategoryKey;
@@ -34,14 +68,29 @@ type HeroProject = {
   stack: string[];
   year: string;
   description: { ar: string; en: string };
-  imageScale?: number;
+  /** natural aspect of the source file (width / height) */
+  imgAspect: number;
+  /**
+   * Optional tighter aspect for the card. Some renders sit in a lot of empty
+   * backdrop; giving the card a narrower ratio trims that dead margin off the
+   * sides while still showing the whole product. Defaults to `imgAspect`,
+   * which shows the composition exactly as shot.
+   */
+  cropAspect?: number;
+  accent: string;
+  glow: string;
+  hero: HeroObjectConfig;
 };
 
+/**
+ * Real projects only. Screenshots, logos, years and stacks are the existing assets —
+ * `focal`, `hero` and `cardVariant` add art direction on top of them.
+ */
 const PROJECTS: HeroProject[] = [
   {
     name: { ar: "مصرف الراجحي", en: "Al Rajhi Mobile Banking" },
     category: "banking",
-    image: "/alrajhi2026.png",
+    image: "/hero/alrajhi.jpg",
     logo: "/alrajhilogo.png",
     stack: ["React Native", "TypeScript"],
     year: "2024",
@@ -49,12 +98,33 @@ const PROJECTS: HeroProject[] = [
       ar: "تجربة مصرفية رقمية لملايين المستخدمين",
       en: "Digital banking experience for millions of users",
     },
-    imageScale: 1.32,
+    imgAspect: 1.235,
+    cropAspect: 1.15,
+    accent: "#4aa8ff",
+    glow: "rgba(52,150,255,.32)",
+    hero: {
+      desktop: {
+        dx: "clamp(178px, 26vw, 372px)",
+        dy: "clamp(-232px, -21vh, -128px)",
+        w: "clamp(112px, 10.4vw, 152px)",
+        rotate: -3.4,
+        depth: 13,
+      },
+      mobile: {
+        dx: "clamp(96px, 32vw, 128px)",
+        dy: "-28vh",
+        w: "clamp(78px, 21vw, 96px)",
+        rotate: -3.6,
+        depth: 5,
+      },
+      separate: { x: 1.6, y: -2.4 },
+      exit: { x: -3.2, y: 34, rotate: 0, scale: 0.76 },
+    },
   },
   {
     name: { ar: "BaseBox", en: "BaseBox" },
     category: "platform",
-    image: "/casdd.png",
+    image: "/hero/basebox.jpg",
     logo: "/money.png",
     stack: ["Next.js", "TypeScript"],
     year: "2026",
@@ -62,11 +132,33 @@ const PROJECTS: HeroProject[] = [
       ar: "منظومة SaaS متكاملة مدعومة بالذكاء الاصطناعي",
       en: "AI-powered SaaS system platform",
     },
+    imgAspect: 2.119,
+    accent: "#9b83ff",
+    glow: "rgba(126,92,255,.30)",
+    hero: {
+      desktop: {
+        dx: "clamp(-296px, -20vw, -150px)",
+        dy: "clamp(140px, 26vh, 268px)",
+        w: "clamp(158px, 15vw, 216px)",
+        rotate: 3.1,
+        depth: 8,
+      },
+      mobile: {
+        dx: "clamp(-118px, -30vw, -86px)",
+        dy: "12vh",
+        w: "clamp(104px, 28vw, 128px)",
+        rotate: 3.2,
+        depth: 4,
+        delayed: true,
+      },
+      separate: { x: -2.2, y: 1.8 },
+      exit: { x: 2.6, y: 30, rotate: -2, scale: 0.74 },
+    },
   },
   {
     name: { ar: "إمكان", en: "Emkan Finance" },
     category: "fintech",
-    image: "/emkan2026.png",
+    image: "/hero/emkan.jpg",
     logo: "/emkanlogo.png",
     stack: ["React Native", "TypeScript"],
     year: "2025",
@@ -74,12 +166,32 @@ const PROJECTS: HeroProject[] = [
       ar: "حلول تمويل رقمية سريعة وآمنة",
       en: "Fast, secure digital financing solutions",
     },
-    imageScale: 1.1,
+    imgAspect: 2.417,
+    accent: "#2ec8b4",
+    glow: "rgba(44,206,194,.28)",
+    hero: {
+      desktop: {
+        dx: "clamp(210px, 28vw, 396px)",
+        dy: "clamp(76px, 13vh, 156px)",
+        w: "clamp(152px, 14.6vw, 212px)",
+        rotate: 2.8,
+        depth: 10,
+      },
+      mobile: {
+        dx: "clamp(90px, 30vw, 120px)",
+        dy: "30vh",
+        w: "clamp(104px, 28vw, 128px)",
+        rotate: 2.6,
+        depth: 4,
+      },
+      separate: { x: 2.4, y: 2.2 },
+      exit: { x: -2.4, y: 33, rotate: 2, scale: 0.75 },
+    },
   },
   {
     name: { ar: "اثنين", en: "Ithnain" },
     category: "social",
-    image: "/ithnin2026.png",
+    image: "/hero/ithnain.jpg",
     logo: "/ithninlogo.jpeg",
     stack: ["React Native"],
     year: "2024",
@@ -87,12 +199,32 @@ const PROJECTS: HeroProject[] = [
       ar: "تجربة تواصل اجتماعي عصرية",
       en: "A modern social mobile experience",
     },
-    imageScale: 1.25,
+    imgAspect: 2.381,
+    accent: "#ff6f9c",
+    glow: "rgba(255,83,137,.26)",
+    hero: {
+      desktop: {
+        dx: "clamp(-404px, -33vw, -200px)",
+        dy: "clamp(38px, 6vh, 74px)",
+        w: "clamp(142px, 13.6vw, 198px)",
+        rotate: 2.2,
+        depth: 7,
+      },
+      mobile: {
+        dx: "clamp(-118px, -31vw, -86px)",
+        dy: "-25vh",
+        w: "clamp(104px, 28vw, 128px)",
+        rotate: 2.4,
+        depth: 4,
+      },
+      separate: { x: -1.4, y: -1.6 },
+      exit: { x: 3.4, y: 32, rotate: 3, scale: 0.73 },
+    },
   },
   {
     name: { ar: "مناسب", en: "Munaseb" },
     category: "fintech",
-    image: "/munasib2026.png",
+    image: "/hero/munaseb.jpg",
     logo: "/munasiblogo.jpeg",
     stack: ["React", "Open Banking"],
     year: "2025",
@@ -100,42 +232,129 @@ const PROJECTS: HeroProject[] = [
       ar: "منصة رقمية مبنية على الخدمات المصرفية المفتوحة",
       en: "Digital platform built on open banking",
     },
-    imageScale: 1.3,
+    imgAspect: 2.512,
+    cropAspect: 1.65,
+    accent: "#6dd5ad",
+    glow: "rgba(57,183,135,.26)",
+    hero: {
+      desktop: {
+        dx: "clamp(-352px, -25vw, -176px)",
+        dy: "clamp(-256px, -24vh, -140px)",
+        w: "clamp(150px, 14.2vw, 206px)",
+        rotate: -2.4,
+        depth: 11,
+      },
+      mobile: {
+        dx: "clamp(-116px, -22vw, -78px)",
+        dy: "-38vh",
+        w: "clamp(104px, 28vw, 128px)",
+        rotate: -2.6,
+        depth: 4,
+        delayed: true,
+      },
+      separate: { x: -2.6, y: -3 },
+      exit: { x: 4.2, y: 31, rotate: -2, scale: 0.76 },
+    },
   },
   {
-    name: { ar: "وجهات", en: "Wijhut" },
-    category: "travel",
-    image: "/wijhut2026.png",
-    logo: "/wjhut.png",
-    stack: ["React", "Node.js"],
-    year: "2023",
+    name: { ar: "مسرعة الأعمال في الأفلام", en: "Film Business Accelerator" },
+    category: "platform",
+    image: "/hero/fba.jpg",
+    logo: "/film-accelerator-logo.png",
+    // TODO(turki): confirm the real framework/stack — the screenshots don't
+    // reveal it and I'd rather label it plainly than guess.
+    stack: ["Web Platform"],
+    year: "2026",
     description: {
-      ar: "منصة سفر وتجارب سياحية متكاملة",
-      en: "End-to-end travel experiences platform",
+      ar: "منصة تحليلات وإدارة لمسرّعة أعمال في قطاع الأفلام",
+      en: "Programme analytics and operations for a film accelerator",
     },
-    imageScale: 1.1,
+    imgAspect: 1.68,
+    accent: "#c8791f",
+    glow: "rgba(200,121,31,.26)",
+    hero: {
+      desktop: {
+        dx: "clamp(96px, 13vw, 196px)",
+        dy: "clamp(180px, 30vh, 300px)",
+        w: "clamp(150px, 14.2vw, 206px)",
+        rotate: -2.6,
+        depth: 6,
+      },
+      mobile: {
+        dx: "clamp(-118px, -30vw, -86px)",
+        dy: "30vh",
+        w: "clamp(96px, 26vw, 118px)",
+        rotate: -2.4,
+        depth: 3,
+      },
+      separate: { x: 0.8, y: 2.6 },
+      exit: { x: -2.2, y: 26, rotate: 1, scale: 0.72 },
+    },
   },
 ];
-
-const TRACK: HeroProject[] = [...PROJECTS, ...PROJECTS];
 
 type HeroProps = { ready?: boolean };
 
 export default function Hero({ ready = true }: HeroProps) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
+  const storyRef = useRef<HTMLDivElement>(null);
+  const pointerStageRef = useRef<HTMLDivElement>(null);
   const { t, lang } = useLanguage();
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = useSafeReducedMotion();
+  const [isMobile, setIsMobile] = useState(false);
 
-  // ── Scroll handoff: the name loses prominence as the stage scrolls away ──
-  const { scrollYProgress: stageProgress } = useScroll({
-    target: stageRef,
-    offset: ["start start", "end start"],
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  const { scrollYProgress: rawProgress } = useScroll({
+    target: storyRef,
+    offset: ["start start", "end end"],
   });
-  const centerScale = useTransform(stageProgress, [0, 1], [1, 0.92]);
-  const centerOpacity = useTransform(stageProgress, [0, 0.85], [1, 0.5]);
 
-  // ── Pointer parallax — fine pointers only, disabled under reduced motion ──
+  const progress = useSpring(rawProgress, {
+    stiffness: 175,
+    damping: 30,
+    mass: 0.22,
+  });
+
+  const centerScale = useTransform(progress, [0, 0.4, 0.86], [1, 0.995, 0.95]);
+  /**
+   * The stage recedes rather than emptying. Fading the identity all the way out
+   * before the sticky released left a screen of blank stage between the hero
+   * and the flight path; holding it dimmed lets the hero scroll away under the
+   * timeline instead, which is what makes the two read as one page.
+   */
+  const centerOpacity = useTransform(progress, [0, 0.6, 1], [1, 0.95, 0.5]);
+  const avatarOpacity = useTransform(progress, [0, 0.6, 0.9], [1, 0.85, 0]);
+  const cueOpacity = useTransform(progress, [0, 0.14, 0.4], [1, 0.6, 0]);
+
+  /**
+   * Scroll-velocity focus. Lenis drives the real scroll, so reading velocity
+   * off the scroll progress means the headline softens exactly as fast as the
+   * page is actually moving — not on a fixed timer.
+   */
+  const scrollVelocity = useVelocity(rawProgress);
+  const rawFocus = useTransform(scrollVelocity, [-2.4, 0, 2.4], [3.4, 0, 3.4], {
+    clamp: true,
+  });
+  const focusBlur = useSpring(rawFocus, {
+    stiffness: 190,
+    damping: 34,
+    mass: 0.28,
+  });
+  const titleFilter = useMotionTemplate`blur(${focusBlur}px)`;
+
+  const scrollCue = lang === "ar" ? "مرّر لتتابع الرحلة" : "Scroll to follow the journey";
+
+  const positioningWords = useMemo(
+    () => t.hero.positioning.split(" ").filter(Boolean),
+    [t.hero.positioning],
+  );
+
   const finePointerRef = useRef(false);
   useEffect(() => {
     finePointerRef.current = window.matchMedia("(pointer: fine)").matches;
@@ -143,1207 +362,939 @@ export default function Hero({ ready = true }: HeroProps) {
 
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
-  const smx = useSpring(mx, { stiffness: 120, damping: 20, mass: 0.5 });
-  const smy = useSpring(my, { stiffness: 120, damping: 20, mass: 0.5 });
+  const smx = useSpring(mx, { stiffness: 140, damping: 23, mass: 0.38 });
+  const smy = useSpring(my, { stiffness: 140, damping: 23, mass: 0.38 });
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (
       prefersReducedMotion ||
       !finePointerRef.current ||
-      e.pointerType !== "mouse" ||
-      !stageRef.current
-    )
+      event.pointerType !== "mouse" ||
+      !pointerStageRef.current
+    ) {
       return;
-    const rect = stageRef.current.getBoundingClientRect();
-    mx.set((e.clientX - rect.left) / rect.width - 0.5);
-    my.set((e.clientY - rect.top) / rect.height - 0.5);
+    }
+
+    const rect = pointerStageRef.current.getBoundingClientRect();
+    mx.set((event.clientX - rect.left) / rect.width - 0.5);
+    my.set((event.clientY - rect.top) / rect.height - 0.5);
   };
+
   const handlePointerLeave = () => {
     mx.set(0);
     my.set(0);
   };
 
-  const reveal = (delay: number, duration = 0.6, distance = 14) => ({
+
+  const reveal = (delay: number, duration = 0.62, distance = 14) => ({
     initial: { opacity: 0, y: distance },
     animate: ready ? { opacity: 1, y: 0 } : { opacity: 0, y: distance },
-    transition: { duration, ease: EASE, delay },
+    transition: prefersReducedMotion
+      ? { duration: 0 }
+      : { duration, ease: EASE, delay },
+  });
+
+  /**
+   * Blur → focus reveal.
+   *
+   * NOTE: this deliberately never splits below WORD level. Arabic letters are
+   * shaped by their neighbours, so splitting "تركي" into per-character spans
+   * would break the joins and render it as disconnected letterforms. Words are
+   * safe in both scripts; characters are not.
+   */
+  const revealFocus = (delay: number, duration = 0.78, blur = 13) => ({
+    initial: { opacity: 0, filter: `blur(${blur}px)`, y: 14 },
+    animate: ready
+      ? { opacity: 1, filter: "blur(0px)", y: 0 }
+      : { opacity: 0, filter: `blur(${blur}px)`, y: 14 },
+    transition: prefersReducedMotion
+      ? { duration: 0 }
+      : { duration, ease: EASE, delay },
   });
 
   return (
-    <section id="home" ref={sectionRef} className="hero-root">
-      {/* Quiet dotted field + one restrained illumination — see §M */}
+    <section id="home" className="hero-root">
       <div className="hero-field" aria-hidden="true">
         <div className="hero-dots" />
-        <div className="hero-glow" />
+        <div className="hero-aurora hero-aurora-a" />
+        <div className="hero-aurora hero-aurora-b" />
+        {/* One tiled noise pass — the cheapest 'shot on film' cue there is. */}
+        <div className="hero-grain" />
       </div>
 
-      <div
-        className="hero-stage"
-        ref={stageRef}
-        onPointerMove={handlePointerMove}
-        onPointerLeave={handlePointerLeave}
-      >
-        {/* Floating identity chip — §L */}
-        <motion.div className="hero-chip" {...reveal(0.1, 0.7, -10)}>
-          <div className="hero-photo-mask">
-            <Image
-              src="/avatar.jpg"
-              alt={t.hero.name}
-              fill
-              sizes="112px"
-              quality={100}
-              priority
-            />
-          </div>
-        </motion.div>
 
-        <motion.div
-          className="hero-center"
-          style={{ scale: centerScale, opacity: centerOpacity }}
+      <div ref={storyRef} className="hero-story">
+        <div
+          ref={pointerStageRef}
+          className="hero-sticky-stage"
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerLeave}
         >
-          {!prefersReducedMotion && (
-            <div className="hero-role-cycle" aria-hidden="true">
-              {t.hero.roleWords.map((word, i) => (
-                <span
-                  key={word}
-                  className="hero-role-word"
-                  style={{ animationDelay: `${i * 3}s` }}
-                >
-                  {word}
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="hero-stage-inner">
+            <HeroProjectScene
+              projects={PROJECTS}
+              lang={lang}
+              progress={progress}
+              mx={smx}
+              my={smy}
+              ready={ready}
+              isMobile={isMobile}
+              still={Boolean(prefersReducedMotion)}
+            />
 
-          <motion.h1 className="hero-name-title" {...reveal(0.2, 0.5, 12)}>
-            {t.hero.name}
-          </motion.h1>
-
-          <motion.p className="hero-positioning" {...reveal(0.45, 0.45, 10)}>
-            {t.hero.positioning}
-          </motion.p>
-
-          <motion.div className="hero-cta-row" {...reveal(0.7, 0.4, 10)}>
-            <Link
-              href="/services"
-              className="hero-cta-primary"
-              onClick={() =>
-                trackEvent("quick_service_cta_click", { location: "hero" })
-              }
+            <motion.div
+              className="hero-avatar-orbit"
+              {...reveal(0.08, 0.7, -8)}
+              style={{ opacity: prefersReducedMotion ? 1 : avatarOpacity }}
             >
-              {t.hero.ctaPrimary}
-              {/* <LuArrowUpRight size={16} style={{ flexShrink: 0 }} /> */}
-            </Link>
-
-            <Link
-              href="/projects"
-              className="hero-cta-secondary"
-              onClick={() =>
-                trackEvent("portfolio_cta_click", { location: "hero" })
-              }
-            >
-              {t.hero.ctaSecondary}
-            </Link>
-
-            <Link
-              href="/career"
-              className="hero-career-link"
-              onClick={() =>
-                trackEvent("career_cta_click", { location: "hero" })
-              }
-            >
-              {/* {t.hero.analyzeCv} */}
-              {/* <LuArrowUpRight size={13} style={{ flexShrink: 0 }} /> */}
-            </Link>
-          </motion.div>
-        </motion.div>
-
-        {/* Spatial micro-elements — §N, quiet edge fragments of real work */}
-        <div className="hero-micro-field" aria-hidden="true">
-          <MicroSlot
-            className="hero-micro-a"
-            mx={smx}
-            my={smy}
-            depth={10}
-            delay={0.95}
-          >
-            <div className="micro-code">
-              <div className="micro-code-dots">
-                <span />
-                <span />
-                <span />
+              <div className="hero-avatar-ring">
+                <div className="hero-photo-mask">
+                  <Image
+                    src="/avatar.jpg"
+                    alt={t.hero.name}
+                    fill
+                    sizes="72px"
+                    quality={100}
+                    priority
+                  />
+                </div>
               </div>
-              <pre>{'<Product\n  scale="enterprise"\n/>'}</pre>
+              <span className="hero-avatar-status" aria-hidden="true" />
+            </motion.div>
+
+            <div className="hero-center-anchor">
+              <motion.div
+                className="hero-center"
+                style={
+                  prefersReducedMotion
+                    ? undefined
+                    : { scale: centerScale, opacity: centerOpacity }
+                }
+              >
+                <div className="hero-role-cycle" aria-hidden="true">
+                  {t.hero.roleWords.map((word, index) => (
+                    <span
+                      key={word}
+                      className="hero-role-word"
+                      style={{ animationDelay: `${index * 3}s` }}
+                    >
+                      {word}
+                    </span>
+                  ))}
+                </div>
+
+                <motion.h1 className="hero-name-title" {...revealFocus(0.16, 0.85)}>
+                  <motion.span
+                    className="hero-name-inner"
+                    style={
+                      prefersReducedMotion ? undefined : { filter: titleFilter }
+                    }
+                  >
+                    {t.hero.name}
+                  </motion.span>
+                </motion.h1>
+
+                <p className="hero-positioning">
+                  {positioningWords.map((word, index) => (
+                    <Fragment key={`${word}-${index}`}>
+                      {index > 0 ? " " : ""}
+                      <motion.span
+                        className="hero-word"
+                        {...revealFocus(0.44 + index * 0.042, 0.56, 9)}
+                      >
+                        {word}
+                      </motion.span>
+                    </Fragment>
+                  ))}
+                </p>
+
+                <motion.div className="hero-cta-row" {...reveal(0.66, 0.42, 10)}>
+                  <Link
+                    href="/services"
+                    className="hero-cta-primary"
+                    onClick={() =>
+                      trackEvent("quick_service_cta_click", { location: "hero" })
+                    }
+                  >
+                    {t.hero.ctaPrimary}
+                  </Link>
+
+                  <Link
+                    href="/projects"
+                    className="hero-cta-secondary"
+                    onClick={() =>
+                      trackEvent("portfolio_cta_click", { location: "hero" })
+                    }
+                  >
+                    {t.hero.ctaSecondary}
+                  </Link>
+                </motion.div>
+
+              </motion.div>
             </div>
-          </MicroSlot>
 
-          <MicroSlot
-            className="hero-micro-b"
-            mx={smx}
-            my={smy}
-            depth={7}
-            delay={1.02}
-          >
-            <div className="micro-browser">
-              <div className="micro-browser-bar">
-                <span />
-                <span />
-                <span />
-              </div>
-              <div className="micro-browser-body">
-                <i style={{ width: "72%" }} />
-                <i style={{ width: "46%" }} />
-                <i className="accent" style={{ width: "86%" }} />
-              </div>
-            </div>
-          </MicroSlot>
-
-          <MicroSlot
-            className="hero-micro-c"
-            mx={smx}
-            my={smy}
-            depth={9}
-            delay={1.09}
-          >
-            <div className="micro-tag">
-              <span className="micro-tag-dot" />
-              {PROJECTS[0].name[lang]} · {t.projectMeta.categories.banking}
-            </div>
-          </MicroSlot>
-
-          <MicroSlot
-            className="hero-micro-d"
-            mx={smx}
-            my={smy}
-            depth={6}
-            delay={1.16}
-          >
-            <div className="micro-metric">
-              <strong>+9</strong>
-              <span>{t.hero.yearsExperience}</span>
-            </div>
-          </MicroSlot>
-
-          <MicroSlot
-            className="hero-micro-e"
-            mx={smx}
-            my={smy}
-            depth={11}
-            delay={1.23}
-          >
-            <div className="micro-phone">
-              <div className="micro-phone-notch" />
-              <div className="micro-phone-row" />
-              <div className="micro-phone-row short" />
-              <div className="micro-phone-chip" />
-            </div>
-          </MicroSlot>
-        </div>
-
-        {!prefersReducedMotion && (
-          <motion.div
-            className="hero-scroll-cue"
-            initial={{ opacity: 0 }}
-            animate={ready ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ duration: 0.8, ease: EASE, delay: 1.3 }}
-          >
-            <span />
-          </motion.div>
-        )}
-      </div>
-
-      {/* Handoff strip — credentials & real project evidence, one quick beat below the fold */}
-      <motion.div {...reveal(0.15, 0.7)} className="hero-credentials">
-        <CredentialCard
-          href="https://play.google.com/store/apps/details?id=sme.bc.monshaat&hl=ar"
-          title={t.hero.monshaatTitle}
-          body={t.hero.monshaatBody}
-          tag={t.hero.monshaatTag}
-          logo={
-            <span className="hero-credential-logo">
-              <Image
-                src="/monshaat.jpg"
-                alt="Monshaat"
-                width={44}
-                height={44}
-              />
-            </span>
-          }
-        />
-        <CredentialCard
-          href="https://learn.ihashplus.com/teacher"
-          title={t.hero.ihashTitle}
-          body={t.hero.ihashBody}
-          tag={t.hero.ihashTag}
-          logo={
-            <span className="hero-credential-logo hero-credential-logo-ihash">
-              <LuGraduationCap size={22} />
-            </span>
-          }
-        />
-      </motion.div>
-
-      {/* Premium project cards marquee */}
-      <motion.div {...reveal(0.22, 0.7)} className="hero-gallery">
-        <div className="hero-marquee-viewport">
-          <div className="hero-marquee-track">
-            {TRACK.map((project, index) => (
-              <HeroProjectCard
-                key={`${project.name.en}-${index}`}
-                project={project}
-                lang={lang}
-                category={t.projectMeta.categories[project.category]}
-                country={t.projectMeta.country}
-                viewLabel={t.hero.viewCaseStudy}
-              />
-            ))}
+            <motion.div className="hero-scroll-cue" style={{ opacity: cueOpacity }}>
+              <span className="hero-scroll-label">{scrollCue}</span>
+              <span className="hero-scroll-line" />
+            </motion.div>
           </div>
         </div>
-      </motion.div>
+      </div>
+
+      {/* The hero's last stroke is the timeline's first: this hairline drops
+          out of the stage and the flight path picks it up from the same point. */}
+      <div className="hero-route-stub" aria-hidden="true">
+        <span className="hero-route-line" />
+      </div>
 
       <style>{`
         .hero-root {
-          --hero-card-background: rgba(255, 255, 255, 0.72);
-          --hero-card-border: rgba(0, 0, 0, 0.06);
-          --hero-glass-bg: rgba(255, 255, 255, 0.66);
-          --hero-glass-border: rgba(0, 0, 0, 0.08);
-          --hero-dot-color: rgba(0, 0, 0, 0.09);
-          --hero-glow-color: rgba(20, 149, 255, 0.08);
-
+          --hero-dot-color: rgba(0,0,0,.075);
+          --hero-border: rgba(0,0,0,.075);
+          --glass-surface: rgba(255,255,255,.66);
+          --glass-border: rgba(0,0,0,.075);
           position: relative;
           width: 100%;
-          overflow: hidden;
-          background: var(--bg-primary, #ffffff);
-          color: var(--text-primary, #090909);
-          transition: background-color 300ms ease, color 300ms ease;
+          max-width: 100vw;
+          overflow-x: clip;
+          background: var(--bg-primary,#fff);
+          color: var(--text-primary,#090909);
         }
 
-        :global([data-theme="dark"]) .hero-root {
-          --hero-card-background: rgba(29, 31, 35, 0.82);
-          --hero-card-border: rgba(255, 255, 255, 0.075);
-          --hero-glass-bg: rgba(28, 30, 36, 0.66);
-          --hero-glass-border: rgba(255, 255, 255, 0.09);
-          --hero-dot-color: rgba(255, 255, 255, 0.08);
-          --hero-glow-color: rgba(36, 156, 255, 0.14);
+        [data-theme="dark"] .hero-root {
+          --hero-dot-color: rgba(255,255,255,.07);
+          --hero-border: rgba(255,255,255,.09);
+          --glass-surface: rgba(26,29,35,.62);
+          --glass-border: rgba(255,255,255,.10);
         }
 
-        /* ── Background: quiet dots + one restrained glow ── */
         .hero-field {
           position: absolute;
           inset: 0;
-          pointer-events: none;
           overflow: hidden;
+          pointer-events: none;
         }
 
         .hero-dots {
           position: absolute;
           inset: 0;
-          background-image: radial-gradient(circle, var(--hero-dot-color) 1px, transparent 1.6px);
-          background-size: 26px 26px;
-          -webkit-mask-image: radial-gradient(ellipse 58% 48% at 50% 40%, transparent 0%, #000 72%);
-          mask-image: radial-gradient(ellipse 58% 48% at 50% 40%, transparent 0%, #000 72%);
+          background-image: radial-gradient(circle,var(--hero-dot-color) 1px,transparent 1.55px);
+          background-size: 27px 27px;
+          -webkit-mask-image: radial-gradient(ellipse 67% 49% at 50% 26%,transparent 0%,#000 76%);
+          mask-image: radial-gradient(ellipse 67% 49% at 50% 26%,transparent 0%,#000 76%);
         }
 
-        .hero-glow {
+        .hero-aurora {
           position: absolute;
-          inset: 0;
-          background: radial-gradient(ellipse 58% 42% at 50% 34%, var(--hero-glow-color), transparent 70%);
+          width: 48vw;
+          aspect-ratio: 1;
+          border-radius: 50%;
+          filter: blur(110px);
+          opacity: .12;
         }
 
-        /* ── Stage: name-first, centered, one intentional viewport ── */
-        .hero-stage {
+        .hero-aurora-a { left: 23%; top: 13%; background: #55a9ff; }
+        .hero-aurora-b { right: 20%; top: 30%; background: #7d5cff; opacity: .07; }
+
+        /* The tail of this height is scroll where the stage has already faded.
+           Keeping it short means the flight path arrives right behind the last
+           card instead of after a screen of empty stage. */
+        .hero-story {
           position: relative;
-          width: min(980px, calc(100% - 40px));
+          height: 134svh;
+          min-height: 900px;
+        }
+
+        .hero-sticky-stage {
+          position: sticky;
+          top: 0;
+          height: 100svh;
+          min-height: 650px;
+          overflow: clip;
+        }
+
+        .hero-stage-inner {
+          position: relative;
+          width: min(1180px,calc(100% - 34px));
+          height: 100%;
           margin: 0 auto;
-          min-height: clamp(560px, 90svh, 900px);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding-top: clamp(96px, 10vw, 140px);
-          padding-bottom: clamp(48px, 6vw, 88px);
+          perspective: 1500px;
         }
 
-        /* ── Identity chip ── */
- .hero-chip {
-  position: absolute;
-  top: clamp(96px, 9vw, 128px);
-  inset-inline-end: 0;
-  z-index: 3;
+        /* ---------- centre identity ---------- */
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+        .hero-center-anchor {
+          position: absolute;
+          z-index: 7;
+          left: 50%;
+          top: 48.5%;
+          width: min(700px,70vw);
+          transform: translate(-50%,-50%);
+        }
 
-  width: 128px;
-  height: 128px;
-  padding: 8px;
-  box-sizing: border-box;
-
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 50%;
-
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.1);
-}
-
-/* This masks the rectangular photo into a circle */
-.hero-photo-mask {
-  position: relative !important;
-
-  width: 112px !important;
-  height: 112px !important;
-  flex: 0 0 112px !important;
-
-  overflow: hidden !important;
-  border-radius: 50% !important;
-}
-
-.hero-photo-mask img {
-  position: absolute !important;
-  inset: 0 !important;
-
-  width: 100% !important;
-  height: 100% !important;
-
-  object-fit: cover !important;
-  object-position: center 28% !important;
-
-  border-radius: 50% !important;
-}
-
-        /* ── Center: name, positioning, CTAs ── */
         .hero-center {
-          position: relative;
-          z-index: 2;
+          width: 100%;
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
-          width: 100%;
-          max-width: 760px;
-          margin-inline: auto;
           text-align: center;
-          transform-origin: center 30%;
+          transform-origin: 50% 45%;
         }
 
         .hero-role-cycle {
           position: relative;
-          height: 16px;
-          margin-bottom: clamp(16px, 2vw, 22px);
-          font-size: 11.5px;
-          font-weight: 700;
-          letter-spacing: 0.08em;
+          width: 100%;
+          height: 18px;
+          margin-bottom: 12px;
+          color: var(--text-muted,#8a8a8a);
+          font-size: 11px;
+          font-weight: 760;
+          letter-spacing: .07em;
           text-transform: uppercase;
-          color: var(--text-muted, #888888);
         }
 
-        [dir="rtl"] .hero-role-cycle { text-transform: none; letter-spacing: 0; }
+        [dir="rtl"] .hero-role-cycle { letter-spacing: 0; text-transform: none; }
 
         .hero-role-word {
           position: absolute;
-          inset-inline-start: 50%;
+          left: 50%;
           transform: translateX(-50%);
           white-space: nowrap;
           opacity: 0;
           animation: hero-role-fade 12s ease-in-out infinite;
         }
 
-        [dir="rtl"] .hero-role-word { transform: translateX(50%); }
-
         @keyframes hero-role-fade {
-          0%, 2% { opacity: 0; }
-          6%, 20% { opacity: 1; }
-          25%, 100% { opacity: 0; }
+          0%,2% { opacity:0; transform:translate(-50%,5px); }
+          7%,20% { opacity:1; transform:translate(-50%,0); }
+          25%,100% { opacity:0; transform:translate(-50%,-5px); }
         }
 
         .hero-name-title {
-          display: block;
           width: 100%;
-          margin: 0 auto;
-          color: var(--text-primary, #090909);
-          font-size: clamp(60px, 9vw, 152px);
+          margin: 0;
+          color: var(--text-primary,#090909);
+          font-size: clamp(66px,8.8vw,150px);
           font-weight: 900;
-          line-height: 1.08;
-          letter-spacing: -0.03em;
+          line-height: 1.02;
+          letter-spacing: -.045em;
           text-align: center;
-          transition: color 300ms ease;
         }
 
         [dir="rtl"] .hero-name-title {
-          line-height: 1.22;
-          padding-bottom: 0.22em; /* keep Arabic descenders unclipped */
           letter-spacing: 0;
+          line-height: 1.18;
+          padding-bottom: .12em;
         }
 
         .hero-positioning {
           width: 100%;
-          max-width: 560px;
-          margin: clamp(18px, 2.4vw, 26px) auto 0;
-          color: var(--text-secondary, #666666);
-          font-size: clamp(16px, 1.3vw, 19px);
-          font-weight: 400;
-          line-height: 1.6;
-          letter-spacing: -0.01em;
+          max-width: 590px;
+          margin: 14px auto 0;
+          color: var(--text-secondary,#656565);
+          font-size: clamp(15px,1.25vw,19px);
+          line-height: 1.65;
         }
 
         .hero-cta-row {
           display: flex;
-          align-items: center;
           justify-content: center;
-          flex-wrap: wrap;
-          width: 100%;
-          gap: 12px;
-          margin-top: clamp(28px, 3.4vw, 40px);
+          gap: 11px;
+          margin-top: 26px;
         }
 
         .hero-cta-primary,
         .hero-cta-secondary {
+          min-height: 50px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          min-height: 50px;
-          padding: 13px 28px;
+          padding: 13px 26px;
           border-radius: 999px;
-          font-size: 15px;
-          font-weight: 700;
-          line-height: 1;
-          white-space: nowrap;
+          font-size: 14px;
+          font-weight: 780;
           text-decoration: none;
-          transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms ease, border-color 260ms ease;
+          transition: transform 260ms cubic-bezier(.16,1,.3,1),box-shadow 260ms ease,border-color 260ms ease;
         }
 
         .hero-cta-primary {
-          color: var(--bg-primary, #ffffff);
-          background: var(--text-primary, #0d0e12);
-          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+          color: var(--bg-primary,#fff);
+          background: var(--text-primary,#0c0d10);
+          box-shadow: 0 13px 30px rgba(0,0,0,.16);
         }
 
-        .hero-cta-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.2); }
-
         .hero-cta-secondary {
-          color: var(--text-primary, #0d0e12);
-          background: var(--hero-glass-bg);
-          border: 1px solid var(--hero-glass-border);
+          color: var(--text-primary,#0c0d10);
+          background: rgba(255,255,255,.76);
+          border: 1px solid rgba(0,0,0,.08);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
         }
 
-        .hero-cta-secondary:hover { transform: translateY(-2px); border-color: var(--accent, #1495ff); }
-
-        .hero-career-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--text-primary, #090909);
-          text-decoration: underline;
-          text-underline-offset: 5px;
-          text-decoration-thickness: 1.5px;
-          padding: 8px 4px;
-          transition: opacity 0.2s ease;
+        [data-theme="dark"] .hero-cta-secondary {
+          background: rgba(24,26,31,.76);
+          border-color: rgba(255,255,255,.09);
         }
-        .hero-career-link:hover { opacity: 0.7; }
 
-        /* ── Micro-elements ── */
-        .hero-micro-field {
+        .hero-cta-primary:hover,
+        .hero-cta-secondary:hover { transform: translateY(-2px); }
+        .hero-cta-primary:hover { box-shadow: 0 18px 38px rgba(0,0,0,.2); }
+
+        /* ---------- avatar ---------- */
+
+        .hero-avatar-orbit {
+          position: absolute;
+          z-index: 10;
+          left: calc(50% + clamp(126px,10.2vw,178px));
+          top: 27.5%;
+          width: 68px;
+          height: 68px;
+          animation: hero-avatar-float 5.6s ease-in-out infinite;
+        }
+
+        .hero-avatar-ring {
+          width: 100%;
+          height: 100%;
+          padding: 4px;
+          border-radius: 50%;
+          background: linear-gradient(145deg,rgba(255,255,255,.97),rgba(255,255,255,.62));
+          border: 1px solid rgba(0,0,0,.07);
+          box-shadow: 0 16px 40px rgba(0,0,0,.13), inset 0 1px 0 rgba(255,255,255,.95);
+        }
+
+        [data-theme="dark"] .hero-avatar-ring {
+          background: linear-gradient(145deg,rgba(255,255,255,.92),rgba(255,255,255,.5));
+          border-color: rgba(255,255,255,.16);
+          box-shadow: 0 18px 42px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.9);
+        }
+
+        .hero-photo-mask {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          border-radius: 50%;
+        }
+
+        .hero-photo-mask img {
+          object-fit: cover !important;
+          object-position: center 28% !important;
+        }
+
+        .hero-avatar-status {
+          position: absolute;
+          right: 2px;
+          bottom: 4px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #19c69c;
+          border: 2.5px solid #fff;
+          box-shadow: 0 4px 12px rgba(25,198,156,.36);
+        }
+
+        @keyframes hero-avatar-float {
+          0%,100% { transform: translate3d(0,0,0); }
+          50% { transform: translate3d(0,-7px,0); }
+        }
+
+        /* ---------- floating product objects ---------- */
+
+        .hero-scene {
           position: absolute;
           inset: 0;
-          z-index: 1;
+          z-index: 3;
+          pointer-events: none;
+          perspective: 1600px;
+        }
+
+        .hero-object {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: var(--w);
+          transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)));
+        }
+
+        .ho-travel {
+          width: 100%;
+          will-change: transform, opacity;
+          transform: translateZ(0);
+        }
+
+        .ho-enter { width: 100%; transform-style: preserve-3d; }
+
+        .ho-pointer {
+          position: relative;
+          width: 100%;
+          pointer-events: auto;
+          transform-style: preserve-3d;
+          transform-origin: 50% 50%;
+          backface-visibility: hidden;
+          transition: transform 340ms cubic-bezier(.16,1,.3,1);
+        }
+
+        .ho-pointer:hover { transform: translateY(-5px); }
+
+        .ho-halo {
+          position: absolute;
+          z-index: -1;
+          inset: -12%;
+          border-radius: 46%;
+          background: var(--obj-glow);
+          filter: blur(28px);
+          opacity: .55;
+        }
+
+        .ho-label {
+          position: absolute;
+          z-index: 4;
+          left: 50%;
+          bottom: -13px;
+          max-width: 150px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          padding: 4px 9px;
+          border-radius: 999px;
+          background: var(--glass-surface);
+          border: 1px solid var(--glass-border);
+          color: var(--text-primary,#111);
+          box-shadow: 0 8px 20px rgba(0,0,0,.10);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          font-size: 8.5px;
+          font-weight: 800;
+          opacity: 0;
+          transform: translate(-50%,6px);
+          transition: opacity 240ms ease, transform 240ms cubic-bezier(.16,1,.3,1);
+        }
+
+        .ho-pointer:hover .ho-label { opacity: 1; transform: translate(-50%,0); }
+
+        .ho-shot {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          will-change: transform;
+        }
+
+        .ho-shot img {
+          object-fit: cover !important;
+          object-position: center !important;
+        }
+
+        /* ---- one floating card, two shapes ---- */
+
+        .hero-card {
+          position: relative;
+          width: 100%;
+          overflow: hidden;
+          border-radius: 17px;
+          /* the white edge is what makes these read as photo cards rather than
+             screenshots dropped on the page */
+          border: 3px solid #fff;
+          background: #fff;
+          box-shadow:
+            0 24px 46px -16px rgba(15,23,42,.30),
+            0 8px 16px -8px rgba(15,23,42,.20);
+        }
+
+        [data-theme="dark"] .hero-card {
+          border-color: rgba(255,255,255,.16);
+          background: rgba(255,255,255,.16);
+          box-shadow:
+            0 26px 50px -16px rgba(0,0,0,.62),
+            0 8px 16px -8px rgba(0,0,0,.44);
+        }
+
+        /* The card takes the image's own aspect, so the full product
+           composition is shown — nothing is ever cropped off. */
+        .hero-card { aspect-ratio: var(--ar, 1.5); }
+
+        /* Clears the floating bottom navigation, which owns the last ~90px of
+           the viewport on every breakpoint. */
+        .hero-scroll-cue {
+          position: absolute;
+          z-index: 8;
+          left: 50%;
+          bottom: 106px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          transform: translateX(-50%);
           pointer-events: none;
         }
 
-        .hero-micro-a, .hero-micro-b, .hero-micro-c, .hero-micro-d, .hero-micro-e {
-          position: absolute;
-        }
-
-        .hero-micro-a { top: 21%; inset-inline-start: 3%; }
-        .hero-micro-b { bottom: 16%; inset-inline-start: 5%; }
-        .hero-micro-c { top: 32%; inset-inline-end: 3%; }
-        .hero-micro-d { bottom: 20%; inset-inline-end: 4%; }
-        .hero-micro-e { top: 58%; inset-inline-end: 0.5%; }
-
-        .micro-code, .micro-browser, .micro-tag, .micro-metric, .micro-phone {
-          border-radius: 16px;
-          background: var(--hero-glass-bg);
-          border: 1px solid var(--hero-glass-border);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
-        }
-
-        .micro-code {
-          padding: 12px 14px;
-          width: 176px;
-          direction: ltr;
-        }
-        .micro-code-dots { display: flex; gap: 5px; margin-bottom: 9px; }
-        .micro-code-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted, #999); opacity: 0.4; }
-        .micro-code pre {
-          margin: 0;
-          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+        .hero-scroll-label {
+          color: var(--text-muted,#999);
           font-size: 10.5px;
-          line-height: 1.5;
-          color: var(--text-secondary, #666);
-          white-space: pre;
-        }
-
-        .micro-browser { padding: 10px; width: 168px; direction: ltr; }
-        .micro-browser-bar { display: flex; align-items: center; gap: 4px; margin-bottom: 9px; }
-        .micro-browser-bar span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted, #999); opacity: 0.35; }
-        .micro-browser-body { display: flex; flex-direction: column; gap: 6px; }
-        .micro-browser-body i { display: block; height: 5px; border-radius: 3px; background: var(--border-subtle, rgba(0,0,0,0.09)); font-style: normal; }
-        .micro-browser-body i.accent { background: var(--accent, #1495ff); opacity: 0.5; }
-
-        .micro-tag {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          padding: 9px 15px;
-          font-size: 11.5px;
-          font-weight: 600;
-          color: var(--text-secondary, #666);
+          font-weight: 720;
+          letter-spacing: .12em;
+          text-transform: uppercase;
           white-space: nowrap;
+          opacity: .72;
         }
-        .micro-tag-dot { width: 6px; height: 6px; border-radius: 50%; background: #09b491; flex-shrink: 0; }
 
-        .micro-metric {
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-          padding: 10px 16px;
+        [dir="rtl"] .hero-scroll-label {
+          letter-spacing: 0;
+          text-transform: none;
+          font-size: 12px;
         }
-        .micro-metric strong { font-size: 19px; font-weight: 900; color: var(--accent, #1495ff); line-height: 1.1; }
-        .micro-metric span { font-size: 10px; color: var(--text-secondary, #666); white-space: nowrap; }
 
-        .micro-phone {
-          width: 74px;
-          height: 108px;
-          padding: 12px 10px;
-          display: flex;
-          flex-direction: column;
-          gap: 7px;
-          align-items: center;
-        }
-        .micro-phone-notch { width: 26px; height: 4px; border-radius: 3px; background: var(--border-subtle, rgba(0,0,0,0.1)); }
-        .micro-phone-row { width: 100%; height: 5px; border-radius: 3px; background: var(--border-subtle, rgba(0,0,0,0.09)); }
-        .micro-phone-row.short { width: 65%; }
-        .micro-phone-chip { margin-top: auto; width: 100%; height: 20px; border-radius: 7px; background: var(--accent, #1495ff); opacity: 0.16; }
-
-        /* ── Scroll cue ── */
-        .hero-scroll-cue {
-          position: absolute;
-          bottom: clamp(14px, 2vw, 24px);
-          inset-inline-start: 50%;
-          transform: translateX(-50%);
-          z-index: 2;
-        }
-        .hero-scroll-cue span {
+        .hero-scroll-line {
           display: block;
           width: 1px;
-          height: 32px;
-          background: linear-gradient(to bottom, transparent, var(--text-muted, #999) 45%, transparent);
-          opacity: 0.55;
-          animation: hero-scroll-pulse 2.6s ease-in-out infinite;
-        }
-        @keyframes hero-scroll-pulse {
-          0%, 100% { transform: translateY(0); opacity: 0.3; }
-          50% { transform: translateY(8px); opacity: 0.6; }
-        }
-
-        /* ── Credential cards — compact, verified-style ── */
-        .hero-credentials {
-          position: relative;
-          width: min(1200px, calc(100% - 48px));
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: clamp(12px, 1.6vw, 18px);
-        }
-
-        .hero-credential-card {
-          position: relative;
-          display: flex;
-          align-items: center;
-          gap: 13px;
-          padding: 14px 16px;
-          border-radius: 16px;
-          background: var(--hero-glass-bg);
-          border: 1px solid var(--hero-glass-border);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
-          text-decoration: none;
-          color: inherit;
-          overflow: hidden;
-          transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1),
-            box-shadow 300ms ease, border-color 300ms ease, background-color 300ms ease;
-        }
-
-        .hero-credential-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 14px 34px rgba(20, 149, 255, 0.13);
-          border-color: rgba(20, 149, 255, 0.25);
-        }
-
-        .hero-credential-logo {
-          width: 38px;
-          height: 38px;
-          flex: 0 0 38px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          overflow: hidden;
-          border-radius: 11px;
-          background: #ffffff;
-          border: 1px solid rgba(0, 0, 0, 0.06);
-        }
-
-        .hero-credential-logo img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .hero-credential-logo-ihash {
-          background: linear-gradient(135deg, #1495ff, #09cda4);
-          color: #ffffff;
-          border: none;
-        }
-
-        .hero-credential-copy { min-width: 0; flex: 1; }
-
-        .hero-credential-title {
-          margin: 0 0 2px;
-          font-size: 13.5px;
-          font-weight: 700;
-          color: var(--text-primary, #090909);
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .hero-credential-verified {
-          flex-shrink: 0;
-          color: var(--accent, #1495ff);
-        }
-
-        .hero-credential-body {
-          margin: 0;
-          font-size: 11.5px;
-          font-weight: 400;
-          line-height: 1.4;
-          color: var(--text-secondary, #666666);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .hero-credential-tag { display: none; }
-
-        .hero-credential-arrow {
-          flex-shrink: 0;
-          color: var(--text-muted, #888888);
-          opacity: 0;
-          transform: translate(-2px, 2px);
-          transition: opacity 250ms ease, transform 250ms ease, color 250ms ease;
-        }
-
-        [dir="rtl"] .hero-credential-arrow { transform: translate(2px, 2px) scaleX(-1); }
-
-        .hero-credential-card:hover .hero-credential-arrow {
-          opacity: 1;
-          transform: translate(0, 0);
-          color: var(--accent, #1495ff);
-        }
-
-        [dir="rtl"] .hero-credential-card:hover .hero-credential-arrow {
-          transform: translate(0, 0) scaleX(-1);
-        }
-
-        /* ── Project cards marquee ── */
-        .hero-gallery {
-          --hero-gallery-gap: clamp(16px, 1.4vw, 24px);
-          --hero-gallery-card-width: clamp(320px, 25vw, 420px);
-          position: relative;
-          width: 100%;
-          padding-top: clamp(40px, 5vw, 64px);
-          padding-bottom: clamp(88px, 9vw, 120px);
-          overflow: hidden;
-        }
-
-        .hero-marquee-viewport {
-          width: 100%;
-          overflow: hidden;
-          direction: ltr; /* marquee motion is direction-agnostic */
-          -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
-          mask-image: linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
-        }
-
-        .hero-marquee-track {
-          width: max-content;
-          display: flex;
-          align-items: stretch;
-          gap: var(--hero-gallery-gap);
-          will-change: transform;
-          backface-visibility: hidden;
-          transform: translate3d(0, 0, 0);
-          animation: hero-marquee 60s linear infinite;
-        }
-
-        .hero-marquee-viewport:hover .hero-marquee-track,
-        .hero-marquee-track:has(a:focus-visible) {
-          animation-play-state: paused;
-        }
-
-        @keyframes hero-marquee {
-          from { transform: translate3d(0, 0, 0); }
-          to { transform: translate3d(calc(-50% - (var(--hero-gallery-gap) / 2)), 0, 0); }
-        }
-
-        .hero-project-card {
-          position: relative;
-          flex: 0 0 var(--hero-gallery-card-width);
-          width: var(--hero-gallery-card-width);
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          border-radius: clamp(22px, 1.7vw, 28px);
-          background: var(--hero-card-background);
-          border: 1px solid var(--hero-card-border);
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
-          box-shadow: 0 6px 26px rgba(0, 0, 0, 0.06);
-          text-decoration: none;
-          color: inherit;
-          transition: transform 380ms cubic-bezier(0.16, 1, 0.3, 1),
-            box-shadow 380ms ease, border-color 300ms ease;
-        }
-
-        .hero-project-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12);
-          border-color: rgba(20, 149, 255, 0.28);
-        }
-
-        .hero-project-cover {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 16 / 10.5;
-          overflow: hidden;
-          background: var(--bg-card-muted, #e8e8e8);
-        }
-
-        .hero-project-cover-image {
-          object-fit: contain;
-          transform: scale(var(--project-scale, 1));
-          transition: transform 450ms cubic-bezier(0.16, 1, 0.3, 1);
-          filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.12));
-        }
-
-        .hero-project-card:hover .hero-project-cover-image {
-          transform: scale(calc(var(--project-scale, 1) + 0.03));
-        }
-
-        .hero-project-cover-overlay {
-          position: absolute;
-          inset: 0;
-          z-index: 2;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(9, 12, 20, 0.44);
-          backdrop-filter: blur(3px);
-          -webkit-backdrop-filter: blur(3px);
-          opacity: 0;
-          transition: opacity 300ms ease;
-        }
-
-        .hero-project-card:hover .hero-project-cover-overlay,
-        .hero-project-card:focus-visible .hero-project-cover-overlay {
-          opacity: 1;
-        }
-
-        .hero-project-cta {
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-          padding: 10px 20px;
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.95);
-          color: #0d0e12;
-          font-size: 13.5px;
-          font-weight: 700;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-          transform: translateY(6px);
-          transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .hero-project-card:hover .hero-project-cta { transform: translateY(0); }
-
-        .hero-project-info {
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-          padding: 20px 20px 22px;
-        }
-
-        .hero-project-head {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .hero-project-logo {
-          width: 34px;
           height: 34px;
-          flex: 0 0 34px;
+          background: linear-gradient(to bottom,transparent,var(--text-muted,#999) 48%,transparent);
+          animation: hero-scroll-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes hero-scroll-pulse {
+          0%,100% { transform:translateY(0); opacity:.28; }
+          50% { transform:translateY(8px); opacity:.72; }
+        }
+
+        /* ---------- route stub: hero → flight path ---------- */
+
+        .hero-route-stub {
+          position: relative;
+          z-index: 6;
           display: flex;
-          align-items: center;
           justify-content: center;
-          overflow: hidden;
-          border-radius: 50%;
-          background: #ffffff;
-          border: 1px solid rgba(0, 0, 0, 0.06);
+          height: 74px;
+          pointer-events: none;
         }
 
-        .hero-project-logo img {
-          width: 21px;
-          height: 21px;
-          object-fit: contain;
-        }
-
-        .hero-project-heading { min-width: 0; }
-
-        .hero-project-name {
-          margin: 0 0 2px;
-          font-size: 16px;
-          font-weight: 700;
-          color: var(--text-primary, #090909);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .hero-project-sub {
-          font-size: 12px;
-          font-weight: 400;
-          color: var(--text-muted, #888888);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        .hero-route-line {
           display: block;
+          width: 1.5px;
+          height: 100%;
+          border-radius: 2px;
+          background: linear-gradient(to bottom,transparent,var(--hero-border) 30%,rgba(30,143,255,.42) 100%);
         }
 
-        .hero-project-meta {
-          display: flex;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 6px;
+        [data-theme="dark"] .hero-route-line {
+          background: linear-gradient(to bottom,transparent,var(--hero-border) 30%,rgba(70,167,255,.5) 100%);
         }
 
-        .hero-project-chip {
-          padding: 4px 11px;
-          border-radius: 999px;
-          background: var(--chip-bg, #ededed);
-          color: var(--chip-text, #555555);
-          font-size: 11px;
-          font-weight: 500;
-          white-space: nowrap;
+        /* ---------- responsive ---------- */
+
+        @media (max-width: 980px) {
+          .hero-stage-inner { width: min(960px,calc(100% - 24px)); }
         }
 
-        /* ── Tablet: thin the micro-field, keep the name centered ── */
-        @media (max-width: 1180px) {
-          .hero-micro-b, .hero-micro-e { display: none; }
-        }
-
-        @media (max-width: 960px) {
-          .hero-name-title { font-size: clamp(52px, 10vw, 96px); }
-          .hero-positioning { font-size: clamp(16px, 2vw, 18px); }
-          .hero-gallery { --hero-gallery-card-width: clamp(285px, 34vw, 350px); }
-        }
-
-        /* ── Mobile: preserve the centered desktop hierarchy ── */
         @media (max-width: 760px) {
-          .hero-root {
-            min-height: auto;
-            padding-bottom: 110px;
-            overflow-x: hidden;
+          .hero-story { height: 132svh; min-height: 850px; }
+          .hero-sticky-stage { min-height: 620px; }
+          .hero-stage-inner { width: 100%; }
+
+          .hero-object {
+            width: var(--mw);
+            transform: translate(calc(-50% + var(--mdx)), calc(-50% + var(--mdy)));
           }
 
-          .hero-stage {
-            width: 100%;
-            min-height: auto;
-            padding: 132px 20px 56px;
-            box-sizing: border-box;
-            justify-content: flex-start;
-          }
+          .ho-label { display: none; }
 
-          .hero-chip {
-            position: relative;
-            inset: auto;
-            width: 104px;
-            height: 104px;
-            margin: 0 auto 30px;
-            padding: 6px;
-            align-self: center;
-            flex-shrink: 0;
-          }
+          /* Wide cards stand down on phones — four well-spaced objects read as
+             a composition, six crammed into 390px read as clutter. */
+          .hero-object-2,
+          .hero-object-5 { display: none; }
 
-          .hero-photo-mask {
-            width: 92px !important;
-            height: 92px !important;
-            flex-basis: 92px !important;
-          }
-
-          .hero-center {
-            width: 100%;
+          .hero-center-anchor {
+            top: 49%;
+            width: calc(100% - 38px);
             max-width: 390px;
-            margin-inline: auto;
           }
 
-          .hero-role-cycle {
-            width: 100%;
-            height: 24px;
-            margin: 0 0 12px;
-          }
+          .hero-role-cycle { height: 20px; margin-bottom: 6px; }
 
-          .hero-name-title {
-            width: 100%;
-            margin: 0 auto;
-            padding-bottom: 0.16em;
-            font-size: clamp(60px, 20vw, 82px);
-            line-height: 1.15;
-            text-align: center;
-          }
+          .hero-name-title { font-size: clamp(58px,19vw,80px); line-height: 1.07; }
+          [dir="rtl"] .hero-name-title { line-height: 1.16; padding-bottom: .15em; }
 
           .hero-positioning {
-            width: 100%;
-            max-width: 350px;
-            margin: 10px auto 0;
-            font-size: 16px;
-            line-height: 1.7;
-            text-align: center;
+            max-width: 330px;
+            margin-top: 6px;
+            font-size: 14.5px;
+            line-height: 1.62;
           }
 
           .hero-cta-row {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
             width: 100%;
-            max-width: 350px;
-            margin: 28px auto 0;
-            gap: 10px;
+            max-width: 330px;
+            display: grid;
+            grid-template-columns: repeat(2,minmax(0,1fr));
+            gap: 9px;
+            margin-top: 21px;
           }
 
           .hero-cta-primary,
           .hero-cta-secondary {
             width: 100%;
             min-width: 0;
-            min-height: 50px;
-            padding: 12px 14px;
-            box-sizing: border-box;
-            font-size: 14px;
-            white-space: nowrap;
+            min-height: 46px;
+            padding: 11px 10px;
+            font-size: 13px;
           }
 
-          .hero-career-link {
-            grid-column: 1 / -1;
-            justify-self: center;
-            width: auto;
-            margin-top: 8px;
+          .hero-avatar-orbit {
+            left: calc(50% + 22px);
+            top: 19.5%;
+            width: 54px;
+            height: 54px;
           }
 
-          .hero-micro-field,
-          .hero-micro-a,
-          .hero-micro-b,
-          .hero-micro-c,
-          .hero-micro-d,
-          .hero-micro-e,
-          .hero-scroll-cue {
-            display: none;
-          }
+          .hero-avatar-ring { padding: 3px; }
+          .hero-avatar-status { width: 10px; height: 10px; border-width: 2px; }
 
-          .hero-credentials {
-            width: calc(100% - 32px);
-            grid-template-columns: 1fr;
-            margin: 0 auto;
-            gap: 12px;
-          }
+          .hero-scroll-cue { bottom: 98px; gap: 6px; }
+          .hero-scroll-line { height: 26px; }
 
-          .hero-gallery {
-            --hero-gallery-card-width: clamp(272px, 78vw, 330px);
-            --hero-gallery-gap: 13px;
-            padding-top: 28px;
-            padding-bottom: 84px;
-          }
+          .hero-route-stub { height: 58px; }
         }
 
-        @media (max-width: 480px) {
-          .hero-stage { padding: 124px 16px 48px; }
-          .hero-name-title { font-size: clamp(56px, 20vw, 74px); }
-          .hero-positioning { font-size: 15px; }
-          .hero-cta-row { max-width: 330px; }
-          .hero-gallery { --hero-gallery-card-width: clamp(252px, 82vw, 300px); }
+        @media (max-width: 420px) {
+          .hero-avatar-orbit { left: calc(50% + 18px); top: 19%; width: 50px; height: 50px; }
         }
+
+        /* ---------- film grain ---------- */
+
+        .hero-grain {
+          position: absolute;
+          inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+          background-size: 140px 140px;
+          mix-blend-mode: overlay;
+          opacity: .05;
+          pointer-events: none;
+        }
+
+        [data-theme="dark"] .hero-grain { opacity: .085; mix-blend-mode: soft-light; }
+
+        /* ---------- focus reveal ---------- */
+
+        .hero-name-inner { display: inline-block; will-change: filter; }
+        .hero-word { display: inline-block; }
+
+        /* ---------- reduced motion ---------- */
 
         @media (prefers-reduced-motion: reduce) {
-          .hero-marquee-track { animation-play-state: paused; }
-          .hero-role-word { animation: none; opacity: 1; }
-          .hero-credential-card,
-          .hero-project-card,
-          .hero-project-cover-image,
-          .hero-project-cta,
-          .hero-cta-primary,
-          .hero-cta-secondary {
-            transition: none !important;
-          }
+          /* the stage keeps an explicit height so the objects still anchor to its centre */
+          .hero-story { height: auto; min-height: 0; }
+          .hero-sticky-stage { position: relative; height: 840px; min-height: 840px; }
+          .hero-stage-inner { height: 840px; }
+          .hero-scroll-cue { display: none; }
+          .hero-avatar-orbit { animation: none !important; }
+          .hero-role-word { animation: none !important; }
+          .hero-role-word:first-child { opacity: 1; transform: translate(-50%,0); }
+          .ho-pointer { transition: none !important; }
+          .hero-name-inner, .hero-word { filter: none !important; }
+          .hero-route-stub { height: 46px; }
         }
       `}</style>
     </section>
   );
 }
 
-function MicroSlot({
-  className,
+/* ------------------------------------------------------------------ */
+/* Hero scene                                                          */
+/* ------------------------------------------------------------------ */
+
+function HeroProjectScene({
+  projects,
+  lang,
+  progress,
   mx,
   my,
-  depth,
-  delay,
-  children,
+  ready,
+  isMobile,
+  still,
 }: {
-  className: string;
+  projects: HeroProject[];
+  lang: "ar" | "en";
+  progress: MotionValue<number>;
   mx: MotionValue<number>;
   my: MotionValue<number>;
-  depth: number;
-  delay: number;
-  children: ReactNode;
+  ready: boolean;
+  isMobile: boolean;
+  still: boolean;
 }) {
-  const x = useTransform(mx, [-0.5, 0.5], [-depth, depth]);
-  const y = useTransform(my, [-0.5, 0.5], [-depth, depth]);
-
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 14, scale: 0.94 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.6, ease: EASE, delay }}
-    >
-      <motion.div style={{ x, y }}>{children}</motion.div>
-    </motion.div>
+    <div className="hero-scene" aria-hidden="true">
+      {projects.map((project, index) => (
+        <HeroProjectObject
+          key={project.name.en}
+          project={project}
+          index={index}
+          lang={lang}
+          progress={progress}
+          mx={mx}
+          my={my}
+          ready={ready}
+          isMobile={isMobile}
+          still={still}
+        />
+      ))}
+    </div>
   );
 }
 
-function CredentialCard({
-  href,
-  title,
-  body,
-  tag,
-  logo,
-}: {
-  href: string;
-  title: string;
-  body: string;
-  tag: string;
-  logo: ReactNode;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="hero-credential-card"
-      onClick={() => trackEvent("credential_card_click", { href })}
-    >
-      {logo}
-      <div className="hero-credential-copy">
-        <h3 className="hero-credential-title">
-          {title}
-          <LuBadgeCheck
-            size={14}
-            className="hero-credential-verified"
-            aria-hidden="true"
-          />
-        </h3>
-        <p className="hero-credential-body">{body}</p>
-        <span className="hero-credential-tag">{tag}</span>
-      </div>
-      <LuArrowUpRight
-        size={15}
-        className="hero-credential-arrow"
-        aria-hidden="true"
-      />
-    </a>
-  );
-}
-
-function HeroProjectCard({
+function HeroProjectObject({
   project,
+  index,
   lang,
-  category,
-  country,
-  viewLabel,
+  progress,
+  mx,
+  my,
+  ready,
+  isMobile,
+  still,
 }: {
   project: HeroProject;
+  index: number;
   lang: "ar" | "en";
-  category: string;
-  country: string;
-  viewLabel: string;
+  progress: MotionValue<number>;
+  mx: MotionValue<number>;
+  my: MotionValue<number>;
+  ready: boolean;
+  isMobile: boolean;
+  still: boolean;
 }) {
-  const name = project.name[lang];
+  const cfg = project.hero;
+  const place = isMobile ? cfg.mobile : cfg.desktop;
+  const { separate, exit } = cfg;
+
+  /* 0–15% hold · 15–38% separate · 38–66% travel · 66–86% settle onto the route */
+  const stops = [0, 0.15, 0.38, 0.66, 0.86];
+
+  const travelX = useTransform(progress, stops, [
+    "0vw",
+    "0vw",
+    `${separate.x}vw`,
+    `${exit.x * 0.6}vw`,
+    `${exit.x}vw`,
+  ]);
+
+  const travelY = useTransform(progress, stops, [
+    "0vh",
+    "0vh",
+    `${separate.y}vh`,
+    `${exit.y * 0.5}vh`,
+    `${exit.y}vh`,
+  ]);
+
+  const scale = useTransform(progress, stops, [1, 1, 1.05, 1.0, exit.scale]);
+
+  const rotate = useTransform(progress, stops, [
+    place.rotate,
+    place.rotate,
+    place.rotate * 0.65,
+    exit.rotate * 0.5,
+    exit.rotate,
+  ]);
+
+  /* two mobile objects arrive on early scroll instead of on load */
+  const delayed = isMobile && Boolean(cfg.mobile.delayed);
+  const opacity = useTransform(
+    progress,
+    [0, 0.05, 0.16, 0.82, 1],
+    delayed ? [0, 0.35, 1, 0.78, 0.3] : [1, 1, 1, 0.78, 0.3],
+  );
+
+  const pointerX = useTransform(mx, [-0.5, 0.5], [-place.depth, place.depth]);
+  const pointerY = useTransform(my, [-0.5, 0.5], [-place.depth * 0.5, place.depth * 0.5]);
+  const rotateY = useTransform(mx, [-0.5, 0.5], [-place.depth * 0.34, place.depth * 0.34]);
+  const rotateX = useTransform(my, [-0.5, 0.5], [place.depth * 0.28, -place.depth * 0.28]);
+
+  /* internal product parallax — the screenshot drifts against its own surface */
+  const shotY = useTransform(progress, [0, 0.8], [0, -6 - index * 1.6]);
+
+  const style = {
+    "--dx": cfg.desktop.dx,
+    "--dy": cfg.desktop.dy,
+    "--w": cfg.desktop.w,
+    "--mdx": cfg.mobile.dx,
+    "--mdy": cfg.mobile.dy,
+    "--mw": cfg.mobile.w,
+    "--obj-accent": project.accent,
+    "--obj-glow": project.glow,
+    "--ar": String(project.cropAspect ?? project.imgAspect),
+  } as CSSProperties;
 
   return (
-    <Link
-      href="/projects"
-      className="hero-project-card"
-      aria-label={name}
-      dir={lang === "ar" ? "rtl" : "ltr"}
-      style={{ "--project-scale": project.imageScale ?? 1 } as CSSProperties}
-      onClick={() =>
-        trackEvent("hero_project_card_click", { project: project.name.en })
-      }
-    >
-      <div className="hero-project-cover">
+    <div className={`hero-object hero-object-${index + 1}`} style={style}>
+      <motion.div
+        className="ho-travel"
+        style={
+          still
+            ? { rotate: place.rotate }
+            : { x: travelX, y: travelY, scale, rotate, opacity }
+        }
+      >
+        <motion.div
+          className="ho-enter"
+          initial={{
+            opacity: 0,
+            scale: 0.9,
+            y: 26,
+            rotateX: index % 2 === 0 ? 9 : -8,
+            rotateY: index % 2 === 0 ? -7 : 7,
+          }}
+          animate={
+            ready
+              ? { opacity: 1, scale: 1, y: 0, rotateX: 0, rotateY: 0 }
+              : { opacity: 0, scale: 0.9, y: 26 }
+          }
+          transition={{
+            type: "spring",
+            stiffness: 210,
+            damping: 26,
+            mass: 0.7,
+            delay: still ? 0 : 0.05 + index * 0.055,
+          }}
+        >
+          <motion.div
+            className="ho-pointer"
+            style={
+              still
+                ? undefined
+                : { x: pointerX, y: pointerY, rotateX, rotateY }
+            }
+          >
+            <ProjectVisual project={project} shotY={still ? undefined : shotY} />
+            <span className="ho-label">{project.name[lang]}</span>
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
+
+/** One component system, six genuinely different physical objects. */
+/**
+ * One card, every project. The screenshot is the object; the frame, the bloom
+ * and the shadow are what make it float. Names stay off the face and appear on
+ * hover, so a 100px card and a 240px card are legible in exactly the same way.
+ */
+function ProjectVisual({
+  project,
+  shotY,
+}: {
+  project: HeroProject;
+  shotY?: MotionValue<number>;
+}) {
+  return (
+    <div className="hero-card">
+      <motion.div className="ho-shot" style={shotY ? { y: shotY } : undefined}>
         <Image
           src={project.image}
-          alt={name}
+          alt=""
           fill
-          sizes="(max-width: 480px) 300px, (max-width: 760px) 330px, 400px"
-          className="hero-project-cover-image"
+          sizes="(max-width:760px) 120px, 280px"
         />
-        <div className="hero-project-cover-overlay">
-          <span className="hero-project-cta">
-            {viewLabel}
-            <LuArrowUpRight size={15} />
-          </span>
-        </div>
-      </div>
-
-      <div className="hero-project-info">
-        <div className="hero-project-head">
-          <span className="hero-project-logo">
-            <Image src={project.logo} alt="" width={20} height={20} />
-          </span>
-          <div className="hero-project-heading">
-            <h3 className="hero-project-name">{name}</h3>
-            <span className="hero-project-sub">
-              {category} · {country} · {project.year}
-            </span>
-          </div>
-        </div>
-
-        <div className="hero-project-meta">
-          {project.stack.map((tech) => (
-            <span key={tech} className="hero-project-chip">
-              {tech}
-            </span>
-          ))}
-        </div>
-      </div>
-    </Link>
+      </motion.div>
+    </div>
   );
 }

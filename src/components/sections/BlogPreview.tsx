@@ -3,8 +3,9 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, useInView, useReducedMotion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { useLanguage } from "@/i18n/LanguageProvider";
+import { useSafeReducedMotion } from "@/hooks/useSafeReducedMotion";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,9 @@ const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 export default function BlogPreview() {
   const ref = useRef<HTMLElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
-  const reduced = useReducedMotion();
+  // Hydration-safe: reading the media query during the first client render
+  // would emit different inline styles than the server did.
+  const reduced = useSafeReducedMotion();
   const { lang } = useLanguage();
   const copy = COPY[lang];
   const posts = PREVIEW_POSTS[lang];

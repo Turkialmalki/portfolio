@@ -6,13 +6,20 @@ import Preloader from "./Preloader";
 import TopBar from "./TopBar";
 import Navbar from "./Navbar";
 import Hero from "./sections/Hero";
-import BentoGrid from "./sections/BentoGrid";
-import Projects from "./sections/Projects";
-import Metrics from "./sections/Metrics";
+import FlightPath from "./sections/FlightPath";
 import FAQ from "./sections/FAQ";
 import BlogPreview from "./sections/BlogPreview";
 import Footer from "./sections/Footer";
 
+/**
+ * The homepage is one continuous story: the hero hands the reader to the
+ * flight-path timeline, which carries the career, the proof and the numbers in
+ * a single pass, and lands on the FAQ and the contact CTA in the footer.
+ *
+ * The old standalone "Featured Work", "Behind the Screens" and "Why Me?"
+ * sections are deliberately absent — their content now lives inside the
+ * timeline. Their components stay in the tree for the other routes.
+ */
 export default function HomeClient() {
   const [loading, setLoading] = useState(true);
   const handleComplete = useCallback(() => setLoading(false), []);
@@ -30,9 +37,7 @@ export default function HomeClient() {
         <Navbar />
         <main>
           <Hero ready={!loading} />
-          <BentoGrid />
-          <Projects />
-          <Metrics />
+          <FlightPath />
           <FAQ />
           <BlogPreview />
         </main>
