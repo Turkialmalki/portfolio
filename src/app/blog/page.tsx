@@ -5,79 +5,137 @@ import { motion, useInView } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/sections/Footer";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-const POSTS = [
+type Bi = { ar: string; en: string };
+
+type Post = {
+  id: string;
+  category: Bi;
+  date: Bi;
+  title: Bi;
+  excerpt: Bi;
+  readTime: Bi;
+  accent: string;
+  bg: string;
+};
+
+const POSTS: Post[] = [
   {
     id: "01",
-    category: "Design Thinking",
-    date: "Mar 2024",
-    title: "The invisible hand of great UX",
-    excerpt:
-      "Why the best interfaces disappear — and how to design products that feel effortless without looking empty.",
-    readTime: "5 min",
+    category: { ar: "تفكير تصميمي", en: "Design Thinking" },
+    date: { ar: "مارس 2024", en: "Mar 2024" },
+    title: {
+      ar: "اليد الخفية في تجربة الاستخدام",
+      en: "The invisible hand of great UX",
+    },
+    excerpt: {
+      ar: "لماذا تختفي أفضل الواجهات عن الأنظار — وكيف نصمم منتجات تبدو سهلة دون أن تبدو فارغة.",
+      en: "Why the best interfaces disappear — and how to design products that feel effortless without looking empty.",
+    },
+    readTime: { ar: "5 دقائق", en: "5 min" },
     accent: "#5046B4",
     bg: "linear-gradient(135deg, #EEF0F7 0%, #DDE1F3 100%)",
   },
   {
     id: "02",
-    category: "Engineering",
-    date: "Jan 2024",
-    title: "Framer Motion at scale",
-    excerpt:
-      "Lessons from shipping animation-heavy applications to millions of users without sacrificing performance.",
-    readTime: "8 min",
+    category: { ar: "هندسة", en: "Engineering" },
+    date: { ar: "يناير 2024", en: "Jan 2024" },
+    title: { ar: "Framer Motion على نطاق واسع", en: "Framer Motion at scale" },
+    excerpt: {
+      ar: "دروس من إطلاق تطبيقات مليئة بالحركة لملايين المستخدمين دون التضحية بالأداء.",
+      en: "Lessons from shipping animation-heavy applications to millions of users without sacrificing performance.",
+    },
+    readTime: { ar: "8 دقائق", en: "8 min" },
     accent: "#1E64C8",
     bg: "linear-gradient(135deg, #EAF4FD 0%, #D4E8F9 100%)",
   },
   {
     id: "03",
-    category: "Craft",
-    date: "Nov 2023",
-    title: "Typography as emotion",
-    excerpt:
-      "How font choice, weight, and spacing communicate mood before a single word is read.",
-    readTime: "6 min",
+    category: { ar: "حِرفة", en: "Craft" },
+    date: { ar: "نوفمبر 2023", en: "Nov 2023" },
+    title: { ar: "الخط الطباعي بوصفه شعورًا", en: "Typography as emotion" },
+    excerpt: {
+      ar: "كيف يوصل اختيار الخط ووزنه وتباعده مزاج المنتج قبل قراءة كلمة واحدة.",
+      en: "How font choice, weight, and spacing communicate mood before a single word is read.",
+    },
+    readTime: { ar: "6 دقائق", en: "6 min" },
     accent: "#B4641E",
     bg: "linear-gradient(135deg, #FDF4EC 0%, #F9E5CC 100%)",
   },
   {
     id: "04",
-    category: "Leadership",
-    date: "Sep 2023",
-    title: "Building engineering culture in MENA",
-    excerpt:
-      "Practical patterns for growing high-performance teams from the lessons of 9+ years leading software organisations.",
-    readTime: "10 min",
+    category: { ar: "قيادة", en: "Leadership" },
+    date: { ar: "سبتمبر 2023", en: "Sep 2023" },
+    title: {
+      ar: "بناء ثقافة هندسية في المنطقة",
+      en: "Building engineering culture in MENA",
+    },
+    excerpt: {
+      ar: "أنماط عملية لتنمية فرق عالية الأداء، من خلاصة أكثر من 9 سنوات في قيادة فرق البرمجيات.",
+      en: "Practical patterns for growing high-performance teams from the lessons of 9+ years leading software organisations.",
+    },
+    readTime: { ar: "10 دقائق", en: "10 min" },
     accent: "#00C8A0",
     bg: "linear-gradient(135deg, #E8FAF5 0%, #C8F0E2 100%)",
   },
   {
     id: "05",
-    category: "Fintech",
-    date: "Jul 2023",
-    title: "Open banking in Saudi Arabia",
-    excerpt:
-      "How the SAMA open banking framework is reshaping digital finance and what it means for product builders.",
-    readTime: "7 min",
+    category: { ar: "تقنية مالية", en: "Fintech" },
+    date: { ar: "يوليو 2023", en: "Jul 2023" },
+    title: {
+      ar: "الخدمات المصرفية المفتوحة في السعودية",
+      en: "Open banking in Saudi Arabia",
+    },
+    excerpt: {
+      ar: "كيف يعيد إطار البنك المركزي للخدمات المصرفية المفتوحة تشكيل التمويل الرقمي، وماذا يعني ذلك لبُناة المنتجات.",
+      en: "How the SAMA open banking framework is reshaping digital finance and what it means for product builders.",
+    },
+    readTime: { ar: "7 دقائق", en: "7 min" },
     accent: "#0091FF",
     bg: "linear-gradient(135deg, #EAF4FF 0%, #D0E9FF 100%)",
   },
   {
     id: "06",
-    category: "Systems",
-    date: "Apr 2023",
-    title: "Kubernetes for enterprise products",
-    excerpt:
-      "From local cluster to production — a practitioner's guide to rolling out K8s inside large organisations.",
-    readTime: "12 min",
+    category: { ar: "أنظمة", en: "Systems" },
+    date: { ar: "أبريل 2023", en: "Apr 2023" },
+    title: {
+      ar: "Kubernetes للمنتجات المؤسسية",
+      en: "Kubernetes for enterprise products",
+    },
+    excerpt: {
+      ar: "من العنقود المحلي إلى الإنتاج — دليل عملي لتبنّي Kubernetes داخل المؤسسات الكبيرة.",
+      en: "From local cluster to production — a practitioner's guide to rolling out K8s inside large organisations.",
+    },
+    readTime: { ar: "12 دقيقة", en: "12 min" },
     accent: "#326CE5",
     bg: "linear-gradient(135deg, #EDF1FD 0%, #D8E2FC 100%)",
   },
 ];
 
+const COPY = {
+  ar: {
+    kicker: "كتابات",
+    title: "أفكار وخواطر.",
+    lede: "تأملات في التصميم والقيادة الهندسية والتقنية المالية، وبناء منتجات تبقى بعد أن تهدأ الضجّة.",
+    readSuffix: "قراءة",
+    readMore: "اقرأ المزيد",
+  },
+  en: {
+    kicker: "Writing",
+    title: "Thoughts & ideas.",
+    lede: "Musings on design, engineering leadership, fintech, and building products that outlast the hype.",
+    readSuffix: "read",
+    readMore: "Read more",
+  },
+};
+
 export default function BlogPage() {
+  const { lang } = useLanguage();
+  const copy = COPY[lang];
+
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, []);
@@ -115,7 +173,7 @@ export default function BlogPage() {
                 marginBottom: 18,
               }}
             >
-              Writing
+              {copy.kicker}
             </motion.p>
 
             <div style={{ overflow: "hidden" }}>
@@ -133,7 +191,7 @@ export default function BlogPage() {
                   transition: "color 0.45s ease",
                 }}
               >
-                Thoughts & ideas.
+                {copy.title}
               </motion.h1>
             </div>
 
@@ -148,8 +206,7 @@ export default function BlogPage() {
                 maxWidth: 480,
               }}
             >
-              Musings on design, engineering leadership, fintech, and building
-              products that outlast the hype.
+              {copy.lede}
             </motion.p>
           </div>
         </section>
@@ -170,7 +227,14 @@ export default function BlogPage() {
             className="blog-grid"
           >
             {POSTS.map((post, i) => (
-              <BlogCard key={post.id} post={post} index={i} inView={gridInView} />
+              <BlogCard
+                key={post.id}
+                post={post}
+                index={i}
+                inView={gridInView}
+                lang={lang}
+                copy={copy}
+              />
             ))}
           </div>
         </section>
@@ -198,10 +262,14 @@ function BlogCard({
   post,
   index,
   inView,
+  lang,
+  copy,
 }: {
-  post: (typeof POSTS)[number];
+  post: Post;
   index: number;
   inView: boolean;
+  lang: "ar" | "en";
+  copy: (typeof COPY)["ar"];
 }) {
   return (
     <motion.article
@@ -253,7 +321,7 @@ function BlogCard({
             textTransform: "uppercase",
           }}
         >
-          {post.category}
+          {post.category[lang]}
         </span>
       </div>
 
@@ -270,11 +338,11 @@ function BlogCard({
           <span
             style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400 }}
           >
-            {post.date}
+            {post.date[lang]}
           </span>
           <span style={{ fontSize: 11, color: "#D1D5DB" }}>·</span>
           <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400 }}>
-            {post.readTime} read
+            {post.readTime[lang]} {copy.readSuffix}
           </span>
         </div>
 
@@ -289,7 +357,7 @@ function BlogCard({
             transition: "color 0.45s ease",
           }}
         >
-          {post.title}
+          {post.title[lang]}
         </h2>
 
         <p
@@ -299,7 +367,7 @@ function BlogCard({
             lineHeight: 1.68,
           }}
         >
-          {post.excerpt}
+          {post.excerpt[lang]}
         </p>
 
         <div
@@ -314,8 +382,25 @@ function BlogCard({
             letterSpacing: "-0.01em",
           }}
         >
-          Read more
-          <span style={{ fontSize: 15 }}>→</span>
+          {copy.readMore}
+          {/* drawn, not typed: the arrow character is not in Thmanyah Sans and
+              would fall back to a system face mid-sentence */}
+          <svg
+            width="15"
+            height="10"
+            viewBox="0 0 15 10"
+            fill="none"
+            aria-hidden="true"
+            style={{ transform: lang === "ar" ? "scaleX(-1)" : undefined }}
+          >
+            <path
+              d="M1 5h12M9.4 1.2 13.2 5l-3.8 3.8"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>
       </div>
     </motion.article>

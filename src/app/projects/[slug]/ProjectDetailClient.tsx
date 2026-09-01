@@ -8,8 +8,94 @@ import { motion, useInView } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/sections/Footer";
-import { getProject, PROJECTS } from "@/data/projects";
+import { getProject, localizeProject, PROJECTS } from "@/data/projects";
+import { useLanguage } from "@/i18n/LanguageProvider";
 import type { ProjectData } from "@/data/projects";
+
+const CHROME = {
+  ar: {
+    overview: "نظرة عامة",
+    projectDetails: "تفاصيل المشروع",
+    problem: "المشكلة",
+    goal: "الهدف",
+    research: "نتائج البحث",
+    process: "مسار التصميم",
+    solution: "الحل النهائي",
+    decisions: "قرارات التصميم",
+    outcomes: "النتائج",
+    reflection: "خلاصة وخطوات قادمة",
+    role: "الدور",
+    duration: "المدة",
+    tools: "الأدوات",
+    wireframes: "المخططات الأولية",
+    userFlows: "مسارات المستخدم",
+    iterations: "التكرارات",
+    year: "السنة",
+    allWork: "كل الأعمال",
+    researchHeading: "ما كشفه البحث.",
+    processHeading: "كيف بُني.",
+    solutionHeading: "المنتج المُسلَّم.",
+    decisionsHeading: "لماذا اتُّخذت هذه القرارات.",
+    resultsHeading: "النتائج.",
+    learnedHeading: "ما تعلّمته.",
+    nextStepsHeading: "الخطوات القادمة",
+    nextProject: "المشروع التالي",
+    decision: "قرار",
+    viz: {
+      cxCloud: "سحابة تجربة العميل",
+      sales: "المبيعات",
+      service: "الخدمة",
+      commerce: "التجارة",
+      analytics: "التحليلات",
+      marketing: "التسويق",
+      data: "البيانات",
+      saudiBanks: "بنوك سعودية",
+      openApi: "واجهة مفتوحة",
+      realTime: "لحظي",
+    },
+  },
+  en: {
+    overview: "Overview",
+    projectDetails: "Project Details",
+    problem: "The Problem",
+    goal: "The Goal",
+    research: "Research Insights",
+    process: "Design Process",
+    solution: "Final Solution",
+    decisions: "Design Decisions",
+    outcomes: "Outcomes",
+    reflection: "Reflection & Next Steps",
+    role: "Role",
+    duration: "Duration",
+    tools: "Tools",
+    wireframes: "Wireframes",
+    userFlows: "User Flows",
+    iterations: "Iterations",
+    year: "Year",
+    allWork: "All Work",
+    researchHeading: "What the research revealed.",
+    processHeading: "How it was built.",
+    solutionHeading: "The delivered product.",
+    decisionsHeading: "Why these choices were made.",
+    resultsHeading: "The results.",
+    learnedHeading: "What I learned.",
+    nextStepsHeading: "Next Steps",
+    nextProject: "Next Project",
+    decision: "Decision",
+    viz: {
+      cxCloud: "CX Cloud",
+      sales: "Sales",
+      service: "Service",
+      commerce: "Commerce",
+      analytics: "Analytics",
+      marketing: "Marketing",
+      data: "Data",
+      saudiBanks: "Saudi Banks",
+      openApi: "Open API",
+      realTime: "Real-time",
+    },
+  },
+};
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -59,24 +145,35 @@ function SectionDivider() {
 }
 
 export default function ProjectDetailClient({ slug }: { slug: string }) {
-  const project = getProject(slug);
+  const { lang, dir } = useLanguage();
+  const source = getProject(slug);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, []);
 
-  if (!project) {
+  if (!source) {
     notFound();
   }
 
+  /* Titles, metadata and outcome labels in the reading language; the
+     long-form case study is still the English original — see the note on
+     CHROME.ar.englishNotice. */
+  const project = localizeProject(source, lang);
   const currentIndex = PROJECTS.findIndex((p) => p.slug === slug);
-  const nextProject = PROJECTS[(currentIndex + 1) % PROJECTS.length];
+  const nextProject = localizeProject(
+    PROJECTS[(currentIndex + 1) % PROJECTS.length],
+    lang,
+  );
 
   return (
     <>
       <TopBar />
       <Navbar />
-      <main style={{ backgroundColor: "var(--bg-primary)", transition: "background-color 0.45s ease" }}>
+      <main
+        dir={dir}
+        style={{ backgroundColor: "var(--bg-primary)", transition: "background-color 0.45s ease" }}
+      >
         <HeroSection project={project} />
         <ShowcaseSection project={project} />
         <ContentWrapper>
@@ -120,6 +217,8 @@ function ContentWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function HeroSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   return (
     <section
       style={{
@@ -154,8 +253,8 @@ function HeroSection({ project }: { project: ProjectData }) {
           onMouseEnter={(e) => (e.currentTarget.style.color = project.accent)}
           onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
         >
-          <span style={{ fontSize: 14 }}>←</span>
-          All Work
+          <CaseArrow back />
+          {chrome.allWork}
         </Link>
       </motion.div>
 
@@ -254,9 +353,9 @@ function HeroSection({ project }: { project: ProjectData }) {
         style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
       >
         {[
-          { label: "Role", value: project.role },
-          { label: "Duration", value: project.duration },
-          { label: "Year", value: project.year },
+          { label: chrome.role, value: project.role },
+          { label: chrome.duration, value: project.duration },
+          { label: chrome.year, value: project.year },
         ].map(({ label, value }) => (
           <div
             key={label}
@@ -402,7 +501,35 @@ function ShowcaseSection({ project }: { project: ProjectData }) {
   );
 }
 
+function CaseArrow({ back = false }: { back?: boolean }) {
+  const { lang } = useLanguage();
+  /* drawn, not typed: neither U+2190 nor U+2192 exists in Thmanyah Sans, so a
+     literal arrow fell through to the system UI face mid-line */
+  const flip = (lang === "ar") !== back;
+  return (
+    <svg
+      width="16"
+      height="11"
+      viewBox="0 0 16 11"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+      style={{ transform: flip ? "scaleX(-1)" : undefined, flex: "0 0 auto" }}
+    >
+      <path
+        d="M1 5.5h13M10.4 1.6 14.3 5.5l-3.9 3.9"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function ShowcaseVisual({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const viz = CHROME[lang].viz;
   const s = {
     display: "block",
     width: "100%",
@@ -545,13 +672,13 @@ function ShowcaseVisual({ project }: { project: ProjectData }) {
         <rect x="210" y="12" width="72" height="18" rx="9" fill={`${project.accent}22`} />
         <ellipse cx="280" cy="172" rx="68" ry="50" fill={`${project.accent}1C`} stroke={project.accent} strokeWidth="1.5" strokeOpacity="0.5" />
         <ellipse cx="280" cy="172" rx="40" ry="30" fill={`${project.accent}32`} />
-        <text x="280" y="178" textAnchor="middle" fontSize="15" fontWeight="700" fill={project.accent} fillOpacity="0.9">CX Cloud</text>
+        <text x="280" y="178" textAnchor="middle" fontSize="15" fontWeight="700" fill={project.accent} fillOpacity="0.9">{viz.cxCloud}</text>
         {[
-          {cx:88,cy:118,label:"Sales"},
-          {cx:88,cy:218,label:"Service"},
-          {cx:472,cy:118,label:"Commerce"},
-          {cx:472,cy:218,label:"Marketing"},
-          {cx:280,cy:62,label:"Data"},
+          {cx:88,cy:118,label:viz.sales},
+          {cx:88,cy:218,label:viz.service},
+          {cx:472,cy:118,label:viz.commerce},
+          {cx:472,cy:218,label:viz.marketing},
+          {cx:280,cy:62,label:viz.data},
         ].map(({cx,cy,label},i)=>(
           <g key={i}>
             <line x1={cx} y1={cy} x2={280} y2={172} stroke={project.accent} strokeWidth="1" strokeOpacity="0.3" strokeDasharray="5 3" />
@@ -591,7 +718,7 @@ function ShowcaseVisual({ project }: { project: ProjectData }) {
         </g>
       ))}
       <circle cx="280" cy="90" r="44" stroke={project.accent} strokeWidth="1" strokeOpacity="0.18" fill="none" />
-      {[[280,288,"Saudi Banks"],[76,288,"Open API"],[464,288,"Real-time"]].map(([x,y,label],i)=>(
+      {([[280,288,viz.saudiBanks],[76,288,viz.openApi],[464,288,viz.realTime]] as const).map(([x,y,label],i)=>(
         <text key={i} x={x} y={y} textAnchor="middle" fontSize="11.5" fontWeight="500"
           fill={project.accent} fillOpacity="0.62">{label}</text>
       ))}
@@ -600,6 +727,8 @@ function ShowcaseVisual({ project }: { project: ProjectData }) {
 }
 
 function ProjectInfoSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   return (
     <section style={{ paddingTop: "clamp(64px, 8vw, 112px)" }}>
       <FadeIn>
@@ -613,7 +742,7 @@ function ProjectInfoSection({ project }: { project: ProjectData }) {
           className="detail-info-grid"
         >
           <div>
-            <SectionLabel accent={project.accent}>Overview</SectionLabel>
+            <SectionLabel accent={project.accent}>{chrome.overview}</SectionLabel>
             <p
               style={{
                 fontSize: "clamp(15px, 1.2vw, 17px)",
@@ -627,12 +756,12 @@ function ProjectInfoSection({ project }: { project: ProjectData }) {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <SectionLabel accent={project.accent}>Project Details</SectionLabel>
+            <SectionLabel accent={project.accent}>{chrome.projectDetails}</SectionLabel>
             {[
-              { label: "Duration", value: project.duration },
-              { label: "Role", value: project.role },
-              { label: "Year", value: project.year },
-              { label: "Tools", value: project.tools.join(", ") },
+              { label: chrome.duration, value: project.duration },
+              { label: chrome.role, value: project.role },
+              { label: chrome.year, value: project.year },
+              { label: chrome.tools, value: project.tools.join("، ") },
             ].map(({ label, value }) => (
               <div
                 key={label}
@@ -681,10 +810,12 @@ function ProjectInfoSection({ project }: { project: ProjectData }) {
 }
 
 function ProblemSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   return (
     <section>
       <FadeIn>
-        <SectionLabel accent={project.accent}>The Problem</SectionLabel>
+        <SectionLabel accent={project.accent}>{chrome.problem}</SectionLabel>
         <blockquote
           style={{
             fontSize: "clamp(20px, 2.4vw, 32px)",
@@ -706,10 +837,12 @@ function ProblemSection({ project }: { project: ProjectData }) {
 }
 
 function GoalSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   return (
     <section>
       <FadeIn>
-        <SectionLabel accent={project.accent}>The Goal</SectionLabel>
+        <SectionLabel accent={project.accent}>{chrome.goal}</SectionLabel>
         <div
           style={{
             background: `${project.accent}0C`,
@@ -736,10 +869,12 @@ function GoalSection({ project }: { project: ProjectData }) {
 }
 
 function ResearchSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   return (
     <section>
       <FadeIn>
-        <SectionLabel accent={project.accent}>Research Insights</SectionLabel>
+        <SectionLabel accent={project.accent}>{chrome.research}</SectionLabel>
         <h2
           style={{
             fontSize: "clamp(24px, 3vw, 40px)",
@@ -751,7 +886,7 @@ function ResearchSection({ project }: { project: ProjectData }) {
             transition: "color 0.45s ease",
           }}
         >
-          What the research revealed.
+          {chrome.researchHeading}
         </h2>
       </FadeIn>
 
@@ -817,16 +952,18 @@ function ResearchSection({ project }: { project: ProjectData }) {
 }
 
 function DesignProcessSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   const steps = [
-    { step: "01", title: "Wireframes", description: project.designProcess.wireframes },
-    { step: "02", title: "User Flows", description: project.designProcess.userFlows },
-    { step: "03", title: "Iterations", description: project.designProcess.iterations },
+    { step: "01", title: chrome.wireframes, description: project.designProcess.wireframes },
+    { step: "02", title: chrome.userFlows, description: project.designProcess.userFlows },
+    { step: "03", title: chrome.iterations, description: project.designProcess.iterations },
   ];
 
   return (
     <section>
       <FadeIn>
-        <SectionLabel accent={project.accent}>Design Process</SectionLabel>
+        <SectionLabel accent={project.accent}>{chrome.process}</SectionLabel>
         <h2
           style={{
             fontSize: "clamp(24px, 3vw, 40px)",
@@ -838,7 +975,7 @@ function DesignProcessSection({ project }: { project: ProjectData }) {
             transition: "color 0.45s ease",
           }}
         >
-          How it was built.
+          {chrome.processHeading}
         </h2>
       </FadeIn>
 
@@ -910,10 +1047,12 @@ function DesignProcessSection({ project }: { project: ProjectData }) {
 }
 
 function FinalSolutionSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   return (
     <section>
       <FadeIn>
-        <SectionLabel accent={project.accent}>Final Solution</SectionLabel>
+        <SectionLabel accent={project.accent}>{chrome.solution}</SectionLabel>
         <h2
           style={{
             fontSize: "clamp(24px, 3vw, 40px)",
@@ -925,7 +1064,7 @@ function FinalSolutionSection({ project }: { project: ProjectData }) {
             transition: "color 0.45s ease",
           }}
         >
-          The delivered product.
+          {chrome.solutionHeading}
         </h2>
         <p
           style={{
@@ -1043,10 +1182,12 @@ function FinalSolutionSection({ project }: { project: ProjectData }) {
 }
 
 function DesignDecisionsSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   return (
     <section>
       <FadeIn>
-        <SectionLabel accent={project.accent}>Design Decisions</SectionLabel>
+        <SectionLabel accent={project.accent}>{chrome.decisions}</SectionLabel>
         <h2
           style={{
             fontSize: "clamp(24px, 3vw, 40px)",
@@ -1058,7 +1199,7 @@ function DesignDecisionsSection({ project }: { project: ProjectData }) {
             transition: "color 0.45s ease",
           }}
         >
-          Why these choices were made.
+          {chrome.decisionsHeading}
         </h2>
       </FadeIn>
 
@@ -1093,7 +1234,7 @@ function DesignDecisionsSection({ project }: { project: ProjectData }) {
                     letterSpacing: "0.04em",
                   }}
                 >
-                  Decision {String(i + 1).padStart(2, "0")}
+                  {chrome.decision} {String(i + 1).padStart(2, "0")}
                 </div>
                 <h3
                   style={{
@@ -1127,10 +1268,12 @@ function DesignDecisionsSection({ project }: { project: ProjectData }) {
 }
 
 function OutcomesSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   return (
     <section>
       <FadeIn>
-        <SectionLabel accent={project.accent}>Outcomes</SectionLabel>
+        <SectionLabel accent={project.accent}>{chrome.outcomes}</SectionLabel>
         <h2
           style={{
             fontSize: "clamp(24px, 3vw, 40px)",
@@ -1142,7 +1285,7 @@ function OutcomesSection({ project }: { project: ProjectData }) {
             transition: "color 0.45s ease",
           }}
         >
-          The results.
+          {chrome.resultsHeading}
         </h2>
       </FadeIn>
 
@@ -1202,10 +1345,12 @@ function OutcomesSection({ project }: { project: ProjectData }) {
 }
 
 function ReflectionSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   return (
     <section style={{ paddingBottom: "clamp(64px, 8vw, 112px)" }}>
       <FadeIn>
-        <SectionLabel accent={project.accent}>Reflection & Next Steps</SectionLabel>
+        <SectionLabel accent={project.accent}>{chrome.reflection}</SectionLabel>
         <div
           style={{
             display: "grid",
@@ -1227,7 +1372,7 @@ function ReflectionSection({ project }: { project: ProjectData }) {
                 transition: "color 0.45s ease",
               }}
             >
-              What I learned.
+              {chrome.learnedHeading}
             </h2>
             <p
               style={{
@@ -1253,7 +1398,7 @@ function ReflectionSection({ project }: { project: ProjectData }) {
                 transition: "color 0.45s ease",
               }}
             >
-              Next Steps
+              {chrome.nextStepsHeading}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {project.nextSteps.map((step, i) => (
@@ -1312,6 +1457,8 @@ function ReflectionSection({ project }: { project: ProjectData }) {
 }
 
 function NextProjectSection({ project }: { project: ProjectData }) {
+  const { lang } = useLanguage();
+  const chrome = CHROME[lang];
   const ref = useRef<HTMLElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
@@ -1340,7 +1487,7 @@ function NextProjectSection({ project }: { project: ProjectData }) {
             transition: "color 0.45s ease",
           }}
         >
-          Next Project
+          {chrome.nextProject}
         </p>
 
         <Link href={`/projects/${project.slug}`} style={{ textDecoration: "none", display: "block" }}>
@@ -1399,7 +1546,7 @@ function NextProjectSection({ project }: { project: ProjectData }) {
                 flexShrink: 0,
               }}
             >
-              →
+              <CaseArrow />
             </div>
           </motion.div>
         </Link>

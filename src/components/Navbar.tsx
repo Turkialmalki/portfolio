@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   LuHouse,
-  LuFileText,
   LuBriefcase,
   LuSparkles,
   LuUserRound,
@@ -13,19 +12,30 @@ import {
   LuMail,
 } from "react-icons/lu";
 import { useLanguage } from "@/i18n/LanguageProvider";
+import { SHOW_PROJECTS } from "@/config/siteFlags";
+
+/* Mounted-only render, without a setState-in-effect: the server snapshot is
+   false, the client snapshot true, and React swaps them after hydration. */
+const NEVER = () => () => {};
+const useMounted = () =>
+  useSyncExternalStore(
+    NEVER,
+    () => true,
+    () => false,
+  );
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const { t } = useLanguage();
-
-  useEffect(() => setMounted(true), []);
 
   const NAV_ITEMS = [
     { Icon: LuHouse, label: t.nav.home, href: "/" },
-    // { Icon: LuFileText, label: t.nav.career, href: "/career" },
-    { Icon: LuBriefcase, label: t.nav.portfolio, href: "/projects" },
+    // Dropped entirely — not merely hidden — when the portfolio is not public.
+    ...(SHOW_PROJECTS
+      ? [{ Icon: LuBriefcase, label: t.nav.portfolio, href: "/projects" }]
+      : []),
     { Icon: LuSparkles, label: t.nav.services, href: "/services" },
     { Icon: LuUserRound, label: t.nav.about, href: "/about" },
     { Icon: LuNewspaper, label: t.nav.blog, href: "/blog" },

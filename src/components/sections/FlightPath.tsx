@@ -81,18 +81,30 @@ type Stop = {
   badges?: Badge[];
   metrics?: Metric[];
   highlights?: Bi[];
-  tags?: string[];
+  /**
+   * A product or technology name is written the same way in both scripts and
+   * stays a plain string; anything that is a normal noun is translated.
+   */
+  tags?: (string | Bi)[];
   proof?: Proof[];
   /** Shared frame ratio for this stop's proof cards. */
   ratio?: number;
   link?: { label: Bi; href: string; external?: boolean };
   /** Credential chips — only the practice interlude carries them. */
   credentials?: boolean;
+  /**
+   * How this stop is composed. Career roles put their single proof card
+   * BESIDE the copy so the evidence sits inside the milestone instead of far
+   * below it; the award stop has its own badge-and-photograph composition;
+   * everything else stacks a row of cards under the copy.
+   */
+  layout?: "split" | "award" | "stack";
 };
 
 const STOPS: Stop[] = [
   {
     id: "aramco",
+    layout: "split",
     year: "2018",
     period: { ar: "2018", en: "2018" },
     org: { ar: "أرامكو السعودية", en: "Saudi Aramco" },
@@ -113,6 +125,7 @@ const STOPS: Stop[] = [
   },
   {
     id: "awards",
+    layout: "award",
     anchor: "trophy",
     period: { ar: "نموّ مستمر", en: "Continuous growth" },
     org: { ar: "جوائز وتأسيس أكاديمي", en: "Awards & foundation" },
@@ -138,6 +151,7 @@ const STOPS: Stop[] = [
   },
   {
     id: "alrajhi",
+    layout: "split",
     year: "2019",
     period: { ar: "أغسطس 2019 — يوليو 2022", en: "Aug 2019 — Jul 2022" },
     org: { ar: "مصرف الراجحي", en: "Al Rajhi Bank" },
@@ -153,10 +167,12 @@ const STOPS: Stop[] = [
       { value: "+90%", label: { ar: "زيادة في التحميلات", en: "more downloads" } },
     ],
     tags: ["React Native", "JavaScript", "Redux", "Figma"],
-    ratio: 1.4,
+    ratio: 1.05,
     proof: [
       {
-        src: "/hero/alrajhi.jpg",
+        /* tighter crop of the same plate: the devices fill the frame instead of
+           floating in a field of empty backdrop */
+        src: "/hero/alrajhi-pair.jpg",
         label: { ar: "تطبيق مصرف الراجحي", en: "Al Rajhi mobile banking" },
         meta: { ar: "خدمات مصرفية للأفراد", en: "Retail banking" },
       },
@@ -164,6 +180,7 @@ const STOPS: Stop[] = [
   },
   {
     id: "emkan",
+    layout: "split",
     year: "2022",
     period: { ar: "يوليو 2022 — أكتوبر 2024", en: "Jul 2022 — Oct 2024" },
     org: { ar: "إمكان", en: "Emkan" },
@@ -227,6 +244,7 @@ const STOPS: Stop[] = [
   },
   {
     id: "monshaat",
+    layout: "split",
     year: "2024",
     period: { ar: "أكتوبر 2024 — الآن", en: "Oct 2024 — Today" },
     org: { ar: "منشآت — مركز الابتكار", en: "Monsha'at — Innovation Center" },
@@ -244,7 +262,12 @@ const STOPS: Stop[] = [
       { ar: "برامج الابتكار ودعم الشركات الناشئة", en: "Innovation and startup programs" },
       { ar: "استشارات وإرشاد للفرق", en: "Consulting and mentoring" },
     ],
-    tags: ["Next.js", "NoCoDB", "Metabase", "AI tools"],
+    tags: [
+      "Next.js",
+      "NoCoDB",
+      "Metabase",
+      { ar: "أدوات الذكاء الاصطناعي", en: "AI tools" },
+    ],
     ratio: 1.62,
     proof: [
       {
@@ -286,6 +309,7 @@ const STOPS: Stop[] = [
   },
   {
     id: "film",
+    layout: "split",
     year: "2026",
     period: { ar: "2026", en: "2026" },
     org: { ar: "مسرّعة أعمال الأفلام", en: "Film Business Accelerator" },
@@ -343,6 +367,7 @@ const COPY = {
     span: "2018 — اليوم",
     years: "‎+9 سنوات",
     departure: "الإقلاع · 2018",
+    arrivalKicker: "الوجهة الحالية",
     arrival: "اليوم",
     arrivalLine: "الرحلة مستمرة — والمحطة القادمة قد تكون معك.",
     arrivalCta: "لنتحدث",
@@ -358,6 +383,7 @@ const COPY = {
     span: "2018 — Today",
     years: "9+ years",
     departure: "Departure · 2018",
+    arrivalKicker: "Arrival",
     arrival: "Today",
     arrivalLine: "The journey continues — the next stop could be yours.",
     arrivalCta: "Let's talk",
@@ -450,6 +476,63 @@ export default function FlightPath() {
   const planeY = useTransform(progress, [0, 1], [0, rail.height]);
   const planeOpacity = useTransform(progress, [0, 0.015, 0.985, 1], [0, 1, 1, 0]);
 
+  /**
+   * Exactly one stop is "current" at a time. Each row reports when it owns the
+   * reading band; the newest claim wins, which is what a reader scrolling in
+   * either direction expects. Everything before it is drawn as flown, so the
+   * route reads as travelled rather than as a list that faded in.
+   */
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [chipOn, setChipOn] = useState(false);
+  const rowsRef = useRef<Array<HTMLLIElement | null>>([]);
+
+  /**
+   * The current stop is the last one whose head has crossed the reading line.
+   *
+   * An in-view test per row cannot do this: several stops here are taller than
+   * the viewport, so no single "N% visible" threshold is ever satisfied by all
+   * of them, and the indicator would stall on whichever one happened to fit.
+   */
+  useEffect(() => {
+    let frame = 0;
+    const sync = () => {
+      frame = 0;
+      const line = window.innerHeight * 0.42;
+      let next = -1;
+      rowsRef.current.forEach((row, index) => {
+        if (row && row.getBoundingClientRect().top <= line) next = index;
+      });
+      setActiveIndex((prev) => (prev === next ? prev : next));
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(sync);
+    };
+    sync();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  // The progress chip belongs to this section only.
+  useEffect(() => {
+    const node = routeRef.current;
+    if (!node) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setChipOn(entry.isIntersecting),
+      { rootMargin: "-18% 0px -22% 0px" },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, []);
+
+  const shownIndex = Math.min(Math.max(activeIndex, 0), STOPS.length - 1);
+  const activeStop = STOPS[shownIndex];
+  const pad = (n: number) => String(n).padStart(2, "0");
+
   return (
     <section
       className="fp"
@@ -460,6 +543,23 @@ export default function FlightPath() {
       <div className="fp-field" aria-hidden="true">
         <div className="fp-dots" />
         <div className="fp-glow" />
+      </div>
+
+      {/* Where the reader is on the route. Fixed, tiny, and out of the way —
+          it never takes the scroll, it only reports it. */}
+      <div className="fp-progress" data-on={chipOn ? "1" : "0"} aria-hidden="true">
+        <span className="fp-progress-count">
+          <b>{pad(shownIndex + 1)}</b>
+          <i>/</i>
+          {pad(STOPS.length)}
+        </span>
+        <span className="fp-progress-label">{activeStop.org[lang]}</span>
+        <span className="fp-progress-track">
+          <span
+            className="fp-progress-fill"
+            style={{ height: `${((shownIndex + 1) / STOPS.length) * 100}%` }}
+          />
+        </span>
       </div>
 
       <div className="fp-inner">
@@ -496,6 +596,9 @@ export default function FlightPath() {
               style={reduced ? { scaleY: 1 } : { scaleY: fillScale }}
             />
             {!reduced && rail.height > 0 && (
+              <motion.span className="fp-rail-glow" style={{ y: planeY }} />
+            )}
+            {!reduced && rail.height > 0 && (
               <motion.span
                 className="fp-plane"
                 style={{ y: planeY, opacity: planeOpacity }}
@@ -515,11 +618,24 @@ export default function FlightPath() {
               <StopRow
                 key={stop.id}
                 stop={stop}
-                index={index}
                 lang={lang}
                 copy={copy}
                 reduced={Boolean(reduced)}
                 t={t}
+                state={
+                  index === activeIndex
+                    ? "active"
+                    : index < activeIndex
+                      ? "past"
+                      : "future"
+                }
+                /* the stop opens when the route reaches it, not when it
+                   happens to enter the viewport: the plane arriving IS the
+                   trigger, which is what makes the timeline read as travelled */
+                revealed={index <= activeIndex}
+                registerRow={(node) => {
+                  rowsRef.current[index] = node;
+                }}
                 registerDot={(node) => {
                   dotsRef.current[index] = node;
                 }}
@@ -534,9 +650,12 @@ export default function FlightPath() {
             viewport={{ once: true, amount: 0.5 }}
             transition={{ duration: 0.6, ease: EASE }}
           >
-            <span className="fp-arrival-mark" aria-hidden="true" />
+            <span className="fp-arrival-mark" aria-hidden="true">
+              <PlaneGlyph size={13} />
+            </span>
             <div className="fp-arrival-card">
               <div className="fp-arrival-copy">
+                <span className="fp-arrival-kicker">{copy.arrivalKicker}</span>
                 <strong>{copy.arrival}</strong>
                 <p>{copy.arrivalLine}</p>
               </div>
@@ -563,115 +682,218 @@ export default function FlightPath() {
 /* One stop                                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Reveal choreography. One container, one order: the year lands, then the
+ * identity, then the role, then the copy, then the evidence — which is the
+ * order a person reads a milestone in anyway.
+ */
+const ROW = {
+  hidden: {},
+  shown: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
+};
+
+const RISE = {
+  hidden: { opacity: 0, y: 18 },
+  shown: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE } },
+};
+
+const POP = {
+  hidden: { opacity: 0, scale: 0.6 },
+  shown: {
+    opacity: 1,
+    scale: 1,
+    transition: { type: "spring" as const, stiffness: 320, damping: 20 },
+  },
+};
+
 function StopRow({
   stop,
-  index,
   lang,
   copy,
   reduced,
   t,
+  state,
+  revealed,
+  registerRow,
   registerDot,
 }: {
   stop: Stop;
-  index: number;
   lang: "ar" | "en";
   copy: (typeof COPY)["ar"];
   reduced: boolean;
   t: ReturnType<typeof useLanguage>["t"];
+  state: "past" | "active" | "future";
+  revealed: boolean;
+  registerRow: (node: HTMLLIElement | null) => void;
   registerDot: (node: HTMLSpanElement | null) => void;
 }) {
-  const ref = useRef<HTMLLIElement>(null);
-  /* Emphasis follows the reader: a stop is "active" while it owns the middle
-     band of the viewport, which is also what the travelling plane is passing. */
-  const active = useInView(ref, { amount: 0.35, margin: "-22% 0px -30% 0px" });
   const AnchorIcon = stop.anchor === "trophy" ? LuTrophy : LuSparkles;
+
+  const layout = stop.layout ?? "stack";
+  /* Cards emerge from behind the route, so they travel outward — which is the
+     opposite direction in each script. */
+  const outward = lang === "ar" ? -26 : 26;
 
   return (
     <motion.li
-      ref={ref}
+      ref={registerRow}
       className="fp-stop"
-      data-active={active ? "1" : "0"}
+      data-state={state}
       data-kind={stop.year ? "role" : "interlude"}
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.25 }}
-      transition={reduced ? { duration: 0 } : { duration: 0.66, ease: EASE }}
+      data-layout={layout}
+      variants={ROW}
+      initial="hidden"
+      animate={revealed || reduced ? "shown" : "hidden"}
     >
-      <span className="fp-year" aria-hidden="true">
+      <motion.span className="fp-year" aria-hidden="true" variants={RISE}>
         {stop.year ?? <AnchorIcon size={17} />}
-      </span>
+      </motion.span>
 
       <span className="fp-node" aria-hidden="true">
-        <motion.span
-          ref={registerDot}
-          className="fp-dot"
-          initial={{ scale: 0.2, opacity: 0 }}
-          whileInView={{ scale: 1, opacity: 1 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={
-            reduced
-              ? { duration: 0 }
-              : { type: "spring", stiffness: 300, damping: 20, delay: 0.08 }
-          }
-        />
+        <motion.span ref={registerDot} className="fp-dot" variants={POP}>
+          <span className="fp-dot-core" />
+        </motion.span>
       </span>
 
       <div className="fp-body">
-        <div className="fp-org-row">
-          {stop.logo && (
-            <span className="fp-logo" data-fit={stop.logoFit ?? "contain"}>
-              <Image src={stop.logo} alt="" fill sizes="48px" />
-            </span>
+        <div className="fp-copy">
+          <motion.div className="fp-org-row" variants={RISE}>
+            {stop.logo && (
+              <span className="fp-logo" data-fit={stop.logoFit ?? "contain"}>
+                <Image src={stop.logo} alt="" fill sizes="48px" />
+              </span>
+            )}
+            <h3 className="fp-org">
+              {stop.org[lang]}
+              {stop.current && <em className="fp-now">{copy.now}</em>}
+            </h3>
+          </motion.div>
+
+          <motion.p className="fp-role" variants={RISE}>
+            {stop.role[lang]}
+          </motion.p>
+          <motion.p className="fp-period" variants={RISE}>
+            {stop.period[lang]}
+          </motion.p>
+          <motion.p className="fp-summary" variants={RISE}>
+            {stop.summary[lang]}
+          </motion.p>
+
+          {stop.metrics && (
+            <motion.div className="fp-metrics" variants={ROW}>
+              {stop.metrics.map((metric) => (
+                <motion.div
+                  key={metric.value + metric.label.en}
+                  variants={RISE}
+                  className="fp-metric-slot"
+                >
+                  <MetricCounter metric={metric} lang={lang} reduced={reduced} />
+                </motion.div>
+              ))}
+            </motion.div>
           )}
-          <h3 className="fp-org">
-            {stop.org[lang]}
-            {stop.current && <em className="fp-now">{copy.now}</em>}
-          </h3>
+
+          {stop.badges && (
+            <motion.ul className="fp-badges" variants={ROW}>
+              {stop.badges.map((badge) => {
+                const Icon = BADGE_ICON[badge.icon];
+                return (
+                  <motion.li key={badge.text.en} className="fp-badge" variants={POP}>
+                    <Icon size={13} />
+                    {badge.text[lang]}
+                  </motion.li>
+                );
+              })}
+            </motion.ul>
+          )}
+
+          {stop.highlights && (
+            <motion.ul className="fp-highlights" variants={ROW}>
+              {stop.highlights.map((item) => (
+                <motion.li key={item.en} variants={RISE}>
+                  {item[lang]}
+                </motion.li>
+              ))}
+            </motion.ul>
+          )}
+
+          {stop.tags && (
+            <motion.ul className="fp-tags" variants={ROW}>
+              {stop.tags.map((tag) => {
+                const text = typeof tag === "string" ? tag : tag[lang];
+                return (
+                  <motion.li key={typeof tag === "string" ? tag : tag.en} variants={POP}>
+                    {text}
+                  </motion.li>
+                );
+              })}
+            </motion.ul>
+          )}
+
+          {stop.credentials && (
+            <motion.div className="fp-credentials" variants={RISE}>
+              <span className="fp-cred-label">{copy.credentialsLabel}</span>
+              <motion.div className="fp-cred-row" variants={ROW}>
+                <CredentialChip
+                  index={0}
+                  href="https://play.google.com/store/apps/details?id=sme.bc.monshaat&hl=ar"
+                  title={t.hero.monshaatTitle}
+                  body={t.hero.monshaatBody}
+                  tag={t.hero.monshaatTag}
+                  medallion={
+                    <span className="fp-cred-logo">
+                      <Image src="/monshaat.jpg" alt="" fill sizes="42px" />
+                    </span>
+                  }
+                />
+                <CredentialChip
+                  index={1}
+                  href="https://learn.ihashplus.com/teacher"
+                  title={t.hero.ihashTitle}
+                  body={t.hero.ihashBody}
+                  tag={t.hero.ihashTag}
+                  medallion={
+                    <span className="fp-cred-logo fp-cred-logo-mark">
+                      <LuGraduationCap size={18} />
+                    </span>
+                  }
+                />
+              </motion.div>
+            </motion.div>
+          )}
+
+          {stop.link &&
+            (stop.link.external ? (
+              <motion.a
+                className="fp-link"
+                variants={RISE}
+                href={stop.link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackEvent("flight_path_link_click", { stop: stop.id })}
+              >
+                {stop.link.label[lang]}
+                <LinkArrow />
+              </motion.a>
+            ) : (
+              <motion.div variants={RISE} className="fp-link-slot">
+                <Link
+                  className="fp-link"
+                  href={stop.link.href}
+                  onClick={() => trackEvent("flight_path_link_click", { stop: stop.id })}
+                >
+                  {stop.link.label[lang]}
+                  <LinkArrow />
+                </Link>
+              </motion.div>
+            ))}
         </div>
 
-        <p className="fp-role">{stop.role[lang]}</p>
-        <p className="fp-period">{stop.period[lang]}</p>
-        <p className="fp-summary">{stop.summary[lang]}</p>
-
-        {stop.metrics && (
-          <div className="fp-metrics">
-            {stop.metrics.map((metric) => (
-              <MetricCounter
-                key={metric.value + metric.label.en}
-                metric={metric}
-                lang={lang}
-                reduced={reduced}
-              />
-            ))}
-          </div>
-        )}
-
-        {stop.badges && (
-          <ul className="fp-badges">
-            {stop.badges.map((badge) => {
-              const Icon = BADGE_ICON[badge.icon];
-              return (
-                <li key={badge.text.en} className="fp-badge">
-                  <Icon size={13} />
-                  {badge.text[lang]}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {stop.highlights && (
-          <ul className="fp-highlights">
-            {stop.highlights.map((item) => (
-              <li key={item.en}>{item[lang]}</li>
-            ))}
-          </ul>
-        )}
-
         {stop.proof && (
-          <div
+          <motion.div
             className="fp-proofs"
             data-count={Math.min(stop.proof.length, 3)}
+            variants={ROW}
             style={{ "--fp-ar": String(stop.ratio ?? 1.6) } as CSSProperties}
           >
             {stop.proof.map((proof, proofIndex) => (
@@ -679,82 +901,13 @@ function StopRow({
                 key={proof.src}
                 proof={proof}
                 lang={lang}
-                reduced={reduced}
                 index={proofIndex}
-                stopIndex={index}
+                outward={outward}
+                clip={layout === "award"}
               />
             ))}
-          </div>
+          </motion.div>
         )}
-
-        {stop.tags && (
-          <ul className="fp-tags">
-            {stop.tags.map((tag) => (
-              <li key={tag}>{tag}</li>
-            ))}
-          </ul>
-        )}
-
-        {stop.credentials && (
-          <div className="fp-credentials">
-            <span className="fp-cred-label">{copy.credentialsLabel}</span>
-            <div className="fp-cred-row">
-              <CredentialChip
-                index={0}
-                href="https://play.google.com/store/apps/details?id=sme.bc.monshaat&hl=ar"
-                title={t.hero.monshaatTitle}
-                body={t.hero.monshaatBody}
-                tag={t.hero.monshaatTag}
-                reduced={reduced}
-                medallion={
-                  <span className="fp-cred-logo">
-                    <Image src="/monshaat.jpg" alt="" fill sizes="42px" />
-                  </span>
-                }
-              />
-              <CredentialChip
-                index={1}
-                href="https://learn.ihashplus.com/teacher"
-                title={t.hero.ihashTitle}
-                body={t.hero.ihashBody}
-                tag={t.hero.ihashTag}
-                reduced={reduced}
-                medallion={
-                  <span className="fp-cred-logo fp-cred-logo-mark">
-                    <LuGraduationCap size={18} />
-                  </span>
-                }
-              />
-            </div>
-          </div>
-        )}
-
-        {stop.link &&
-          (stop.link.external ? (
-            <a
-              className="fp-link"
-              href={stop.link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() =>
-                trackEvent("flight_path_link_click", { stop: stop.id })
-              }
-            >
-              {stop.link.label[lang]}
-              <span className="fp-link-arrow" aria-hidden="true" />
-            </a>
-          ) : (
-            <Link
-              className="fp-link"
-              href={stop.link.href}
-              onClick={() =>
-                trackEvent("flight_path_link_click", { stop: stop.id })
-              }
-            >
-              {stop.link.label[lang]}
-              <span className="fp-link-arrow" aria-hidden="true" />
-            </Link>
-          ))}
       </div>
     </motion.li>
   );
@@ -764,29 +917,63 @@ function StopRow({
 /* Proof card — the same frame language as the floating hero cards      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Proof cards animate as part of the row's sequence, not on their own trigger.
+ *
+ * They have to be variant-driven: a motion child inside a variant parent is
+ * handed the parent's variant LABEL, which silently overrides any object-based
+ * `whileInView` it declares for itself — the first version of this card kept
+ * its clip-path shut for exactly that reason.
+ */
+function proofVariants(outward: number, clip: boolean) {
+  return {
+    hidden: { opacity: 0, x: clip ? 0 : -outward, y: clip ? 18 : 10, scale: 0.97 },
+    shown: {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      scale: 1,
+      transition: { duration: 0.7, ease: EASE },
+    },
+  };
+}
+
+/** The award photograph wipes open from its own baseline instead of sliding. */
+const CLIP_IN = {
+  hidden: { clipPath: "inset(0 0 100% 0)", scale: 1.08 },
+  shown: {
+    clipPath: "inset(0 0 0% 0)",
+    scale: 1,
+    transition: { duration: 0.9, ease: EASE },
+  },
+};
+
 function ProofCard({
   proof,
   lang,
-  reduced,
   index,
-  stopIndex,
+  outward,
+  clip = false,
 }: {
   proof: Proof;
   lang: "ar" | "en";
-  reduced: boolean;
   index: number;
-  stopIndex: number;
+  /** px the card travels out from behind the route (sign follows the script) */
+  outward: number;
+  clip?: boolean;
 }) {
   const body = (
     <>
       <span className="fp-proof-frame">
-        <Image
-          src={proof.src}
-          alt={`${proof.label[lang]} — ${proof.meta[lang]}`}
-          fill
-          sizes="(max-width: 760px) 88vw, (max-width: 1080px) 44vw, 300px"
-          style={proof.pos ? { objectPosition: proof.pos } : undefined}
-        />
+        <motion.span className="fp-proof-img" variants={clip ? CLIP_IN : undefined}>
+          <Image
+            src={proof.src}
+            alt={`${proof.label[lang]} — ${proof.meta[lang]}`}
+            fill
+            sizes="(max-width: 760px) 88vw, (max-width: 1080px) 44vw, 340px"
+            style={proof.pos ? { objectPosition: proof.pos } : undefined}
+          />
+        </motion.span>
         <span className="fp-proof-sheen" aria-hidden="true" />
       </span>
       <span className="fp-proof-copy">
@@ -799,18 +986,8 @@ function ProofCard({
   return (
     <motion.div
       className="fp-proof"
-      initial={{ opacity: 0, y: 22, scale: 0.97 }}
-      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, amount: 0.3 }}
-      transition={
-        reduced
-          ? { duration: 0 }
-          : {
-              duration: 0.62,
-              ease: EASE,
-              delay: Math.min(index * 0.08 + (stopIndex % 2) * 0.02, 0.3),
-            }
-      }
+      variants={proofVariants(outward, clip)}
+      transition={{ delay: Math.min(index * 0.08, 0.24) }}
     >
       {proof.href ? (
         <a
@@ -923,7 +1100,6 @@ function CredentialChip({
   body,
   tag,
   medallion,
-  reduced,
 }: {
   index: number;
   href: string;
@@ -931,7 +1107,6 @@ function CredentialChip({
   body: string;
   tag: string;
   medallion: ReactNode;
-  reduced: boolean;
 }) {
   return (
     <motion.a
@@ -939,14 +1114,10 @@ function CredentialChip({
       target="_blank"
       rel="noopener noreferrer"
       className={`fp-cred fp-cred-${index + 1}`}
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.5 }}
-      transition={
-        reduced
-          ? { duration: 0 }
-          : { duration: 0.55, ease: EASE, delay: index * 0.08 }
-      }
+      /* Variant-driven, like every other child of a stop: an object-based
+         `whileInView` here would be overridden by the row's variant label. */
+      variants={RISE}
+      transition={{ delay: index * 0.07 }}
       onClick={() => trackEvent("credential_card_click", { href })}
     >
       <span className="fp-cred-medallion">{medallion}</span>
@@ -1023,6 +1194,29 @@ function RouteEntry({ railX, reduced }: { railX: number; reduced: boolean }) {
         </svg>
       )}
     </div>
+  );
+}
+
+/** Direction-aware link arrow: one glyph, mirrored by the script. */
+function LinkArrow() {
+  return (
+    <svg
+      className="fp-link-arrow"
+      width="15"
+      height="10"
+      viewBox="0 0 15 10"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M1 5h12M9.4 1.2 13.2 5l-3.8 3.8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -1142,7 +1336,7 @@ const STYLES = `
   .fp-title {
     margin: 0;
     font-size: clamp(32px, 4.4vw, 58px);
-    font-weight: 850;
+    font-weight: 900;
     line-height: 1.06;
     letter-spacing: -.042em;
     text-wrap: balance;
@@ -1196,8 +1390,26 @@ const STYLES = `
   .fp-rail-base { background: var(--fp-line); }
 
   .fp-rail-fill {
-    background: linear-gradient(to bottom, var(--fp-accent), rgba(30,143,255,.55));
+    background: linear-gradient(to bottom, var(--fp-accent), rgba(30,143,255,.62));
+    box-shadow: 0 0 14px rgba(30,143,255,.45);
     transform-origin: top;
+    will-change: transform;
+  }
+
+  /* The light the marker is carrying — the reason the line reads as being
+     drawn rather than as a bar filling up. */
+  .fp-rail-glow {
+    position: absolute;
+    inset-inline-start: 50%;
+    top: 0;
+    width: 90px;
+    height: 180px;
+    margin-inline-start: -45px;
+    margin-top: -90px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, var(--fp-accent-soft) 0%, transparent 68%);
+    opacity: .85;
+    pointer-events: none;
     will-change: transform;
   }
 
@@ -1265,6 +1477,13 @@ const STYLES = `
 
   .fp-stop:last-child { padding-bottom: clamp(30px, 3.4vw, 48px); }
 
+  /* Flown, flying, still ahead. The past stays legible — it is evidence, not
+     history to be hidden — it simply stops competing with the live one. */
+  .fp-stop { transition: opacity 420ms ease; }
+  .fp-stop[data-state="past"] { opacity: .58; }
+  .fp-stop[data-state="future"] { opacity: .82; }
+  .fp-stop[data-state="active"] { opacity: 1; }
+
   .fp-year {
     display: flex;
     align-items: flex-start;
@@ -1272,39 +1491,90 @@ const STYLES = `
     padding-top: 2px;
     color: var(--text-muted, #888);
     font-size: clamp(15px, 1.5vw, 19px);
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: -.02em;
     font-variant-numeric: tabular-nums;
     transition: color 320ms ease;
   }
 
-  .fp-stop[data-active="1"] .fp-year { color: var(--fp-accent); }
+  .fp-stop[data-state="active"] .fp-year { color: var(--fp-accent); }
+  .fp-stop[data-state="past"] .fp-year { color: var(--text-muted, #888); }
 
   .fp-node { position: relative; display: flex; justify-content: center; padding-top: 5px; }
 
   .fp-dot {
     position: relative;
-    width: 13px;
-    height: 13px;
+    display: grid;
+    place-items: center;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     background: var(--bg-primary, #fff);
     border: 2px solid var(--fp-line);
-    transition: border-color 320ms ease, box-shadow 320ms ease, transform 320ms cubic-bezier(.16,1,.3,1);
+    transition:
+      border-color 360ms ease,
+      box-shadow 360ms ease,
+      transform 420ms cubic-bezier(.16,1,.3,1);
   }
 
-  .fp-stop[data-active="1"] .fp-dot {
-    border-color: var(--fp-accent);
-    box-shadow: 0 0 0 5px var(--fp-accent-soft);
-    transform: scale(1.12);
+  .fp-dot-core {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--fp-accent);
+    opacity: 0;
+    transform: scale(.4);
+    transition: opacity 320ms ease, transform 420ms cubic-bezier(.16,1,.3,1);
   }
+
+  .fp-stop[data-state="past"] .fp-dot { border-color: var(--fp-accent); }
+  .fp-stop[data-state="past"] .fp-dot-core { opacity: .85; transform: scale(1); }
+
+  .fp-stop[data-state="active"] .fp-dot {
+    border-color: var(--fp-accent);
+    box-shadow: 0 0 0 6px var(--fp-accent-soft), 0 0 18px rgba(30,143,255,.35);
+    transform: scale(1.28);
+  }
+
+  .fp-stop[data-state="active"] .fp-dot-core { opacity: 1; transform: scale(1); }
 
   .fp-stop[data-kind="interlude"] .fp-dot {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
     margin-top: 2px;
   }
 
   .fp-body { min-width: 0; max-width: 880px; padding-top: 0; }
+
+  .fp-copy { min-width: 0; }
+
+  /* A career role keeps its single proof card BESIDE the copy: the evidence
+     belongs to the milestone, not to the whitespace under it. */
+  .fp-stop[data-layout="split"] .fp-body,
+  .fp-stop[data-layout="award"] .fp-body {
+    display: grid;
+    /* The copy column is capped at its own readable measure so the evidence
+       sits right beside the sentence it belongs to, with no corridor of white
+       opening up between them on a wide screen. */
+    grid-template-columns: minmax(0, 560px) minmax(0, 330px);
+    justify-content: start;
+    column-gap: clamp(20px, 2.6vw, 38px);
+    align-items: start;
+    max-width: 1010px;
+  }
+
+  .fp-stop[data-layout="award"] .fp-body { align-items: center; }
+
+  .fp-stop[data-layout="split"] .fp-proofs,
+  .fp-stop[data-layout="award"] .fp-proofs {
+    margin-top: 4px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fp-stop[data-layout="award"] .fp-summary { max-width: 46ch; }
+
+  .fp-metric-slot { display: flex; }
+  .fp-link-slot { display: block; }
 
   .fp-org-row { display: flex; align-items: center; gap: 11px; }
 
@@ -1331,7 +1601,7 @@ const STYLES = `
   .fp-org {
     margin: 0;
     font-size: clamp(19px, 1.9vw, 25px);
-    font-weight: 820;
+    font-weight: 900;
     line-height: 1.2;
     letter-spacing: -.03em;
     text-wrap: balance;
@@ -1348,7 +1618,7 @@ const STYLES = `
     color: var(--fp-accent);
     font-size: 10.5px;
     font-style: normal;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: .04em;
     text-transform: uppercase;
     vertical-align: middle;
@@ -1367,7 +1637,7 @@ const STYLES = `
     margin: 3px 0 0;
     color: var(--text-muted, #888);
     font-size: 12.5px;
-    font-weight: 600;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
   }
 
@@ -1398,7 +1668,7 @@ const STYLES = `
   .fp-metric b {
     color: var(--text-primary, #0d0e12);
     font-size: 20px;
-    font-weight: 850;
+    font-weight: 900;
     letter-spacing: -.035em;
     font-variant-numeric: tabular-nums;
     line-height: 1.1;
@@ -1407,7 +1677,7 @@ const STYLES = `
   .fp-metric-label {
     color: var(--text-muted, #888);
     font-size: 11.5px;
-    font-weight: 620;
+    font-weight: 500;
   }
 
   .fp-sr {
@@ -1480,7 +1750,7 @@ const STYLES = `
     background: var(--bg-pill, #f1f1f1);
     color: var(--text-muted, #888);
     font-size: 11.5px;
-    font-weight: 680;
+    font-weight: 700;
   }
 
   /* ── proof cards ─────────────────────────────────────── */
@@ -1531,6 +1801,16 @@ const STYLES = `
     border: 1px solid var(--fp-card-border);
   }
 
+  /* The clip-reveal wrapper has to fill the frame itself: a next/image in
+     fill mode sizes against its nearest positioned ancestor, which is now
+     this span rather than the frame. */
+  .fp-proof-img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    will-change: clip-path, transform;
+  }
+
   .fp-proof-frame img { object-fit: cover; }
 
   .fp-proof-sheen {
@@ -1549,7 +1829,7 @@ const STYLES = `
   .fp-proof-copy strong {
     display: block;
     font-size: 13.5px;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: -.02em;
     line-height: 1.3;
   }
@@ -1561,7 +1841,7 @@ const STYLES = `
     margin-top: 3px;
     color: var(--text-muted, #888);
     font-size: 11.5px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.4;
   }
 
@@ -1574,7 +1854,7 @@ const STYLES = `
     margin-bottom: 10px;
     color: var(--text-muted, #888);
     font-size: 11px;
-    font-weight: 760;
+    font-weight: 700;
     letter-spacing: .09em;
     text-transform: uppercase;
   }
@@ -1632,7 +1912,7 @@ const STYLES = `
     align-items: center;
     gap: 6px;
     font-size: 13.5px;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: -.02em;
   }
 
@@ -1665,7 +1945,7 @@ const STYLES = `
     background: var(--text-primary, #0d0e12);
     color: var(--bg-primary, #fff);
     font-size: 13px;
-    font-weight: 760;
+    font-weight: 700;
     text-decoration: none;
     transition: transform 280ms cubic-bezier(.16,1,.3,1), box-shadow 280ms ease;
   }
@@ -1673,25 +1953,14 @@ const STYLES = `
   .fp-link:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(0,0,0,.18); }
 
   .fp-link-arrow {
-    width: 13px;
-    height: 1.5px;
-    background: currentColor;
-    position: relative;
+    flex: 0 0 auto;
+    transition: transform 280ms cubic-bezier(.16,1,.3,1);
   }
 
-  .fp-link-arrow::after {
-    content: "";
-    position: absolute;
-    inset-inline-end: 0;
-    top: -3px;
-    width: 7px;
-    height: 7px;
-    border-top: 1.5px solid currentColor;
-    border-inline-end: 1.5px solid currentColor;
-    transform: rotate(45deg);
-  }
+  [dir="rtl"] .fp-link-arrow { transform: scaleX(-1); }
 
-  [dir="rtl"] .fp-link-arrow::after { transform: rotate(-135deg); top: -3px; }
+  .fp-link:hover .fp-link-arrow { transform: translateX(3px); }
+  [dir="rtl"] .fp-link:hover .fp-link-arrow { transform: scaleX(-1) translateX(3px); }
 
   /* ── arrival ─────────────────────────────────────────── */
 
@@ -1727,17 +1996,44 @@ const STYLES = `
     position: relative;
   }
 
+  .fp-arrival-card { position: relative; }
+
   .fp-arrival-mark::before {
     content: "";
     position: absolute;
     inset-inline-start: 50%;
-    top: 0;
-    width: 13px;
-    height: 13px;
-    margin-inline-start: -6.5px;
+    top: -7px;
+    width: 27px;
+    height: 27px;
+    margin-inline-start: -13.5px;
     border-radius: 50%;
     background: var(--fp-accent);
-    box-shadow: 0 0 0 5px var(--fp-accent-soft);
+    box-shadow: 0 0 0 6px var(--fp-accent-soft), 0 8px 20px rgba(30,143,255,.4);
+  }
+
+  /* The marker has landed: the plane sits inside the final node. */
+  .fp-arrival-mark svg {
+    position: absolute;
+    inset-inline-start: 50%;
+    top: 0;
+    margin-inline-start: -6.5px;
+    color: #fff;
+  }
+
+  .fp-arrival-kicker {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--fp-accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  [dir="rtl"] .fp-arrival-kicker {
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: 12.5px;
   }
 
   .fp-arrival-copy { min-width: 0; flex: 1 1 240px; }
@@ -1745,7 +2041,7 @@ const STYLES = `
   .fp-arrival-copy strong {
     display: block;
     font-size: clamp(19px, 1.8vw, 24px);
-    font-weight: 840;
+    font-weight: 900;
     letter-spacing: -.03em;
   }
 
@@ -1767,7 +2063,7 @@ const STYLES = `
     background: var(--text-primary, #0d0e12);
     color: var(--bg-primary, #fff);
     font-size: 14px;
-    font-weight: 780;
+    font-weight: 700;
     text-decoration: none;
     box-shadow: 0 13px 30px rgba(0,0,0,.16);
     transition: transform 280ms cubic-bezier(.16,1,.3,1), box-shadow 280ms ease;
@@ -1775,7 +2071,103 @@ const STYLES = `
 
   .fp-arrival-cta:hover { transform: translateY(-2px); box-shadow: 0 18px 38px rgba(0,0,0,.2); }
 
+  /* ── progress chip ───────────────────────────────────── */
+
+  .fp-progress {
+    position: fixed;
+    z-index: 40;
+    inset-inline-start: clamp(14px, 2vw, 30px);
+    top: 50%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: var(--fp-card);
+    border: 1px solid var(--fp-card-border);
+    box-shadow: var(--fp-card-shadow);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    opacity: 0;
+    transform: translateY(-50%) translateX(calc(var(--fp-chip-dir, -1) * 12px));
+    pointer-events: none;
+    transition: opacity 420ms ease, transform 480ms cubic-bezier(.16,1,.3,1);
+  }
+
+  [dir="rtl"] .fp-progress { --fp-chip-dir: 1; }
+
+  .fp-progress[data-on="1"] {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+
+  .fp-progress-count {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    color: var(--text-muted, #888);
+    font-size: 11.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+  }
+
+  .fp-progress-count b {
+    color: var(--fp-accent);
+    font-size: 15px;
+    font-weight: 900;
+  }
+
+  .fp-progress-count i { font-style: normal; opacity: .5; }
+
+  .fp-progress-label {
+    max-width: 168px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--text-primary, #0d0e12);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .fp-progress-track {
+    position: relative;
+    width: 3px;
+    height: 26px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--fp-line);
+  }
+
+  .fp-progress-fill {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    display: block;
+    border-radius: 3px;
+    background: var(--fp-accent);
+    transition: height 480ms cubic-bezier(.16,1,.3,1);
+  }
+
   /* ── tablet ──────────────────────────────────────────── */
+
+  @media (max-width: 1080px) {
+    .fp-stop[data-layout="split"] .fp-body,
+    .fp-stop[data-layout="award"] .fp-body {
+      display: block;
+      max-width: 880px;
+    }
+
+    .fp-stop[data-layout="split"] .fp-proofs,
+    .fp-stop[data-layout="award"] .fp-proofs { margin-top: 20px; }
+
+    .fp-stop[data-layout="split"] .fp-proofs,
+    .fp-stop[data-layout="award"] .fp-proofs {
+      grid-template-columns: minmax(0, 340px);
+    }
+
+    .fp-progress { display: none; }
+  }
 
   @media (max-width: 900px) {
     .fp { --fp-year-w: clamp(54px, 8vw, 74px); --fp-node-w: 30px; }
@@ -1811,6 +2203,7 @@ const STYLES = `
     }
 
     .fp-arrival-card { padding: 18px; gap: 14px; }
+    .fp { padding-bottom: clamp(48px, 9vw, 72px); }
     .fp-highlights { grid-template-columns: 1fr; }
     .fp-proofs,
     .fp-proofs[data-count="1"],
@@ -1845,8 +2238,10 @@ const STYLES = `
       filter: none !important;
     }
 
-    .fp-plane { display: none; }
+    .fp-plane,
+    .fp-rail-glow { display: none; }
     .fp-rail-fill { transform: scaleY(1) !important; }
+    .fp-stop { opacity: 1 !important; }
     .fp-entry svg path { opacity: 1 !important; }
     .fp-proof-inner,
     .fp-cred,

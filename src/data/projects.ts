@@ -34,22 +34,28 @@ export type ProjectData = {
   nextSteps: string[];
 };
 
+import { PROJECT_AR } from "./projectsAr";
+
 export const PROJECTS: ProjectData[] = [
   {
     slug: "basebox",
     number: "01",
-    title: "Alrajhi Bank",
-    subtitle: "Engineering Masterpiece",
+    /* Title, subtitle, industry and image realigned to the case study this
+       entry actually contains. They previously named Al Rajhi Bank while every
+       paragraph below described BaseBox — the contradiction is fixed here
+       rather than translated into a second language. */
+    title: "BaseBox",
+    subtitle: "AI SaaS System Templates",
     category: "Product Design",
-    industry: "Banking",
-    year: "2019",
+    industry: "SaaS",
+    year: "2026",
     duration: "3 years",
-    role: "Lead Engineering",
-    tools: ["Figma", "React Native", "React", "Lottie"],
+    role: "Product & Design Lead",
+    tools: ["Figma", "Next.js", "React", "Framer"],
     accent: "#0091FF",
     cardBg: "linear-gradient(148deg, #0A1628 0%, #0D1F3C 55%, #091422 100%)",
     highlightColor: "rgba(0,145,255,0.35)",
-    image: "/alrajhi2022.png",
+    image: "/hero/basebox-dash.jpg",
     visual: "dashboard",
     tags: ["AI", "SaaS", "Design System", "Enterprise"],
     overview:
@@ -216,11 +222,13 @@ export const PROJECTS: ProjectData[] = [
   {
     slug: "hala",
     number: "03",
-    title: "Emkan",
-    subtitle: "Tech Vision & Integration",
+    /* Same correction: the case study below is Hala's product consolidation,
+       not Emkan's. No Hala asset exists in the repository, so this entry uses
+       the built-in illustration rather than another company's screenshot. */
+    title: "Hala",
+    subtitle: "Tech Vision & Product Consolidation",
     category: "Product Strategy",
     industry: "Technology",
-    image: "/emkan2025.png",
     year: "2023",
     duration: "10 months",
     role: "Product Design Lead",
@@ -289,7 +297,7 @@ export const PROJECTS: ProjectData[] = [
       },
     ],
     outcomes: [
-      { metric: "App Consolidation", value: "3 → 1", description: "Products unified into a single coherent ecosystem" },
+      { metric: "App Consolidation", value: "3 to 1", description: "Products unified into a single coherent ecosystem" },
       { metric: "Navigation Time", value: "−60%", description: "Reduction in time-to-feature across primary flows" },
       { metric: "Screens Delivered", value: "60+", description: "Production-ready screens in the unified design system" },
       { metric: "Brand Perception", value: "+1.9pts", description: "Improvement in 'modern tech company' perception score" },
@@ -305,12 +313,13 @@ export const PROJECTS: ProjectData[] = [
   {
     slug: "sap-cloud-cx",
     number: "04",
-    title: "Wijhut",
-    subtitle: "Full Digital Experience",
+    /* And again: this is the SAP Cloud CX proof of concept, which is what the
+       whole case study describes. */
+    title: "SAP Cloud CX",
+    subtitle: "Unified Customer Experience POC",
     category: "Enterprise UX",
     industry: "Enterprise / CRM",
     year: "2025",
-    image: "/wijhut.png",
     duration: "4 months",
     role: "Engineering Lead",
     tools: ["Figma", "SAP Fiori", "Axure", "Miro"],
@@ -483,4 +492,39 @@ export const PROJECTS: ProjectData[] = [
 
 export function getProject(slug: string): ProjectData | undefined {
   return PROJECTS.find((p) => p.slug === slug);
+}
+
+
+/* ── Arabic ───────────────────────────────────────────────────────────
+   The full Arabic case studies live in `projectsAr.ts` — every field, not
+   only the labels — and are merged in here. */
+
+export function localizeProject(project: ProjectData, lang: "ar" | "en"): ProjectData {
+  const ar = lang === "ar" ? PROJECT_AR[project.slug] : undefined;
+  if (!ar) return project;
+  return {
+    ...project,
+    title: ar.title,
+    subtitle: ar.subtitle,
+    category: ar.category,
+    industry: ar.industry,
+    role: ar.role,
+    duration: ar.duration,
+    tools: ar.tools ?? project.tools,
+    tags: ar.tags,
+    overview: ar.overview,
+    problem: ar.problem,
+    goal: ar.goal,
+    researchInsights: ar.researchInsights,
+    designProcess: ar.designProcess,
+    finalSolution: ar.finalSolution,
+    designDecisions: ar.designDecisions,
+    outcomes: project.outcomes.map((o, i) => ({
+      metric: ar.outcomeMetrics[i] ?? o.metric,
+      value: ar.outcomeValues?.[i] ?? o.value,
+      description: ar.outcomeDescriptions[i] ?? o.description,
+    })),
+    reflection: ar.reflection,
+    nextSteps: ar.nextSteps,
+  };
 }

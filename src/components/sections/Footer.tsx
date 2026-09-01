@@ -12,6 +12,7 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import { CONTACT } from "@/config/contact";
+import { SHOW_PROJECTS } from "@/config/siteFlags";
 
 type Bezier = [number, number, number, number];
 
@@ -74,6 +75,36 @@ const COPY = {
 //   { label: "404", href: "/404" },
 // ];
 
+/**
+ * The arrow is drawn, not typed.
+ *
+ * Thmanyah Sans has no U+2192, so a literal "→" fell through to the system UI
+ * face — one glyph in a different typeface, inside the button, which is the
+ * font mismatch that was visible in the footer. An SVG also mirrors properly
+ * for Arabic, which the character never did.
+ */
+function ArrowGlyph() {
+  return (
+    <svg
+      className="contact-button-arrow"
+      width="18"
+      height="12"
+      viewBox="0 0 18 12"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M1 6h15M11.6 1.4 16.2 6l-4.6 4.6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function Footer() {
   const ref = useRef<HTMLElement>(null);
   const { t, lang } = useLanguage();
@@ -81,7 +112,7 @@ export default function Footer() {
 
   const pageLinks = [
     { label: t.nav.home, href: "/" },
-    { label: t.nav.portfolio, href: "/projects" },
+    ...(SHOW_PROJECTS ? [{ label: t.nav.portfolio, href: "/projects" }] : []),
     { label: t.nav.services, href: "/services" },
     { label: t.nav.about, href: "/about" },
     { label: t.nav.blog, href: "/blog" },
@@ -156,7 +187,7 @@ export default function Footer() {
                 className="contact-button"
               >
                 {copy.cta}
-                <span aria-hidden="true" className="contact-button-arrow">→</span>
+                <ArrowGlyph />
               </Link>
             </motion.div>
           </div>
@@ -195,6 +226,7 @@ export default function Footer() {
           <div className="footer-main-row">
             <div className="footer-brand">
               <h3>{copy.brand}</h3>
+              <p className="footer-brand-role">{t.hero.eyebrow}</p>
 
               <div className="social-links">
                 {SOCIAL_LINKS.map(({ label, href, Icon, event }) => (
@@ -229,28 +261,21 @@ export default function Footer() {
               </div>
             </div>
 
-            <div className="footer-navigation">
-              <nav
-                className="footer-column"
-                aria-label="Footer pages"
-              >
-                <h4>{copy.pages}</h4>
-
-                {pageLinks.map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-
-         
-            </div>
           </div>
 
-          <p className="footer-copyright">{copy.copyright}</p>
+          {/* The links and the copyright share one baseline instead of a
+              column stranded on the far side of an empty card. */}
+          <div className="footer-rail">
+            <nav className="footer-links" aria-label={copy.pages}>
+              {pageLinks.map((item) => (
+                <Link key={item.label} href={item.href}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+
+            <p className="footer-copyright">{copy.copyright}</p>
+          </div>
         </motion.section>
       </div>
 
@@ -292,16 +317,25 @@ export default function Footer() {
           padding-inline: 46px 28px;
         }
 
-        [dir="rtl"] .contact-button-arrow {
-          display: inline-block;
-          transform: scaleX(-1);
+        .contact-button-arrow {
+          flex: 0 0 auto;
+          transition: transform 260ms cubic-bezier(.16,1,.3,1);
+        }
+
+        [dir="rtl"] .contact-button-arrow { transform: scaleX(-1); }
+
+        .contact-button:hover .contact-button-arrow { transform: translateX(3px); }
+        [dir="rtl"] .contact-button:hover .contact-button-arrow {
+          transform: scaleX(-1) translateX(3px);
         }
 
         .contact-copy h2 {
           margin: 0;
           color: var(--text-primary);
-          font-size: clamp(42px, 5vw, 64px);
-          font-weight: 800;
+          font-size: clamp(38px, 4.4vw, 56px);
+          /* 700 and 900 are real files; 800 is not, so the browser was
+             synthesising or snapping it. */
+          font-weight: 900;
           line-height: 1;
           letter-spacing: -0.055em;
           transition: color 0.35s ease;
@@ -329,7 +363,7 @@ export default function Footer() {
           border-radius: 999px;
           text-decoration: none;
           font-size: 15px;
-          font-weight: 600;
+          font-weight: 700;
           line-height: 1;
           box-shadow: 0 12px 28px rgba(20, 149, 255, 0.2);
           transition: background-color 0.25s ease;
@@ -352,40 +386,91 @@ export default function Footer() {
 
         .footer-card {
           margin-top: 22px;
-          padding: 46px 46px 26px;
+          padding: 38px 44px 24px;
           background: var(--bg-card);
           border-radius: 34px;
           transition: background-color 0.35s ease;
         }
 
         .footer-main-row {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          gap: 80px;
-          align-items: start;
+          display: flex;
+          justify-content: flex-start;
         }
 
+        .footer-brand {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .footer-rail {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 16px 28px;
+          margin-top: 30px;
+          padding-top: 22px;
+          border-top: 1px solid var(--border-color);
+          transition: border-color 0.35s ease;
+        }
+
+        .footer-links {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 24px;
+        }
+
+        .footer-links a {
+          color: var(--text-secondary);
+          font-size: 15px;
+          font-weight: 500;
+          line-height: 1.4;
+          text-decoration: none;
+          transition: color 0.25s ease;
+        }
+
+        .footer-links a:hover { color: var(--text-primary); }
+
+        .footer-links a:focus-visible {
+          outline: 3px solid rgba(20, 149, 255, 0.35);
+          outline-offset: 4px;
+          border-radius: 4px;
+        }
+
+        /* The name is the site's ink, at the site's weight, in the site's
+           typeface. The old treatment painted it with a blue-to-turquoise
+           gradient — a colour that appears nowhere else — and clipped the
+           background to the glyphs, which is what made Thmanyah's letterforms
+           read as a different, foreign face down here. */
         .footer-brand h3 {
           margin: 0;
-          font-size: clamp(42px, 4.5vw, 60px);
-          font-weight: 800;
-          line-height: 1;
-          letter-spacing: -0.055em;
-          background: linear-gradient(
-            100deg,
-            #1495ff 0%,
-            #08cfa7 80%
-          );
-          -webkit-background-clip: text;
-          background-clip: text;
-          color: transparent;
+          color: var(--text-primary);
+          font-size: clamp(26px, 2.5vw, 36px);
+          font-weight: 700;
+          line-height: 1.15;
+          letter-spacing: -0.03em;
+          transition: color 0.35s ease;
+        }
+
+        [dir="rtl"] .footer-brand h3 { letter-spacing: 0; line-height: 1.3; }
+
+        .footer-brand-role {
+          margin: 8px 0 0;
+          max-width: 34ch;
+          color: var(--text-secondary);
+          font-size: 14px;
+          font-weight: 500;
+          line-height: 1.6;
+          transition: color 0.35s ease;
         }
 
         .social-links {
           display: flex;
           align-items: center;
           gap: 10px;
-          margin-top: 24px;
+          margin-top: 20px;
         }
 
         .social-button {
@@ -407,47 +492,10 @@ export default function Footer() {
           background: var(--social-btn-hover);
         }
 
-        .footer-navigation {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(110px, auto));
-          gap: clamp(44px, 6vw, 76px);
-        }
+        
 
-        .footer-column {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 19px;
-          text-align: start;
-        }
+        
 
-        .footer-column h4 {
-          margin: 0 0 4px;
-          color: var(--text-primary);
-          font-size: 17px;
-          font-weight: 800;
-          line-height: 1;
-          transition: color 0.35s ease;
-        }
-
-        .footer-column a {
-          position: relative;
-          color: var(--text-secondary);
-          font-size: 16px;
-          font-weight: 400;
-          line-height: 1.2;
-          text-decoration: none;
-          transition:
-            color 0.25s ease,
-            transform 0.25s ease;
-        }
-
-        .footer-column a:hover {
-          color: var(--text-primary);
-          transform: translateX(3px);
-        }
-
-        .footer-column a:focus-visible,
         .social-button:focus-visible,
         .contact-button:focus-visible {
           outline: 3px solid rgba(20, 149, 255, 0.35);
@@ -455,11 +503,10 @@ export default function Footer() {
         }
 
         .footer-copyright {
-          margin: 52px 0 0;
-          color: var(--text-secondary);
-          font-size: 14px;
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 13.5px;
           font-weight: 500;
-          text-align: center;
           letter-spacing: -0.015em;
           transition: color 0.35s ease;
         }
@@ -497,13 +544,7 @@ export default function Footer() {
             text-align: center;
           }
 
-          .footer-navigation {
-            justify-content: center;
-          }
-
-          .footer-column {
-            min-width: 120px;
-          }
+          
         }
 
         @media (max-width: 600px) {
@@ -532,23 +573,10 @@ export default function Footer() {
             padding: 38px 24px 26px;
           }
 
-          .footer-brand h3 {
-            font-size: 42px;
-          }
+          .footer-brand h3 { font-size: 26px; }
+          .footer-brand-role { max-width: 42ch; }
 
-          .footer-navigation {
-            width: 100%;
-            grid-template-columns: 1fr 1fr;
-            gap: 28px;
-          }
-
-          .footer-column {
-            min-width: 0;
-          }
-
-          .footer-column a {
-            font-size: 15px;
-          }
+          
 
           .footer-copyright {
             margin-top: 42px;
@@ -565,8 +593,8 @@ export default function Footer() {
         [dir="rtl"] .footer-brand h3 { line-height: 1.28; padding-block: 0.04em; }
         [dir="rtl"] .contact-copy h2 { line-height: 1.22; }
         [dir="rtl"] .contact-copy p { line-height: 1.75; }
-        [dir="rtl"] .footer-column h4 { line-height: 1.45; }
-        [dir="rtl"] .footer-column a { line-height: 1.7; }
+        [dir="rtl"] 
+        [dir="rtl"] 
         [dir="rtl"] .footer-copyright { line-height: 1.7; }
         /* The pill keeps its 15px/13px proportions: the extra glyph room comes
            out of the padding, so the button is the same height as in English. */

@@ -20,6 +20,8 @@ import TopBar from "@/components/TopBar";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/sections/Footer";
 import { CONTACT } from "@/config/contact";
+import { useLanguage } from "@/i18n/LanguageProvider";
+import { WORK_HREF } from "@/config/siteFlags";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -31,120 +33,245 @@ const fadeUp = {
 
 /* ── Experience data ─────────────────────────────── */
 
+type Bi = { ar: string; en: string };
+
 type Job = {
-  company: string;
-  role: string;
-  date: string;
+  company: Bi;
+  role: Bi;
+  date: Bi;
   logo?: string;
   logoBg?: string;
   tile?: "M" | "trophy";
-  bullets: string[];
+  bullets: Bi[];
 };
 
+/**
+ * Same employers, dates and outcomes as the timeline on the homepage — the
+ * Arabic here is a translation of the verified English, not new claims.
+ */
 const JOBS: Job[] = [
   {
-    company: "Monshaat",
-    role: "Engineering Leader | Innovation Center",
-    date: "Oct 2024 – Present",
+    company: { ar: "منشآت", en: "Monshaat" },
+    role: {
+      ar: "قائد هندسة برمجيات | مركز الابتكار",
+      en: "Engineering Leader | Innovation Center",
+    },
+    date: { ar: "أكتوبر 2024 — حتى الآن", en: "Oct 2024 – Present" },
     tile: "M",
     bullets: [
-      "Lead digital initiatives inside the Innovation Center, translating business needs into prioritized roadmaps for web and mobile products.",
-      "Evaluate modern frameworks and AI-enabled tools to improve productivity, feasibility, and engineering impact.",
-      "Partner with Product, Design, Backend, and business teams to deliver products from concept to launch.",
+      {
+        ar: "أقود المبادرات الرقمية داخل مركز الابتكار، وأحوّل احتياجات الأعمال إلى خطط تنفيذية لمنتجات الويب والجوال.",
+        en: "Lead digital initiatives inside the Innovation Center, translating business needs into prioritized roadmaps for web and mobile products.",
+      },
+      {
+        ar: "أقيّم الأطر الحديثة والأدوات المدعومة بالذكاء الاصطناعي لتحسين الإنتاجية والجدوى والأثر الهندسي.",
+        en: "Evaluate modern frameworks and AI-enabled tools to improve productivity, feasibility, and engineering impact.",
+      },
+      {
+        ar: "أعمل مع فرق المنتج والتصميم والأنظمة الخلفية والأعمال لتسليم المنتجات من الفكرة إلى الإطلاق.",
+        en: "Partner with Product, Design, Backend, and business teams to deliver products from concept to launch.",
+      },
     ],
   },
   {
-    company: "Emkan",
-    role: "Lead Software Engineer",
-    date: "Jul 2022 – Oct 2024",
+    company: { ar: "إمكان", en: "Emkan" },
+    role: { ar: "مهندس برمجيات رئيسي", en: "Lead Software Engineer" },
+    date: { ar: "يوليو 2022 — أكتوبر 2024", en: "Jul 2022 – Oct 2024" },
     logo: "/emkanlogo.png",
     logoBg: "#ffffff",
     bullets: [
-      "Led modernization of core digital merchant platforms across web and mobile.",
-      "Implemented UI/UX improvements and AI-driven integrations that improved customer satisfaction by 150%.",
-      "Used Dynatrace and Countly insights to improve performance, accessibility, adoption, and usability.",
+      {
+        ar: "قدت تحديث منصات التجار الرقمية الأساسية على الويب والجوال.",
+        en: "Led modernization of core digital merchant platforms across web and mobile.",
+      },
+      {
+        ar: "نفّذت تحسينات في تجربة الاستخدام وتكاملات مدعومة بالذكاء الاصطناعي رفعت رضا العملاء بنسبة 150%.",
+        en: "Implemented UI/UX improvements and AI-driven integrations that improved customer satisfaction by 150%.",
+      },
+      {
+        ar: "استخدمت بيانات Dynatrace وCountly لتحسين الأداء وسهولة الوصول والتبنّي وقابلية الاستخدام.",
+        en: "Used Dynatrace and Countly insights to improve performance, accessibility, adoption, and usability.",
+      },
     ],
   },
   {
-    company: "Alrajhi Bank",
-    role: "Senior Software Engineer",
-    date: "Aug 2019 – Jul 2022",
+    company: { ar: "مصرف الراجحي", en: "Alrajhi Bank" },
+    role: { ar: "مهندس برمجيات أول", en: "Senior Software Engineer" },
+    date: { ar: "أغسطس 2019 — يوليو 2022", en: "Aug 2019 – Jul 2022" },
     logo: "/alrajhilogo.png",
     logoBg: "#ffffff",
     bullets: [
-      "Led development and enhancement of a customer-facing mobile experience using React Native, JavaScript, and Redux.",
-      "Helped achieve 95% positive user feedback and a 90% increase in app downloads.",
-      "Worked with Design teams using Figma to convert complex banking requirements into clean mobile journeys.",
+      {
+        ar: "قدت تطوير وتحسين تجربة الجوال للعملاء باستخدام React Native وJavaScript وRedux.",
+        en: "Led development and enhancement of a customer-facing mobile experience using React Native, JavaScript, and Redux.",
+      },
+      {
+        ar: "أسهمت في تحقيق 95% تقييم إيجابي من المستخدمين وزيادة 90% في تحميلات التطبيق.",
+        en: "Helped achieve 95% positive user feedback and a 90% increase in app downloads.",
+      },
+      {
+        ar: "عملت مع فرق التصميم عبر Figma لتحويل متطلبات مصرفية معقّدة إلى رحلات جوال واضحة.",
+        en: "Worked with Design teams using Figma to convert complex banking requirements into clean mobile journeys.",
+      },
     ],
   },
   {
-    company: "Awards & Innovation",
-    role: "Programming Competitions & Certifications",
-    date: "Continuous Growth",
+    company: { ar: "جوائز وابتكار", en: "Awards & Innovation" },
+    role: {
+      ar: "مسابقات برمجية وشهادات",
+      en: "Programming Competitions & Certifications",
+    },
+    date: { ar: "نموّ مستمر", en: "Continuous Growth" },
     tile: "trophy",
     bullets: [
-      "1st Place: Aramco Wa’ed Programming Competition.",
-      "2nd Place: KAUST Programming Competition.",
-      "Bachelor of Computer Science from King Faisal University, recognized by the College Dean.",
+      {
+        ar: "المركز الأول في مسابقة أرامكو «وعد» للبرمجة.",
+        en: "1st Place: Aramco Wa\u2019ed Programming Competition.",
+      },
+      {
+        ar: "المركز الثاني في مسابقة كاوست للبرمجة.",
+        en: "2nd Place: KAUST Programming Competition.",
+      },
+      {
+        ar: "بكالوريوس علوم حاسب من جامعة الملك فيصل، بتكريم من عميد الكلية.",
+        en: "Bachelor of Computer Science from King Faisal University, recognized by the College Dean.",
+      },
     ],
   },
 ];
 
 /* ── Stack data ──────────────────────────────────── */
 
-type Tool = { name: string; icon: IconType; color: string };
+type Tool = { name: Bi; icon: IconType; color: string };
 
 const TOOLS: Tool[] = [
-  { name: "React", icon: SiReact, color: "#61DAFB" },
-  { name: "Next.js", icon: SiNextdotjs, color: "var(--text-primary)" },
-  { name: "React Native", icon: LuSmartphone, color: "#61DAFB" },
-  { name: "TypeScript", icon: SiTypescript, color: "#3178C6" },
-  { name: "JavaScript", icon: SiJavascript, color: "#E8C51A" },
-  { name: "Redux", icon: SiRedux, color: "#764ABC" },
-  { name: "Figma", icon: SiFigma, color: "#F24E1E" },
-  { name: "Node.js", icon: SiNodedotjs, color: "#5FA04E" },
-  { name: "CI/CD", icon: LuWorkflow, color: "#1495FF" },
-  { name: "Dynatrace", icon: SiDynatrace, color: "#1496FF" },
-  { name: "Countly", icon: LuChartBar, color: "#017AFF" },
-  { name: "AI Tools", icon: LuSparkles, color: "#D97757" },
+  { name: { ar: "React", en: "React" }, icon: SiReact, color: "#61DAFB" },
+  { name: { ar: "Next.js", en: "Next.js" }, icon: SiNextdotjs, color: "var(--text-primary)" },
+  { name: { ar: "React Native", en: "React Native" }, icon: LuSmartphone, color: "#61DAFB" },
+  { name: { ar: "TypeScript", en: "TypeScript" }, icon: SiTypescript, color: "#3178C6" },
+  { name: { ar: "JavaScript", en: "JavaScript" }, icon: SiJavascript, color: "#E8C51A" },
+  { name: { ar: "Redux", en: "Redux" }, icon: SiRedux, color: "#764ABC" },
+  { name: { ar: "Figma", en: "Figma" }, icon: SiFigma, color: "#F24E1E" },
+  { name: { ar: "Node.js", en: "Node.js" }, icon: SiNodedotjs, color: "#5FA04E" },
+  { name: { ar: "التكامل والنشر المستمر", en: "CI/CD" }, icon: LuWorkflow, color: "#1495FF" },
+  { name: { ar: "Dynatrace", en: "Dynatrace" }, icon: SiDynatrace, color: "#1496FF" },
+  { name: { ar: "Countly", en: "Countly" }, icon: LuChartBar, color: "#017AFF" },
+  { name: { ar: "أدوات الذكاء الاصطناعي", en: "AI Tools" }, icon: LuSparkles, color: "#D97757" },
 ];
 
 /* ── Skills data ─────────────────────────────────── */
 
-const TECHNICAL_SKILLS = [
-  ["🏗️", "Frontend Architecture"],
-  ["📱", "Mobile App Development"],
-  ["⚛️", "React / Next.js / React Native"],
-  ["🧹", "Clean Architecture"],
-  ["🧩", "System Architecture"],
-  ["💡", "Product & Service Innovation"],
-  ["🤖", "AI Assessment"],
-  ["📊", "Data Analysis & Performance Measurement"],
-] as const;
+const TECHNICAL_SKILLS: [string, Bi][] = [
+  ["🏗️", { ar: "معمارية الواجهات", en: "Frontend Architecture" }],
+  ["📱", { ar: "تطوير تطبيقات الجوال", en: "Mobile App Development" }],
+  ["⚛️", { ar: "React / Next.js / React Native", en: "React / Next.js / React Native" }],
+  ["🧹", { ar: "المعمارية النظيفة", en: "Clean Architecture" }],
+  ["🧩", { ar: "تصميم الأنظمة", en: "System Architecture" }],
+  ["💡", { ar: "ابتكار المنتجات والخدمات", en: "Product & Service Innovation" }],
+  ["🤖", { ar: "تقييم حلول الذكاء الاصطناعي", en: "AI Assessment" }],
+  ["📊", { ar: "تحليل البيانات وقياس الأداء", en: "Data Analysis & Performance Measurement" }],
+];
 
-const LEADERSHIP_SKILLS = [
-  ["🧭", "Technical Leadership"],
-  ["🌱", "Team Mentorship"],
-  ["🤝", "Stakeholder Management"],
-  ["🚀", "Cross-functional Delivery"],
-  ["💬", "Communication"],
-  ["🎤", "Presentation"],
-  ["🏃", "Agile Execution"],
-  ["🧠", "Problem Solving"],
-] as const;
+const LEADERSHIP_SKILLS: [string, Bi][] = [
+  ["🧭", { ar: "القيادة التقنية", en: "Technical Leadership" }],
+  ["🌱", { ar: "إرشاد الفرق", en: "Team Mentorship" }],
+  ["🤝", { ar: "إدارة أصحاب المصلحة", en: "Stakeholder Management" }],
+  ["🚀", { ar: "التسليم عبر الفرق", en: "Cross-functional Delivery" }],
+  ["💬", { ar: "التواصل", en: "Communication" }],
+  ["🎤", { ar: "العرض والتقديم", en: "Presentation" }],
+  ["🏃", { ar: "التنفيذ الرشيق", en: "Agile Execution" }],
+  ["🧠", { ar: "حل المشكلات", en: "Problem Solving" }],
+];
+
+const COPY = {
+  ar: {
+    aboutPill: "عنّي",
+    name: "تركي المالكي",
+    title: "مدير هندسة | ابتكار رقمي وابتكار منتجات",
+    intro:
+      "قائد هندسي ورقمي بخبرة تتجاوز 9 سنوات في بناء منتجات ويب وجوال عالية الأداء عبر القطاع الحكومي والتقنية المالية والمصارف ومنظومات الابتكار. أجمع بين React وNext.js وReact Native وابتكار الذكاء الاصطناعي وتجربة العميل وتنفيذ المنتج لتحويل الأفكار إلى تجارب رقمية قابلة للتوسع.",
+    viewPortfolio: "استعرض أعمالي",
+    connect: "لنتواصل",
+    experiencePill: "الخبرة",
+    experienceTitle: "رحلتي الهندسية",
+    experienceSub: "نظرة على الفرق والمنتجات والأعمال التي شكّلت مساري.",
+    workHistory: "السجل المهني",
+    stack: "الأدوات التقنية",
+    skillsTitle: "مهارات الهندسة والابتكار",
+    technicalSkills: "المهارات التقنية",
+    leadershipSkills: "المهارات القيادية",
+    contactMe: "تواصل معي",
+    lifestylePill: "خارج الشاشة",
+    lifestyleTitle: "ما وراء الشاشة",
+    lifestyleSub: "لمحة عن الأفكار واللحظات والتجارب التي تغذّي إبداعي.",
+  },
+  en: {
+    aboutPill: "About Me",
+    name: "Turki Almalki",
+    title: "Engineering Manager | Digital Innovation & Product Innovation",
+    intro:
+      "Engineering and digital innovation leader with 9+ years of experience building high-performance web and mobile products across government, fintech, banking, and innovation ecosystems. I combine React, Next.js, React Native, AI innovation, CX, and product execution to turn ideas into scalable digital experiences.",
+    viewPortfolio: "View My Portfolio",
+    connect: "Let's Connect",
+    experiencePill: "Experience",
+    experienceTitle: "My Engineering Journey",
+    experienceSub: "A look into the teams, products, and work that shaped my path.",
+    workHistory: "Work History",
+    stack: "Stack",
+    skillsTitle: "Engineering & Innovation Skills",
+    technicalSkills: "Technical Skills",
+    leadershipSkills: "Leadership Skills",
+    contactMe: "Contact Me",
+    lifestylePill: "Lifestyle",
+    lifestyleTitle: "Beyond the Screen",
+    lifestyleSub:
+      "A glimpse into the ideas, moments, and experiences that drive my creativity.",
+  },
+};
 
 /* ── Gallery data ────────────────────────────────── */
 
 const GALLERY = {
-  large: { src: "/1.jpg", alt: "Turki Almalki on stage at an innovation event", position: "center 20%" },
-  wide: { src: "/turki.jpg", alt: "Turki Almalki leading an MVP workshop", position: "center 30%" },
+  large: {
+    src: "/1.jpg",
+    alt: {
+      ar: "تركي المالكي على المسرح في فعالية ابتكار",
+      en: "Turki Almalki on stage at an innovation event",
+    },
+    position: "center 20%",
+  },
+  wide: {
+    src: "/turki.jpg",
+    alt: {
+      ar: "تركي المالكي يقدّم ورشة MVP",
+      en: "Turki Almalki leading an MVP workshop",
+    },
+    position: "center 30%",
+  },
   small: [
-    { src: "/IMG-20181201-WA0054.jpg", alt: "Winning team at the Wa'ed Hackathon", position: "center center" },
-    { src: "/screenshot.jpg", alt: "Turki Almalki presenting a product session", position: "center 30%" },
+    {
+      src: "/IMG-20181201-WA0054.jpg",
+      alt: {
+        ar: "الفريق الفائز في هاكاثون وعد",
+        en: "Winning team at the Wa'ed Hackathon",
+      },
+      position: "center center",
+    },
+    {
+      src: "/screenshot.jpg",
+      alt: {
+        ar: "تركي المالكي يقدّم جلسة عن المنتجات",
+        en: "Turki Almalki presenting a product session",
+      },
+      position: "center 30%",
+    },
   ],
 } as const;
 
 export default function AboutClient() {
+  const { lang } = useLanguage();
+  const copy = COPY[lang];
+
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, []);
@@ -179,7 +306,7 @@ export default function AboutClient() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: EASE, delay: 0.12 }}
           >
-            About Me
+            {copy.aboutPill}
           </motion.span>
 
           <motion.h1
@@ -188,7 +315,7 @@ export default function AboutClient() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: EASE, delay: 0.18 }}
           >
-            Turki Almalki
+            {copy.name}
           </motion.h1>
 
           <motion.p
@@ -197,7 +324,7 @@ export default function AboutClient() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.26 }}
           >
-            Engineering Manager | Digital Innovation &amp; Product Innovation
+            {copy.title}
           </motion.p>
 
           <motion.p
@@ -206,11 +333,7 @@ export default function AboutClient() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.32 }}
           >
-            Engineering and digital innovation leader with 9+ years of experience
-            building high-performance web and mobile products across government,
-            fintech, banking, and innovation ecosystems. I combine React, Next.js,
-            React Native, AI innovation, CX, and product execution to turn ideas
-            into scalable digital experiences.
+            {copy.intro}
           </motion.p>
 
           <motion.div
@@ -219,11 +342,11 @@ export default function AboutClient() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.4 }}
           >
-            <Link href="/projects" className="ab-btn-primary">
-              View My Portfolio
+            <Link href={WORK_HREF} className="ab-btn-primary">
+              {copy.viewPortfolio}
             </Link>
             <a href={`mailto:${CONTACT.email}`} className="ab-btn-secondary">
-              Let&apos;s Connect
+              {copy.connect}
             </a>
           </motion.div>
         </section>
@@ -232,32 +355,32 @@ export default function AboutClient() {
         <section className="ab-section">
           <div className="ab-section-head">
             <motion.span className="ab-pill" {...fadeUp} transition={{ duration: 0.6, ease: EASE }}>
-              Experience
+              {copy.experiencePill}
             </motion.span>
             <motion.h2
               className="ab-h2"
               {...fadeUp}
               transition={{ duration: 0.75, ease: EASE, delay: 0.06 }}
             >
-              My Engineering Journey
+              {copy.experienceTitle}
             </motion.h2>
             <motion.p
               className="ab-section-sub"
               {...fadeUp}
               transition={{ duration: 0.7, ease: EASE, delay: 0.12 }}
             >
-              A look into the teams, products, and work that shaped my path.
+              {copy.experienceSub}
             </motion.p>
           </div>
 
           <motion.h3 className="ab-h3" {...fadeUp} transition={{ duration: 0.7, ease: EASE }}>
-            Work History
+            {copy.workHistory}
           </motion.h3>
 
           <div className="ab-jobs-grid">
             {JOBS.map((job, i) => (
               <motion.article
-                key={job.company}
+                key={job.company.en}
                 className="ab-card ab-job-card"
                 {...fadeUp}
                 transition={{ duration: 0.7, ease: EASE, delay: (i % 2) * 0.08 }}
@@ -266,24 +389,33 @@ export default function AboutClient() {
                 <div className="ab-job-head">
                   {job.logo ? (
                     <span className="ab-job-logo" style={{ background: job.logoBg }}>
-                      <Image src={job.logo} alt={`${job.company} logo`} width={44} height={44} style={{ objectFit: "contain" }} />
+                      <Image
+                        src={job.logo}
+                        alt=""
+                        width={44}
+                        height={44}
+                        style={{ objectFit: "contain" }}
+                      />
                     </span>
                   ) : job.tile === "trophy" ? (
                     <span className="ab-job-logo ab-job-logo-tile ab-job-logo-trophy">
                       <LuTrophy size={30} />
                     </span>
                   ) : (
-                    <span className="ab-job-logo ab-job-logo-tile">{job.tile}</span>
+                    <span className="ab-job-logo ab-job-logo-tile">
+                      {/* brand monogram, in the reading script */}
+                      {lang === "ar" ? "م" : job.tile}
+                    </span>
                   )}
                   <div>
-                    <h4 className="ab-job-company">{job.company}</h4>
-                    <p className="ab-job-role">{job.role}</p>
-                    <p className="ab-job-date">{job.date}</p>
+                    <h4 className="ab-job-company">{job.company[lang]}</h4>
+                    <p className="ab-job-role">{job.role[lang]}</p>
+                    <p className="ab-job-date">{job.date[lang]}</p>
                   </div>
                 </div>
                 <ul className="ab-job-bullets">
                   {job.bullets.map((b) => (
-                    <li key={b}>{b}</li>
+                    <li key={b.en}>{b[lang]}</li>
                   ))}
                 </ul>
               </motion.article>
@@ -298,13 +430,13 @@ export default function AboutClient() {
             {...fadeUp}
             transition={{ duration: 0.75, ease: EASE }}
           >
-            Stack
+            {copy.stack}
           </motion.h2>
 
           <div className="ab-stack-grid">
             {TOOLS.map(({ name, icon: Icon, color }, i) => (
               <motion.div
-                key={name}
+                key={name.en}
                 className="ab-card ab-stack-card"
                 {...fadeUp}
                 transition={{ duration: 0.6, ease: EASE, delay: (i % 3) * 0.07 }}
@@ -313,7 +445,7 @@ export default function AboutClient() {
                 <span className="ab-stack-icon">
                   <Icon size={26} style={{ color }} />
                 </span>
-                <span className="ab-stack-name">{name}</span>
+                <span className="ab-stack-name">{name[lang]}</span>
               </motion.div>
             ))}
           </div>
@@ -326,14 +458,14 @@ export default function AboutClient() {
             {...fadeUp}
             transition={{ duration: 0.75, ease: EASE }}
           >
-            Engineering &amp; Innovation Skills
+            {copy.skillsTitle}
           </motion.h2>
 
           <div className="ab-skills-grid">
             {(
               [
-                ["Technical Skills", TECHNICAL_SKILLS],
-                ["Leadership Skills", LEADERSHIP_SKILLS],
+                [copy.technicalSkills, TECHNICAL_SKILLS],
+                [copy.leadershipSkills, LEADERSHIP_SKILLS],
               ] as const
             ).map(([title, items], i) => (
               <motion.div
@@ -345,11 +477,11 @@ export default function AboutClient() {
                 <p className="ab-skills-title">{title}</p>
                 <ul className="ab-skills-list">
                   {items.map(([emoji, label]) => (
-                    <li key={label}>
+                    <li key={label.en}>
                       <span className="ab-skills-emoji" aria-hidden>
                         {emoji}
                       </span>
-                      {label}
+                      {label[lang]}
                     </li>
                   ))}
                 </ul>
@@ -363,7 +495,7 @@ export default function AboutClient() {
             transition={{ duration: 0.7, ease: EASE, delay: 0.15 }}
           >
             <a href={`mailto:${CONTACT.email}`} className="ab-btn-primary">
-              Contact Me
+              {copy.contactMe}
             </a>
           </motion.div>
         </section>
@@ -372,21 +504,21 @@ export default function AboutClient() {
         <section className="ab-section">
           <div className="ab-section-head">
             <motion.span className="ab-pill" {...fadeUp} transition={{ duration: 0.6, ease: EASE }}>
-              Lifestyle
+              {copy.lifestylePill}
             </motion.span>
             <motion.h2
               className="ab-h2"
               {...fadeUp}
               transition={{ duration: 0.75, ease: EASE, delay: 0.06 }}
             >
-              Beyond the Screen
+              {copy.lifestyleTitle}
             </motion.h2>
             <motion.p
               className="ab-section-sub"
               {...fadeUp}
               transition={{ duration: 0.7, ease: EASE, delay: 0.12 }}
             >
-              A glimpse into the ideas, moments, and experiences that drive my creativity.
+              {copy.lifestyleSub}
             </motion.p>
           </div>
 
@@ -398,7 +530,7 @@ export default function AboutClient() {
             >
               <Image
                 src={GALLERY.large.src}
-                alt={GALLERY.large.alt}
+                alt={GALLERY.large.alt[lang]}
                 fill
                 sizes="(max-width: 900px) 100vw, 46vw"
                 style={{ objectFit: "cover", objectPosition: GALLERY.large.position }}
@@ -413,7 +545,7 @@ export default function AboutClient() {
               >
                 <Image
                   src={GALLERY.wide.src}
-                  alt={GALLERY.wide.alt}
+                  alt={GALLERY.wide.alt[lang]}
                   fill
                   sizes="(max-width: 900px) 100vw, 54vw"
                   style={{ objectFit: "cover", objectPosition: GALLERY.wide.position }}
@@ -430,7 +562,7 @@ export default function AboutClient() {
                   >
                     <Image
                       src={img.src}
-                      alt={img.alt}
+                      alt={img.alt[lang]}
                       fill
                       sizes="(max-width: 900px) 100vw, 27vw"
                       style={{ objectFit: "cover", objectPosition: img.position }}

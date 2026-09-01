@@ -236,7 +236,24 @@ export default function CareerHero({
         </motion.div>
 
         <motion.p className="cp-hint" aria-hidden style={{ opacity: hintO }}>
-          {t.scrollHint} ↓
+          {t.scrollHint}
+          {/* drawn: U+2193 is not in Thmanyah Sans and fell back to the system
+              UI face mid-line */}
+          <svg
+            width="11"
+            height="14"
+            viewBox="0 0 11 14"
+            fill="none"
+            style={{ marginInlineStart: 6, verticalAlign: "-2px" }}
+          >
+            <path
+              d="M5.5 1v11M1.6 8.4l3.9 3.9 3.9-3.9"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </motion.p>
       </div>
     </section>
