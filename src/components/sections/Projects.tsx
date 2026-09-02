@@ -9,10 +9,13 @@ import {
 } from "react";
 import Image from "next/image";
 import { motion, useInView, AnimatePresence } from "framer-motion";
+import { useLanguage } from "@/i18n/LanguageProvider";
 
 /* ── Types ─────────────────────────────────────── */
 
 type Bezier = [number, number, number, number];
+
+type Bilingual = { ar: string; en: string };
 
 type RevealCardProps = {
   children: ReactNode;
@@ -23,17 +26,17 @@ type RevealCardProps = {
 };
 
 type StorySlide = {
-  company: string;
-  year: string;
+  company: Bilingual;
+  year: Bilingual;
   initials: string;
   logoImage?: string;
   logoGradient: string;
   blobGradient: string;
   bgTint: string;
-  impactWord: string;
-  tagline: string;
-  highlight: string;
-  cta: string;
+  impactWord: Bilingual;
+  tagline: Bilingual;
+  highlight: Bilingual;
+  cta: Bilingual;
   isStartup?: boolean;
   isCTA?: boolean;
 };
@@ -104,105 +107,120 @@ const STARTUP_MARKS: StartupMark[] = [
 
 const STORY_SLIDES: StorySlide[] = [
   {
-    company: "My Journey",
-    year: "2017 — Today",
+    company: { ar: "رحلتي", en: "My Journey" },
+    year: { ar: "2017 — الآن", en: "2017 — Today" },
     initials: "TK",
     logoGradient: "linear-gradient(145deg, #1e40af, #3b82f6)",
     blobGradient:
       "linear-gradient(135deg, #bfdbfe 0%, #93c5fd 40%, #a5b4fc 100%)",
     bgTint: "#eff6ff",
-    impactWord: "BUILD",
-    tagline:
-      "From Android development to leading engineering teams across banking, fintech, startups, and government innovation.",
-    highlight: "9+ Years of Driven Impact",
-    cta: "9+ Years of Driven Impact",
+    impactWord: { ar: "بناء", en: "BUILD" },
+    tagline: {
+      ar: "من تطوير تطبيقات أندرويد إلى قيادة فرق هندسية في الخدمات المصرفية والتقنية المالية والشركات الناشئة والابتكار الحكومي.",
+      en: "From Android development to leading engineering teams across banking, fintech, startups, and government innovation.",
+    },
+    highlight: { ar: "أكثر من 9 سنوات من الأثر", en: "9+ Years of Driven Impact" },
+    cta: { ar: "أكثر من 9 سنوات من الأثر", en: "9+ Years of Driven Impact" },
   },
   {
-    company: "Saudi Aramco",
-    year: "2018",
+    company: { ar: "أرامكو السعودية", en: "Saudi Aramco" },
+    year: { ar: "2018", en: "2018" },
     initials: "SA",
     logoImage: "/aramco.jpeg",
     logoGradient: "linear-gradient(145deg, #1e3a8a, #60a5fa)",
     blobGradient:
       "linear-gradient(135deg, #93c5fd 0%, #818cf8 50%, #c084fc 100%)",
     bgTint: "#eff6ff",
-    impactWord: "GROW",
-    tagline: "Enterprise foundations at the world's largest energy company.",
-    highlight: "Intern · Where the journey began",
-    cta: "Foundation",
+    impactWord: { ar: "نمو", en: "GROW" },
+    tagline: {
+      ar: "أساسيات العمل المؤسسي في أكبر شركة طاقة في العالم.",
+      en: "Enterprise foundations at the world's largest energy company.",
+    },
+    highlight: { ar: "متدرّب · حيث بدأت الرحلة", en: "Intern · Where the journey began" },
+    cta: { ar: "الانطلاقة", en: "Foundation" },
   },
   {
-    company: "Al Rajhi Bank",
-    year: "2019 — 2022",
+    company: { ar: "مصرف الراجحي", en: "Al Rajhi Bank" },
+    year: { ar: "2019 — 2022", en: "2019 — 2022" },
     initials: "AR",
     logoImage: "/alrajhilogo.png",
     logoGradient: "linear-gradient(145deg, #78350f, #d97706)",
     blobGradient:
       "linear-gradient(135deg, #fde68a 0%, #fb923c 45%, #ef4444 100%)",
     bgTint: "#fffbeb",
-    impactWord: "SCALE",
-    tagline:
-      "Built and maintained customer-facing mobile banking experiences with React Native.",
-    highlight: "Senior Software Engineer",
-    cta: "Senior Software Engineer",
+    impactWord: { ar: "توسّع", en: "SCALE" },
+    tagline: {
+      ar: "بناء وصيانة تجارب مصرفية رقمية لملايين المستخدمين باستخدام React Native.",
+      en: "Built and maintained customer-facing mobile banking experiences with React Native.",
+    },
+    highlight: { ar: "مهندس برمجيات أول", en: "Senior Software Engineer" },
+    cta: { ar: "مهندس برمجيات أول", en: "Senior Software Engineer" },
   },
   {
-    company: "Emkan",
-    year: "2022 — 2024",
+    company: { ar: "إمكان", en: "Emkan" },
+    year: { ar: "2022 — 2024", en: "2022 — 2024" },
     initials: "EM",
     logoImage: "/emkanlogo.png",
     logoGradient: "linear-gradient(145deg, #7c2d12, #f97316)",
     blobGradient:
       "linear-gradient(135deg, #fdba74 0%, #f43f5e 50%, #c026d3 100%)",
     bgTint: "#fff8f3",
-    impactWord: "LEAD",
-    tagline:
-      "Led fintech modernization, mobile product quality, and innovation lab initiatives.",
-    highlight: "Fintech Engineering",
-    cta: "Fintech Engineering",
+    impactWord: { ar: "قيادة", en: "LEAD" },
+    tagline: {
+      ar: "قيادة تحديث المنتجات المالية، جودة التطبيقات، ومبادرات مختبر الابتكار.",
+      en: "Led fintech modernization, mobile product quality, and innovation lab initiatives.",
+    },
+    highlight: { ar: "هندسة التقنية المالية", en: "Fintech Engineering" },
+    cta: { ar: "هندسة التقنية المالية", en: "Fintech Engineering" },
   },
   {
-    company: "Monsha'at",
-    year: "2024 — Present",
+    company: { ar: "منشآت", en: "Monsha'at" },
+    year: { ar: "2024 — الآن", en: "2024 — Present" },
     initials: "MN",
     logoGradient: "linear-gradient(145deg, #064e2e, #22c55e)",
     blobGradient:
       "linear-gradient(135deg, #6ee7b7 0%, #34d399 40%, #38bdf8 100%)",
     bgTint: "#edfaf5",
-    impactWord: "IMPACT",
-    tagline:
-      "Leading engineering initiatives, internal systems, dashboards, and startup-support platforms.",
-    highlight: "Software Engineering Leader",
-    cta: "Software Engineering Leader",
+    impactWord: { ar: "أثر", en: "IMPACT" },
+    tagline: {
+      ar: "قيادة المبادرات الهندسية، الأنظمة الداخلية، لوحات البيانات، ومنصات دعم الشركات الناشئة.",
+      en: "Leading engineering initiatives, internal systems, dashboards, and startup-support platforms.",
+    },
+    highlight: { ar: "قائد هندسة برمجيات", en: "Software Engineering Leader" },
+    cta: { ar: "قائد هندسة برمجيات", en: "Software Engineering Leader" },
   },
   {
-    company: "Startups & Ventures",
-    year: "Across the journey",
+    company: { ar: "شركات ناشئة ومشاريع", en: "Startups & Ventures" },
+    year: { ar: "على مدار الرحلة", en: "Across the journey" },
     initials: "ST",
     logoGradient: "linear-gradient(145deg, #4f46e5, #7c3aed)",
     blobGradient:
       "linear-gradient(135deg, #c4b5fd 0%, #a78bfa 40%, #818cf8 100%)",
     bgTint: "#f5f3ff",
-    impactWord: "CREATE",
-    tagline:
-      "Worked with multiple startups and part-time ventures, bringing a founder mentality to product delivery.",
-    highlight: "Founder Mindset",
-    cta: "Founder Mindset",
+    impactWord: { ar: "ابتكار", en: "CREATE" },
+    tagline: {
+      ar: "عملت مع عدة شركات ناشئة ومشاريع جزئية، حاملًا عقلية المؤسس في تسليم المنتجات.",
+      en: "Worked with multiple startups and part-time ventures, bringing a founder mentality to product delivery.",
+    },
+    highlight: { ar: "عقلية المؤسس", en: "Founder Mindset" },
+    cta: { ar: "عقلية المؤسس", en: "Founder Mindset" },
     isStartup: true,
   },
   {
-    company: "Open to Opportunities",
-    year: "Now",
+    company: { ar: "متاح لفرص جديدة", en: "Open to Opportunities" },
+    year: { ar: "الآن", en: "Now" },
     initials: "→",
     logoGradient: "linear-gradient(145deg, #1e293b, #334155)",
     blobGradient:
       "linear-gradient(135deg, #94a3b8 0%, #64748b 40%, #475569 100%)",
     bgTint: "#f8fafc",
-    impactWord: "CONNECT",
-    tagline:
-      "Available for engineering leadership, innovation, frontend, mobile, and product-driven technology opportunities.",
-    highlight: "Let's Talk",
-    cta: "Let's Talk",
+    impactWord: { ar: "تواصل", en: "CONNECT" },
+    tagline: {
+      ar: "متاح لفرص في القيادة الهندسية، الابتكار، الواجهات الأمامية، تطبيقات الجوال، والتقنية الموجهة للمنتج.",
+      en: "Available for engineering leadership, innovation, frontend, mobile, and product-driven technology opportunities.",
+    },
+    highlight: { ar: "لنتحدث", en: "Let's Talk" },
+    cta: { ar: "لنتحدث", en: "Let's Talk" },
     isCTA: true,
   },
 ];
@@ -347,9 +365,11 @@ const TESTIMONIAL: TestimonialData = {
 export default function Projects() {
   const sectionRef = useRef<HTMLElement>(null);
   const inView = useInView(sectionRef, { once: true, margin: "-80px" });
+  const { t, lang } = useLanguage();
+  const j = t.journey;
 
   return (
-    <section id="projects" ref={sectionRef} className="vs">
+    <section id="projects" ref={sectionRef} className="vs" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="vs-wrap">
         <motion.div
           className="vs-pill"
@@ -357,7 +377,7 @@ export default function Projects() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, ease: EASE }}
         >
-          Value
+          {j.pill}
         </motion.div>
 
         <motion.h2
@@ -366,7 +386,7 @@ export default function Projects() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.68, ease: EASE, delay: 0.05 }}
         >
-          Why Me?
+          {j.title}
         </motion.h2>
 
         <motion.p
@@ -375,13 +395,13 @@ export default function Projects() {
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.62, ease: EASE, delay: 0.1 }}
         >
-          Backed by experience, driven by Impact.
+          {j.subtitle}
         </motion.p>
 
         <div className="vs-grid">
-          <ExperienceCard index={0} inView={inView} />
-          <ImpactCard index={1} inView={inView} />
-          <SkillsCard index={2} inView={inView} />
+          <ExperienceCard index={0} inView={inView} lang={lang} startupAria={j.startupAria} />
+          <ImpactCard index={1} inView={inView} lang={lang} copy={j} />
+          <SkillsCard index={2} inView={inView} copy={j} />
           {/* <ProjectCard      index={3} inView={inView} /> */}
           {/* <TechCard         index={4} inView={inView} />
           <AchievementsCard index={5} inView={inView} />
@@ -481,6 +501,15 @@ export default function Projects() {
             border-color 350ms ease,
             box-shadow 300ms ease;
         }
+
+        [dir="rtl"] .bc {
+          text-align: right;
+        }
+
+        [dir="rtl"] .ec-slide-hdr {
+          flex-direction: row-reverse;
+        }
+
 
         .bc:hover {
           box-shadow: var(--shadow-soft, 0 14px 36px rgba(0, 0, 0, 0.07));
@@ -1753,9 +1782,9 @@ function RevealCard({
 
 /* ── StartupCluster ──────────────────────────────── */
 
-function StartupCluster() {
+function StartupCluster({ aria }: { aria: string }) {
   return (
-    <div className="ec-startup-grid" role="list" aria-label="Startup ventures">
+    <div className="ec-startup-grid" role="list" aria-label={aria}>
       {STARTUP_MARKS.map((mark, i) => (
         <motion.div
           key={mark.name}
@@ -1787,7 +1816,17 @@ function StartupCluster() {
 
 /* ── ExperienceCard ──────────────────────────────── */
 
-function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
+function ExperienceCard({
+  index,
+  inView,
+  lang,
+  startupAria,
+}: {
+  index: number;
+  inView: boolean;
+  lang: "ar" | "en";
+  startupAria: string;
+}) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [progress, setProgress] = useState(0);
   const tickRef = useRef({ slide: 0, progress: 0 });
@@ -1889,7 +1928,7 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
         </div>
 
         <p className="ec-sr" aria-live="polite" aria-atomic="true">
-          {`${activeSlide + 1} of ${STORY_SLIDES.length}: ${slide.company}, ${slide.year}. ${slide.tagline}`}
+          {`${activeSlide + 1} of ${STORY_SLIDES.length}: ${slide.company[lang]}, ${slide.year[lang]}. ${slide.tagline[lang]}`}
         </p>
 
         {/* animated slide content */}
@@ -1915,7 +1954,7 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
                 {slide.logoImage ? (
                   <Image
                     src={slide.logoImage}
-                    alt={slide.company}
+                    alt={slide.company[lang]}
                     width={30}
                     height={30}
                     className="ec-logo-img"
@@ -1925,21 +1964,21 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
                 )}
               </motion.div>
               <div className="ec-hdr-text">
-                <span className="ec-slide-co">{slide.company}</span>
-                <span className="ec-slide-per">{slide.year}</span>
+                <span className="ec-slide-co">{slide.company[lang]}</span>
+                <span className="ec-slide-per">{slide.year[lang]}</span>
               </div>
             </div>
 
             {/* body */}
             <div className="ec-body">
-              <h3 className="ec-impact">{slide.impactWord}</h3>
+              <h3 className="ec-impact">{slide.impactWord[lang]}</h3>
               {slide.isStartup ? (
-                <StartupCluster />
+                <StartupCluster aria={startupAria} />
               ) : (
                 <>
-                  <p className="ec-tagline">{slide.tagline}</p>
+                  <p className="ec-tagline">{slide.tagline[lang]}</p>
                   {!slide.isCTA && (
-                    <span className="ec-highlight">{slide.highlight}</span>
+                    <span className="ec-highlight">{slide.highlight[lang]}</span>
                   )}
                 </>
               )}
@@ -1950,7 +1989,7 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
               <span
                 className={`ec-cta${slide.isCTA ? " ec-cta--connect" : ""}`}
               >
-                {slide.cta}
+                {slide.cta[lang]}
               </span>
             </div>
           </motion.div>
@@ -1962,36 +2001,49 @@ function ExperienceCard({ index, inView }: { index: number; inView: boolean }) {
 
 /* ── ImpactCard ──────────────────────────────────── */
 
-function ImpactCard({ index, inView }: { index: number; inView: boolean }) {
+function ImpactCard({
+  index,
+  inView,
+  lang,
+  copy,
+}: {
+  index: number;
+  inView: boolean;
+  lang: "ar" | "en";
+  copy: {
+    impactTitle: string;
+    impactTitleLine2: string;
+    impactDesc: string;
+    impactTags: string[];
+  };
+}) {
   return (
     <RevealCard className="ic" index={index} inView={inView}>
       <div className="ic-content">
- 
+
         <motion.h3
           className="ic-title"
           initial={{ opacity: 0, y: 8 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.52, ease: EASE, delay: 0.14 }}
         >
-          20+ Workshops
+          {copy.impactTitle}
           <br />
-          1,000+ Consultation Hours
-          
+          {copy.impactTitleLine2}
         </motion.h3>
-        <p className="ic-desc">
-          Across banking, fintech, startups, and government innovation, help building
-          products that move from idea to execution.
-        </p>
+        <p className="ic-desc">{copy.impactDesc}</p>
         <div className="ic-tags">
-          <span className="ic-tag">Engineering Leadership</span>
-          <span className="ic-tag">Product Builder</span>
-          <span className="ic-tag">Innovation Mindset</span>
+          {copy.impactTags.map((tag) => (
+            <span className="ic-tag" key={tag}>
+              {tag}
+            </span>
+          ))}
         </div>
       </div>
       <div className="ic-photo-area">
         <Image
           src="/turki.jpg"
-          alt="Turki Almalki"
+          alt={lang === "ar" ? "تركي المالكي" : "Turki Almalki"}
           fill
           className="ic-photo"
           sizes="(max-width: 680px) 100vw, 25vw"
@@ -2004,18 +2056,25 @@ function ImpactCard({ index, inView }: { index: number; inView: boolean }) {
 
 /* ── SkillsCard ──────────────────────────────────── */
 
-function SkillsCard({ index, inView }: { index: number; inView: boolean }) {
+function SkillsCard({
+  index,
+  inView,
+  copy,
+}: {
+  index: number;
+  inView: boolean;
+  copy: { skillsLabel: string; skillsTitle: string; skillsDesc: string };
+}) {
   return (
     <RevealCard className="sk" index={index} inView={inView}>
       <div className="sk-header">
-        <span className="clabel">Tech Stack</span>
+        <span className="clabel">{copy.skillsLabel}</span>
         <h3 className="sk-title">
-          My Skills<br />
-         
+          {copy.skillsTitle}
+          <br />
+
         </h3>
-        <p className="sk-desc">
-          Product Innovation, MVP, fintech, and product experiences.
-        </p>
+        <p className="sk-desc">{copy.skillsDesc}</p>
       </div>
       <div className="sk-grid">
         {SKILLS.map((skill, i) => (

@@ -51,9 +51,10 @@ export default function Navbar() {
 
   return (
     <div
+      className="site-dock-wrap"
       style={{
         position: "fixed",
-        bottom: "calc(28px + env(safe-area-inset-bottom, 0px))",
+        bottom: "calc(var(--dock-gap) + env(safe-area-inset-bottom, 0px))",
         left: 0,
         right: 0,
         display: "flex",
@@ -63,6 +64,7 @@ export default function Navbar() {
       }}
     >
     <motion.nav
+      className="site-dock"
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.9, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
@@ -71,19 +73,22 @@ export default function Navbar() {
         pointerEvents: "auto",
         display: "flex",
         alignItems: "center",
-        gap: 2,
+        gap: "var(--dock-gap-x)",
         backgroundColor: "var(--nav-bg)",
         backdropFilter: "blur(18px) saturate(180%)",
         WebkitBackdropFilter: "blur(18px) saturate(180%)",
         border: "1px solid var(--nav-border)",
         borderRadius: 100,
-        padding: "8px 10px",
+        padding: "var(--dock-pad-y) var(--dock-pad-x)",
         boxShadow:
           "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.18)",
         transition: "background-color 0.45s ease, border-color 0.45s ease",
         whiteSpace: "nowrap",
         maxWidth: "calc(100vw - 24px)",
-        overflowX: "auto",
+        /* No horizontal scroller. It silently hid whichever tab did not fit —
+           on every phone width that was the last one. The dock now shares the
+           width it has between the tabs instead. */
+        overflow: "visible",
       }}
     >
       {NAV_ITEMS.map(({ Icon, label, href }) => {
@@ -91,14 +96,19 @@ export default function Navbar() {
         return (
           <motion.button
             key={href}
+            className="site-dock-item"
             onClick={() => router.push(href)}
             title={label}
+            aria-label={label}
             whileHover={{ scale: 1.06, y: -1 }}
             whileTap={{ scale: 0.94 }}
             transition={{ type: "spring", stiffness: 420, damping: 24 }}
             style={{
               position: "relative",
-              padding: "7px 14px",
+              /* a fixed box height keeps the dock exactly as tall whatever the
+                 label metrics do — nothing downstream has to guess it */
+              height: 52,
+              padding: "0 var(--dock-item-pad)",
               borderRadius: 100,
               border: "none",
               cursor: "pointer",
@@ -108,8 +118,8 @@ export default function Navbar() {
               alignItems: "center",
               justifyContent: "center",
               gap: 4,
-              flexShrink: 0,
-              minWidth: 52,
+              flexShrink: 1,
+              minWidth: 0,
             }}
           >
             {active && (
@@ -136,10 +146,11 @@ export default function Navbar() {
               }}
             />
             <span
+              className="site-dock-label"
               style={{
                 position: "relative",
                 zIndex: 1,
-                fontSize: 11,
+                fontSize: "var(--dock-label-size)",
                 fontWeight: active ? 700 : 500,
                 color: active ? "var(--nav-icon-active)" : "var(--nav-icon-inactive)",
                 transition: "color 0.22s ease",
@@ -156,6 +167,33 @@ export default function Navbar() {
         );
       })}
     </motion.nav>
+
+      {/* The dock's metrics (--dock-h, --dock-gap, --dock-item-pad,
+          --dock-label-size) are declared once in globals.css, so the hero,
+          the timeline and the footer can reserve exactly the space it takes
+          instead of each hard-coding a guess at its height. */}
+      <style>{`
+        .site-dock { min-height: var(--dock-h); }
+
+        /* Phones: the dock spans the safe width and the six tabs share it,
+           rather than one of them being scrolled out of sight. */
+        @media (max-width: 767px) {
+          .site-dock-wrap { padding-inline: 8px; }
+
+          .site-dock {
+            width: 100%;
+            max-width: 440px !important;
+            justify-content: space-between;
+          }
+
+          .site-dock-item { flex: 1 1 0; }
+
+          .site-dock-label {
+            max-width: 100%;
+            overflow: hidden;
+          }
+        }
+      `}</style>
     </div>
   );
 }

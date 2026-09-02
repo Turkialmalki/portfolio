@@ -101,7 +101,7 @@ type Stop = {
   layout?: "split" | "award" | "stack";
 };
 
-const STOPS: Stop[] = [
+export const STOPS: Stop[] = [
   {
     id: "aramco",
     layout: "split",
@@ -363,10 +363,8 @@ const COPY = {
   ar: {
     kicker: "خط الرحلة",
     title: "من أول سطر كود إلى قيادة منتجات رقمية",
-    lede: "رحلة واحدة متصلة عبر المصارف، التقنية المالية، الابتكار الحكومي، والمنتجات المستقلة — وكل محطة معها ما يثبتها.",
     span: "2018 — اليوم",
     years: "‎+9 سنوات",
-    departure: "الإقلاع · 2018",
     arrivalKicker: "الوجهة الحالية",
     arrival: "اليوم",
     arrivalLine: "الرحلة مستمرة — والمحطة القادمة قد تكون معك.",
@@ -379,10 +377,8 @@ const COPY = {
   en: {
     kicker: "Flight path",
     title: "From the first line of code to leading digital products",
-    lede: "One continuous journey through banking, fintech, government innovation and independent products — every stop carries the work that proves it.",
     span: "2018 — Today",
     years: "9+ years",
-    departure: "Departure · 2018",
     arrivalKicker: "Arrival",
     arrival: "Today",
     arrivalLine: "The journey continues — the next stop could be yours.",
@@ -497,10 +493,22 @@ export default function FlightPath() {
     let frame = 0;
     const sync = () => {
       frame = 0;
+      /*
+        The reading line, except for the first stop.
+
+        Every other stop opens when its head reaches the upper-middle of the
+        screen, which is what makes the route read as travelled. The first one
+        is different: the hero's archive has just finished docking directly
+        above it, and waiting half a viewport more before the milestone it
+        landed in will open puts a hole in the one handover that has to be
+        seamless. It opens as soon as it is on screen at all.
+      */
       const line = window.innerHeight * 0.42;
+      const firstLine = window.innerHeight * 0.94;
       let next = -1;
       rowsRef.current.forEach((row, index) => {
-        if (row && row.getBoundingClientRect().top <= line) next = index;
+        if (!row) return;
+        if (row.getBoundingClientRect().top <= (index === 0 ? firstLine : line)) next = index;
       });
       setActiveIndex((prev) => (prev === next ? prev : next));
     };
@@ -565,25 +573,6 @@ export default function FlightPath() {
       <div className="fp-inner">
         <RouteEntry railX={rail.x} reduced={Boolean(reduced)} />
 
-        <motion.header
-          className="fp-head"
-          initial={{ opacity: 0, y: 22 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.7, ease: EASE }}
-        >
-          <span className="fp-kicker">
-            <PlaneGlyph size={12} />
-            {copy.kicker}
-          </span>
-          <h2 className="fp-title">{copy.title}</h2>
-          <p className="fp-lede">{copy.lede}</p>
-          <div className="fp-span">
-            <span className="fp-span-chip">{copy.span}</span>
-            <span className="fp-span-chip fp-span-chip-alt">{copy.years}</span>
-          </div>
-        </motion.header>
-
         <div className="fp-route" ref={routeRef}>
           <div
             className="fp-rail"
@@ -609,9 +598,33 @@ export default function FlightPath() {
             )}
           </div>
 
-          <span className="fp-cap fp-cap-start" aria-hidden="true">
-            {copy.departure}
-          </span>
+          {/*
+            The section's heading, reduced to a label on the route.
+
+            It used to be a full title block sitting between the hero's docked
+            archive and this timeline's first stop — a second introduction to a
+            story the reader had just watched assemble itself, and three hundred
+            pixels of chrome in the one place the journey had to stay unbroken.
+            What is left is the line the route needs to name itself, on the
+            copy column, directly above the first node.
+          */}
+          <motion.header
+            className="fp-open"
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.6 }}
+            transition={{ duration: 0.5, ease: EASE }}
+          >
+            <span className="fp-open-kicker">
+              <PlaneGlyph size={11} />
+              {copy.kicker}
+              <i aria-hidden="true">·</i>
+              {copy.span}
+              <i aria-hidden="true">·</i>
+              {copy.years}
+            </span>
+            <h2 className="fp-open-title">{copy.title}</h2>
+          </motion.header>
 
           <ol className="fp-list" ref={listRef}>
             {STOPS.map((stop, index) => (
@@ -1140,6 +1153,17 @@ function CredentialChip({
 function RouteEntry({ railX, reduced }: { railX: number; reduced: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  /**
+   * Where the hero's route line ends, in this element's own coordinates.
+   *
+   * The curve used to leave from the middle of the page, which was fine when
+   * the hero above it ended in a centred stub and wrong the moment the hero
+   * grew a real route of its own off to one side: the line appeared to start
+   * nowhere near the one it was continuing. The hero publishes its rail
+   * position as --hero-rail-x (see heroFlight.tsx); this reads it, and falls
+   * back to the centre if the hero is not above us.
+   */
+  const [entryX, setEntryX] = useState<number | null>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start 0.98", "end 0.55"],
@@ -1153,15 +1177,44 @@ function RouteEntry({ railX, reduced }: { railX: number; reduced: boolean }) {
   useLayoutEffect(() => {
     const node = ref.current;
     if (!node) return;
-    const sync = () => setWidth(node.getBoundingClientRect().width);
-    sync();
+
+    const sync = () => {
+      const box = node.getBoundingClientRect();
+      setWidth(box.width);
+      const published = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--hero-rail-x"),
+      );
+      setEntryX(Number.isFinite(published) ? published - box.left : null);
+    };
+
+    /* The hero refines its own measurement for a second or so after load —
+       webfonts, the entrance animation — so this follows it until it settles
+       rather than reading one number at mount and trusting it. */
+    let frame = 0;
+    let stable = 0;
+    let seen = "";
+    const deadline = performance.now() + 2500;
+    const step = () => {
+      const before = seen;
+      sync();
+      seen = getComputedStyle(document.documentElement).getPropertyValue("--hero-rail-x");
+      stable = seen && seen === before ? stable + 1 : 0;
+      frame = stable >= 3 || performance.now() > deadline ? 0 : requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+
     const ro = new ResizeObserver(sync);
     ro.observe(node);
-    return () => ro.disconnect();
+    window.addEventListener("resize", sync);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      ro.disconnect();
+      window.removeEventListener("resize", sync);
+    };
   }, []);
 
-  const height = 118;
-  const startX = width / 2;
+  const height = 76;
+  const startX = entryX ?? width / 2;
   const endX = railX || startX;
   const ready = width > 0 && railX > 0;
 
@@ -1305,68 +1358,43 @@ const STYLES = `
 
   /* ── entry curve ─────────────────────────────────────── */
 
-  .fp-entry { position: relative; width: 100%; height: 118px; }
+  .fp-entry { position: relative; width: 100%; height: 76px; }
   .fp-entry svg { display: block; overflow: visible; }
 
-  /* ── header ──────────────────────────────────────────── */
+  /* ── the route's own label ───────────────────────────── */
 
-  .fp-head {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    padding-block: clamp(18px, 3vw, 34px) clamp(34px, 5vw, 62px);
-    max-width: 760px;
+  /* Aligned to the copy column, so it reads as the first thing written
+     alongside the rail rather than as a section that has to be got past. */
+  .fp-open {
+    margin-inline-start: calc(var(--fp-year-w) + var(--fp-gap) + var(--fp-node-w) + var(--fp-gap));
+    margin-bottom: clamp(14px, 1.8vw, 22px);
+    max-width: 62ch;
   }
 
-  .fp-kicker {
+  .fp-open-kicker {
     display: inline-flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 7px;
-    padding: 6px 13px;
-    border-radius: 999px;
-    background: var(--bg-pill, #f1f1f1);
-    color: var(--text-secondary, #626262);
-    font-size: 12.5px;
+    color: var(--text-muted, #888);
+    font-size: 12px;
     font-weight: 700;
+    letter-spacing: .02em;
   }
 
-  .fp-kicker svg { color: var(--fp-accent); }
+  .fp-open-kicker svg { color: var(--fp-accent); }
+  .fp-open-kicker i { color: var(--fp-line); font-style: normal; }
 
-  .fp-title {
-    margin: 0;
-    font-size: clamp(32px, 4.4vw, 58px);
-    font-weight: 900;
-    line-height: 1.06;
-    letter-spacing: -.042em;
+  .fp-open-title {
+    margin: 6px 0 0;
+    font-size: clamp(17px, 1.6vw, 21px);
+    font-weight: 800;
+    line-height: 1.4;
+    letter-spacing: -.02em;
     text-wrap: balance;
   }
 
-  [dir="rtl"] .fp-title { letter-spacing: 0; line-height: 1.24; }
-
-  .fp-lede {
-    margin: 4px 0 0;
-    max-width: 62ch;
-    color: var(--text-secondary, #626262);
-    font-size: clamp(14.5px, 1.2vw, 17.5px);
-    line-height: 1.62;
-  }
-
-  .fp-span { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-
-  .fp-span-chip {
-    padding: 5px 12px;
-    border-radius: 999px;
-    border: 1px solid var(--fp-card-border);
-    background: var(--fp-card);
-    color: var(--text-secondary, #626262);
-    font-size: 12px;
-    font-weight: 700;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-
-  .fp-span-chip-alt { color: var(--fp-accent); border-color: var(--fp-accent-soft); }
+  [dir="rtl"] .fp-open-title { letter-spacing: 0; line-height: 1.55; }
 
   /* ── route + rail ────────────────────────────────────── */
 
@@ -1440,28 +1468,6 @@ const STYLES = `
     margin-inline-start: -1px;
     background: linear-gradient(to top, var(--fp-accent), transparent);
     opacity: .5;
-  }
-
-  .fp-cap {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-inline-start: calc(var(--fp-year-w) + var(--fp-gap) + var(--fp-node-w) + var(--fp-gap));
-    margin-bottom: 14px;
-    color: var(--text-muted, #888);
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-  }
-
-  [dir="rtl"] .fp-cap { letter-spacing: 0; text-transform: none; font-size: 12.5px; }
-
-  .fp-cap::before {
-    content: "";
-    width: 18px;
-    height: 1px;
-    background: var(--fp-line);
   }
 
   /* ── one stop ────────────────────────────────────────── */
@@ -2171,7 +2177,7 @@ const STYLES = `
 
   @media (max-width: 900px) {
     .fp { --fp-year-w: clamp(54px, 8vw, 74px); --fp-node-w: 30px; }
-    .fp-entry { height: 92px; }
+    .fp-entry { height: 64px; }
     .fp-proofs,
     .fp-proofs[data-count="1"],
     .fp-proofs[data-count="2"] {
@@ -2187,7 +2193,7 @@ const STYLES = `
 
     .fp-inner { width: calc(100% - 30px); }
 
-    .fp-entry { height: 74px; }
+    .fp-entry { height: 52px; }
 
     .fp-stop { grid-template-columns: var(--fp-node-w) minmax(0, 1fr); }
 
@@ -2195,7 +2201,7 @@ const STYLES = `
 
     .fp-rail { inset-inline-start: calc(var(--fp-node-w) / 2); }
 
-    .fp-cap { margin-inline-start: calc(var(--fp-node-w) + var(--fp-gap)); }
+    .fp-open { margin-inline-start: calc(var(--fp-node-w) + var(--fp-gap)); }
 
     .fp-arrival {
       margin-inline-start: 0;
@@ -2227,7 +2233,7 @@ const STYLES = `
     /* A framer \`initial\` has already been written into the markup by the time
        the client knows the preference, so the resting state is restored here
        instead: everything is simply visible, in place, with the route drawn. */
-    .fp-head,
+    .fp-open,
     .fp-stop,
     .fp-dot,
     .fp-proof,

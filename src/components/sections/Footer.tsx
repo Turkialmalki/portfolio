@@ -283,8 +283,12 @@ export default function Footer() {
         .footer-root {
           width: 100%;
           background: var(--bg-primary);
-          padding: 24px 24px 96px;
-          overflow: hidden;
+          /* the copyright is the last line on the page — it has to clear the
+             floating dock, not sit under it */
+          padding: 24px 24px calc(var(--dock-clear) + 16px);
+          /* clip, not hidden: hidden here makes the footer a scroll container
+             and breaks sticky ancestors */
+          overflow-x: clip;
           transition: background-color 0.35s ease;
         }
 
@@ -549,7 +553,7 @@ export default function Footer() {
 
         @media (max-width: 600px) {
           .footer-root {
-            padding: 16px 16px 88px;
+            padding: 16px 16px calc(var(--dock-clear) + 12px);
           }
 
           .contact-card,
@@ -579,7 +583,7 @@ export default function Footer() {
           
 
           .footer-copyright {
-            margin-top: 42px;
+            margin-top: 20px;
             font-size: 13px;
           }
         }
@@ -593,8 +597,6 @@ export default function Footer() {
         [dir="rtl"] .footer-brand h3 { line-height: 1.28; padding-block: 0.04em; }
         [dir="rtl"] .contact-copy h2 { line-height: 1.22; }
         [dir="rtl"] .contact-copy p { line-height: 1.75; }
-        [dir="rtl"] 
-        [dir="rtl"] 
         [dir="rtl"] .footer-copyright { line-height: 1.7; }
         /* The pill keeps its 15px/13px proportions: the extra glyph room comes
            out of the padding, so the button is the same height as in English. */

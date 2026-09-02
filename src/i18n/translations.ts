@@ -123,6 +123,20 @@ const translations = {
       rights: "جميع الحقوق محفوظة",
       madeWith: "صُنع بشغف في الرياض",
     },
+    journey: {
+      pill: "القيمة",
+      title: "لماذا أنا؟",
+      subtitle: "خبرة موثّقة، وأثر ملموس.",
+      startupAria: "مشاريع ناشئة",
+      impactTitle: "أكثر من 20 ورشة عمل",
+      impactTitleLine2: "وأكثر من 1,000 ساعة استشارية",
+      impactDesc:
+        "عبر الخدمات المصرفية والتقنية المالية والشركات الناشئة والابتكار الحكومي — أساعد في بناء منتجات تنتقل من الفكرة إلى التنفيذ.",
+      impactTags: ["قيادة هندسية", "بناء المنتجات", "عقلية الابتكار"],
+      skillsLabel: "الأدوات التقنية",
+      skillsTitle: "مهاراتي",
+      skillsDesc: "ابتكار المنتجات، بناء MVP، التقنية المالية، وتجارب رقمية.",
+    },
   },
 
   en: {
@@ -242,6 +256,20 @@ const translations = {
       getInTouch: "Get in Touch",
       rights: "All rights reserved",
       madeWith: "Crafted with passion in Riyadh",
+    },
+    journey: {
+      pill: "Value",
+      title: "Why Me?",
+      subtitle: "Backed by experience, driven by impact.",
+      startupAria: "Startup ventures",
+      impactTitle: "20+ Workshops",
+      impactTitleLine2: "1,000+ Consultation Hours",
+      impactDesc:
+        "Across banking, fintech, startups, and government innovation — helping build products that move from idea to execution.",
+      impactTags: ["Engineering Leadership", "Product Builder", "Innovation Mindset"],
+      skillsLabel: "Tech Stack",
+      skillsTitle: "My Skills",
+      skillsDesc: "Product innovation, MVP, fintech, and product experiences.",
     },
   },
 };

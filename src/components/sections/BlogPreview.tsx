@@ -30,7 +30,7 @@ const PREVIEW_POSTS: Record<"ar" | "en", BlogPostPreview[]> = {
       excerpt:
         "Practical principles for building maintainable web platforms that can grow across products, teams, and changing business needs.",
       category: "Architecture",
-      image: "/blog/frontend-architecture.jpg",
+      image: "",
       gradient: "linear-gradient(140deg, #dbe8ff 0%, #b8d0ff 100%)",
     },
     {
@@ -39,7 +39,7 @@ const PREVIEW_POSTS: Record<"ar" | "en", BlogPostPreview[]> = {
       excerpt:
         "Lessons on aligning engineering, product, design, backend, and QA teams around quality, ownership, and successful delivery.",
       category: "Leadership",
-      image: "/blog/engineering-leadership.jpg",
+      image: "",
       gradient: "linear-gradient(140deg, #d8f5e8 0%, #a8e8c8 100%)",
     },
     {
@@ -48,7 +48,7 @@ const PREVIEW_POSTS: Record<"ar" | "en", BlogPostPreview[]> = {
       excerpt:
         "How clean architecture, observability, CI/CD, and thoughtful iteration can modernize products while maintaining delivery momentum.",
       category: "Transformation",
-      image: "/blog/platform-modernization.jpg",
+      image: "",
       gradient: "linear-gradient(140deg, #ffe8d8 0%, #ffd0b0 100%)",
     },
   ],
@@ -59,7 +59,7 @@ const PREVIEW_POSTS: Record<"ar" | "en", BlogPostPreview[]> = {
       excerpt:
         "مبادئ عملية لبناء منصات ويب سهلة الصيانة قادرة على النمو عبر المنتجات والفرق واحتياجات الأعمال المتغيرة.",
       category: "معمارية",
-      image: "/blog/frontend-architecture.jpg",
+      image: "",
       gradient: "linear-gradient(140deg, #dbe8ff 0%, #b8d0ff 100%)",
     },
     {
@@ -68,7 +68,7 @@ const PREVIEW_POSTS: Record<"ar" | "en", BlogPostPreview[]> = {
       excerpt:
         "دروس في مواءمة فرق الهندسة والمنتج والتصميم والأنظمة الخلفية والجودة حول الجودة والملكية والتسليم الناجح.",
       category: "قيادة",
-      image: "/blog/engineering-leadership.jpg",
+      image: "",
       gradient: "linear-gradient(140deg, #d8f5e8 0%, #a8e8c8 100%)",
     },
     {
@@ -77,7 +77,7 @@ const PREVIEW_POSTS: Record<"ar" | "en", BlogPostPreview[]> = {
       excerpt:
         "كيف تُحدّث منتجاتك عبر المعمارية النظيفة والمراقبة و CI/CD والتحسين المستمر مع الحفاظ على سرعة الإنجاز.",
       category: "تحوّل رقمي",
-      image: "/blog/platform-modernization.jpg",
+      image: "",
       gradient: "linear-gradient(140deg, #ffe8d8 0%, #ffd0b0 100%)",
     },
   ],
@@ -262,7 +262,10 @@ function CardImage({
 }) {
   const [errored, setErrored] = useState(false);
 
-  if (errored) {
+  /* An empty src is a post that has no artwork yet, not a broken one: render
+     the gradient directly rather than firing a request that 404s and then
+     falling back to the same gradient a moment later. */
+  if (!src || errored) {
     return (
       <div
         aria-hidden

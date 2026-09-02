@@ -15,6 +15,35 @@ const REVEAL_MS   = 220;    // content reveal fires this far into the slide
 // Apple cubic-bezier — used for every stroke animation
 const APPLE_EASE: [number, number, number, number] = [0.45, 0, 0.55, 1];
 
+/**
+ * Lock/unlock page scrolling without moving the page.
+ *
+ * Plain `overflow: hidden` removes the scrollbar, which widens the viewport by
+ * its width and slides the whole page sideways — measured here at a full 1.0 of
+ * cumulative layout shift. `scrollbar-gutter: stable` keeps the gutter reserved
+ * while the splash is up, so the viewport width never changes. The padding
+ * branch is only a fallback for browsers without it.
+ */
+function lockScroll() {
+  const doc = document.documentElement;
+  if (typeof CSS !== "undefined" && CSS.supports?.("scrollbar-gutter", "stable")) {
+    doc.style.scrollbarGutter = "stable";
+  }
+  const before = doc.clientWidth;
+  doc.style.overflow = "hidden";
+  // Read AFTER the change: forcing layout here gives the exact width the
+  // scrollbar was occupying.
+  const gap = doc.clientWidth - before;
+  if (gap > 0) document.body.style.paddingInlineEnd = `${gap}px`;
+}
+
+function unlockScroll() {
+  const doc = document.documentElement;
+  doc.style.overflow = "";
+  doc.style.scrollbarGutter = "";
+  document.body.style.paddingInlineEnd = "";
+}
+
 type Stroke = {
   d: string;
   at: number;   // start offset in seconds (added to PRE_DELAY_S)
@@ -78,20 +107,20 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
   useEffect(() => {
     // Skip on revisits within the same browser session
     if (sessionStorage.getItem(SESSION_KEY)) {
-      document.body.style.overflow = "";
+      unlockScroll();
       setVisible(false);
       setTimeout(onComplete, 60);
       return;
     }
 
     const isReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    document.body.style.overflow = "hidden";
+    lockScroll();
 
     if (isReduced) {
       setReduced(true);
       setDrawing(true); // show all strokes instantly
       const ta = setTimeout(() => {
-        document.body.style.overflow = "";
+        unlockScroll();
         sessionStorage.setItem(SESSION_KEY, "1");
         onComplete();
       }, 700);
@@ -99,7 +128,7 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
       return () => {
         clearTimeout(ta);
         clearTimeout(tb);
-        document.body.style.overflow = "";
+        unlockScroll();
       };
     }
 
@@ -109,7 +138,7 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
     const exitAt = LAST_STROKE_END_S * 1000 + HOLD_MS;
     const t1 = setTimeout(() => setSliding(true), exitAt);
     const t2 = setTimeout(() => {
-      document.body.style.overflow = "";
+      unlockScroll();
       sessionStorage.setItem(SESSION_KEY, "1");
       onComplete();
     }, exitAt + REVEAL_MS);
@@ -117,14 +146,25 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
 
     return () => {
       [t0, t1, t2, t3].forEach(clearTimeout);
-      document.body.style.overflow = "";
+      unlockScroll();
     };
   }, [onComplete]);
 
   if (!visible) return null;
 
   return (
+    <>
+      {/*
+        The splash renders in the server output so there is no flash of the page
+        before it mounts. That would trap a visitor with JS disabled behind a
+        curtain that can never slide away, so for them it is simply removed.
+      */}
+      <noscript>
+        <style>{`.preloader-veil{display:none !important}`}</style>
+      </noscript>
+
     <motion.div
+      className="preloader-veil"
       initial={{ y: 0 }}
       animate={{ y: sliding ? "-100vh" : 0 }}
       transition={
@@ -236,5 +276,6 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
       >
       </motion.p>
     </motion.div>
+    </>
   );
 }
