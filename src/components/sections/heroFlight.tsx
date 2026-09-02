@@ -105,10 +105,17 @@ export const DOCKS: Dock[] = [
   { id: "emkan", mark: true, markRatio: 209 / 192, ratio: 538 / 1200, phone: true },
   { id: "practice", ratio: 4 / 5 },
   { id: "monshaat", mark: true, markRatio: 640 / 341, ratio: 3 / 2 },
+  { id: "ventures", mark: true, markRatio: 1 },
   /* The route stops where the hero's own objects run out. The stops after this
      one are the timeline's to tell — a dock with nothing to receive is a row of
-     text pretending to be a landing. */
-  { id: "ventures", mark: true, markRatio: 1, ratio: 16 / 9, phone: true },
+     text pretending to be a landing.
+
+     Film is last because the window is: it carries the accelerator's platform,
+     so it flies past the ventures stop to the one that is actually about it.
+     No mark here on purpose — the accelerator's wordmark is pale enough to
+     read as an empty box at 24px, which is the same reason the timeline's own
+     film stop carries no logo tile. */
+  { id: "film", ratio: 1700 / 1012, phone: true },
 ];
 
 const COPY = {

@@ -66,22 +66,26 @@ const SCREENS = [
     edge: 660,
   },
   {
-    src: "munasib.png",
-    out: "window-munaseb.jpg",
-    /* The Munaseb landing page lifted straight out of the laptop render it
-       ships in: the box is the screen's own lit area, inset far enough to
-       leave no bezel, no camera notch and no reflection. That is what lets
-       the hero draw its OWN browser chrome around it — a page still wearing
-       a device frame inside a second frame reads as a mockup of a mockup.
-       The timeline keeps the laptop shot, so the same product is framed two
-       different ways rather than pasted in twice. */
-    box: { x: 1026, y: 243, w: 1250 },
-    /* 16:9 rather than the screen's own 1.66 — the render's page runs a little
-       taller than the fold it is showing, and trimming to a real browser
-       viewport takes the dead band off the bottom instead of framing it. */
-    ar: 16 / 9,
-    edge: 1250,
-    quality: 88,
+    src: "hero/fba.jpg",
+    out: "window-fba.jpg",
+    /* The Film Business Accelerator sign-in, whole.
+
+       This one is NOT cropped, and that is the point: the source is already a
+       full browser viewport at 1700×1012 (≈1.68, the shape of a real window),
+       with nothing running off any edge — the mark top left, the form centred
+       in the cream panel, the bilingual lockup on the still from set, the
+       Film Commission footer. Trimming it to make the type bigger would cut
+       the nav or the footer and turn a complete page into a fragment, which
+       is exactly what the hero's window used to look like.
+
+       It also survives the size it is actually drawn at better than anything
+       else in the repository: at a 324px column "Sign in", the two fields,
+       the orange button and the whole Film Business Accelerator lockup all
+       still read. */
+    box: { x: 0, y: 0, w: 1700 },
+    ar: 1700 / 1012,
+    edge: 1400,
+    quality: 86,
   },
 ];
 

@@ -158,7 +158,7 @@ const TILES: Tile[] = [
     rotate: 3.2,
     z: 3,
     step: 1,
-    at: { w: 36, x: 30, y: 25 },
+    at: { w: 36, x: 30, y: 23 },
     atPhone: { w: 40, x: 26, y: 27 },
   },
 ];
@@ -248,28 +248,29 @@ const MARKS: Mark[] = [
  * The platform window — the anchor of the right column, and the only object
  * in it that is deliberately kept STRAIGHT.
  *
- * The file is the Munaseb landing page lifted out of the laptop render it
- * ships in (see the bake script): screen area only, no bezel, no camera, no
- * reflection. That is the whole reason the hero can draw its own chrome around
- * it — a page still wearing a device frame, inside a second frame, reads as a
- * mockup of a mockup. The timeline keeps the laptop shot, so the same product
- * is framed two different ways rather than pasted in twice.
+ * The Film Business Accelerator's sign-in, shown whole. The file is already a
+ * real browser viewport (1700×1012) with nothing running off an edge, so it
+ * needs no crop and — unlike a page photographed inside a laptop — no bezel
+ * removed before this frame can put its own chrome around it. At the size the
+ * hero actually draws it, "Sign in", both fields, the orange button and the
+ * bilingual lockup all still read, which is more than a dashboard survives at
+ * 324px.
  *
  * It is also the one artifact that carries words at rest: a caption naming the
- * product and what it is. A screenshot without a name is decoration.
+ * product and who it was built for. A screenshot without a name is decoration.
  */
 const WINDOW = {
-  src: "/hero/archive/window-munaseb.jpg",
-  ratio: 16 / 9,
+  src: "/hero/archive/window-fba.jpg",
+  ratio: 1700 / 1012,
   alt: {
-    ar: "الصفحة الرئيسية لمنصة مناسب",
-    en: "The Munaseb platform home page",
+    ar: "شاشة الدخول إلى منصة مسرّعة أعمال الأفلام",
+    en: "The Film Business Accelerator sign-in screen",
   } satisfies Bi,
-  name: { ar: "مناسب", en: "Munaseb" } satisfies Bi,
-  kind: {
-    ar: "منصة خدمات مصرفية مفتوحة",
-    en: "Open banking platform",
+  name: {
+    ar: "مسرّعة أعمال الأفلام",
+    en: "Film Business Accelerator",
   } satisfies Bi,
+  kind: { ar: "هيئة الأفلام السعودية", en: "Saudi Film Commission" } satisfies Bi,
   /** width as a percentage of the showcase frame */
   w: 87,
   wPhone: 96,
@@ -383,9 +384,12 @@ const FLIGHTS: Flight[] = [
   leg("mark-monshaat", "monshaat", "mark", 0.25, 0.71, -22, -5, 1.4),
   leg("tile-room", "monshaat", "frame", 0.28, 0.75, -54, 8, 2.6),
   leg("mark-munasib", "ventures", "mark", 0.30, 0.78, 32, 9, 1.4),
-  /* the anchor leaves last and lands last, so the composition empties from
-     its edges inwards rather than collapsing all at once */
-  leg("window", "ventures", "frame", 0.34, 0.85, 68, -6, 2.8, { phone: true }),
+  /* The anchor leaves last and lands last, so the composition empties from its
+     edges inwards rather than collapsing all at once — and it files past the
+     ventures stop to the film one, because that is whose platform it is. An
+     object that lands on a stop it does not belong to is the one thing this
+     whole arrangement is built to make impossible. */
+  leg("window", "film", "frame", 0.34, 0.85, 68, -6, 2.8, { phone: true }),
 ];
 
 /**
@@ -412,7 +416,14 @@ const PHONE_FLIGHTS: Flight[] = FLIGHTS.filter((flight) => flight.phone).map((fl
  * emptied and three rows would leave most of it blank. Only docks that actually
  * receive an artifact keep a frame; the rest are the stops ahead, listed.
  */
-const PHONE_ROUTE = new Set(["alrajhi", "emkan", "practice", "monshaat", "ventures"]);
+const PHONE_ROUTE = new Set([
+  "alrajhi",
+  "emkan",
+  "practice",
+  "monshaat",
+  "ventures",
+  "film",
+]);
 const PHONE_FRAMED = new Set(
   PHONE_FLIGHTS.filter((flight) => flight.into === "frame").map((flight) => flight.dock),
 );
@@ -558,10 +569,6 @@ export default function Hero({ ready = true }: HeroProps) {
 
   const marksLabel =
     lang === "ar" ? "جهات ومنتجات عملت معها" : "Organisations and products I have worked with";
-  /* The row used to be five logos hanging under the composition with nothing
-     to say what they were. It is a titled rail now — the horizontal head of
-     the vertical route the same marks fly into. */
-  const railLabel = lang === "ar" ? "محطات الرحلة" : "Stops on the route";
   /* the phone route carries the three product artifacts only, so on a phone
      the marks never take off — see PHONE_FLIGHTS */
   const marksFly = MARKS.some((mark) => Boolean(flightFor(`mark-${mark.id}`)));
@@ -685,21 +692,18 @@ export default function Hero({ ready = true }: HeroProps) {
                 twice in one movement rather than meeting a logo wall and then
                 a timeline. */}
             <motion.div className="arc-rail" {...enter(0.42, 12)}>
-              {/* The title stands down with the buttons — but only where the
-                  marks actually leave. Left up on a desktop it would still be
-                  sitting across the middle of the route long after the five
-                  marks it names had flown out from under it; faded out on a
-                  phone, where they stay put, it would strand exactly the row
-                  of context-free logos it is there to prevent. */}
-              <motion.p
-                className="arc-rail-head"
+              {/* One hairline, no words.
+
+                  It is still what stops the marks reading as five logos loose
+                  under the composition — it draws the ground they stand on and
+                  separates them from the work above — and it stands down with
+                  the buttons where the marks actually leave. On a phone, where
+                  they stay put, it stays with them. */}
+              <motion.span
+                className="arc-rail-rule"
                 aria-hidden="true"
                 style={marksFly ? { opacity: supportOpacity } : undefined}
-              >
-                <span className="arc-rail-rule" />
-                <span className="arc-rail-label">{railLabel}</span>
-                <span className="arc-rail-rule" />
-              </motion.p>
+              />
 
               <ul className="arc-marks" aria-label={marksLabel}>
                 {MARKS.map((mark, index) => (
@@ -1008,16 +1012,28 @@ export default function Hero({ ready = true }: HeroProps) {
         .arc-showcase-frame {
           /*
             Set by the tallest thing the right column has to hold, in this
-            order: the window and its caption (≈240px at a 372px column), the
-            ~30px of air under it, and a 230px handset standing on the floor.
+            order: the window and its two-line caption (≈266px at a 372px
+            column), the ~30px of air under it, and a 230px handset standing
+            on the floor.
             Change the window's crop, its width or the front phone's and this
             number moves with them — too small and the phone drops out of the
             bottom of the frame on to the rail of marks, too large and the air
             under the caption opens past the point where the three objects
             still read as one group.
           */
-          --frame-ar: 1.35;
+          --frame-ar: 1.43;
           position: relative;
+          /* The frame is the unit.
+
+             Everything placed in it is already a percentage of it — but the
+             chrome bar and the caption are type, and type was still being
+             sized against the viewport. That is the whole reason the air under
+             the caption used to measure 27px on one screen and 44px on
+             another at the same column width: two fixed things inside an
+             otherwise proportional column. Sizing them in cqw makes the
+             column scale as one object, and the clamps keep the caption
+             readable when the frame gets small. */
+          container-type: inline-size;
           width: min(100%, calc((100svh - 340px) / var(--frame-ar)));
           margin-inline: auto;
           aspect-ratio: 1 / var(--frame-ar);
@@ -1138,8 +1154,8 @@ export default function Hero({ ready = true }: HeroProps) {
              that are NOT a fraction of the frame, so on a short screen — where
              the frame shrinks to fit the pin — they are what would eat the air
              under the window. They give a few pixels back instead. */
-          height: clamp(24px, 3.3vh, 30px);
-          padding-inline: 10px;
+          height: clamp(23px, 8.1cqw, 31px);
+          padding-inline: 2.7cqw;
           background: color-mix(in srgb, var(--arc-surface) 94%, #6d7689);
           border-bottom: 1px solid var(--arc-border);
         }
@@ -1190,8 +1206,12 @@ export default function Hero({ ready = true }: HeroProps) {
           display: block;
           width: 100%;
           aspect-ratio: var(--ar);
-          background: #16302c;
+          /* only ever seen for the instant before the file paints — the page's
+             own paper, so there is no flash of a colour it does not contain */
+          background: #f4f1ec;
         }
+
+        [data-theme="dark"] .arc-window-shot { background: #1b1e25; }
 
         /* product UI is never cropped: the container carries the file's own
            aspect, so contain fits it exactly and there is nothing to letterbox */
@@ -1199,37 +1219,34 @@ export default function Hero({ ready = true }: HeroProps) {
 
         /* The caption. A screenshot with no name is decoration — this is what
            makes the window a piece of work with a subject and a category. */
+        /*
+          Two stacked lines rather than a name and a category side by side.
+          The pair used to sit on one line with a rule between them, which read
+          well at 372px and wrapped — unpredictably, and into the air under the
+          window — everywhere narrower. Stacked, the caption is the same two
+          lines at every width, so the ~30px it leaves above the handsets is a
+          number this file can rely on.
+        */
         .arc-window-caption {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: baseline;
-          gap: 4px 8px;
-          margin: clamp(8px, 1.2vh, 11px) 2px 0;
-          line-height: 1.35;
+          margin: clamp(8px, 2.9cqw, 12px) 2px 0;
+          padding-inline-start: 9px;
+          border-inline-start: 2px solid var(--arc-accent);
+          line-height: 1.36;
         }
 
         .arc-window-caption b {
-          font-size: 12.5px;
+          display: block;
+          font-size: clamp(11px, 3.36cqw, 13px);
           font-weight: 800;
           letter-spacing: -.01em;
           color: var(--text-primary,#090909);
         }
 
         .arc-window-caption span {
-          font-size: 11.5px;
+          display: block;
+          font-size: clamp(10px, 2.96cqw, 11.5px);
           font-weight: 600;
           color: var(--arc-muted);
-        }
-
-        /* the hairline that ties the two halves of the caption together */
-        .arc-window-caption b::after {
-          content: "";
-          display: inline-block;
-          width: 12px;
-          height: 1px;
-          margin-inline-start: 8px;
-          vertical-align: middle;
-          background: var(--arc-border);
         }
 
         /*
@@ -1316,40 +1333,21 @@ export default function Hero({ ready = true }: HeroProps) {
           padding-top: clamp(22px, 3.2vh, 38px);
         }
 
-        .arc-rail-head {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: clamp(10px, 1.4vw, 16px);
-          margin: 0 0 clamp(12px, 1.7vh, 18px);
-        }
-
+        /* A rule that fades out at both ends rather than stopping: it grounds
+           the row without drawing a box under it. It is set a little stronger
+           than the hairlines elsewhere in the hero because it is now carrying
+           on its own what a title used to help it do — at border weight it
+           read as a rendering artifact rather than a line somebody drew. */
         .arc-rail-rule {
-          flex: 0 1 clamp(26px, 8vw, 104px);
+          display: block;
+          width: min(420px, 46%);
           height: 1px;
-          background: linear-gradient(to right, transparent, var(--arc-border) 55%);
-        }
-
-        .arc-rail-rule:last-child {
-          background: linear-gradient(to left, transparent, var(--arc-border) 55%);
-        }
-
-        .arc-rail-label {
-          flex: 0 0 auto;
-          color: var(--arc-muted);
-          font-size: 10.5px;
-          font-weight: 800;
-          letter-spacing: .17em;
-          text-transform: uppercase;
-          white-space: nowrap;
-        }
-
-        /* Arabic letters join. Tracking them apart breaks the word into
-           unconnected glyphs, and there is no upper case to reach for. */
-        [dir="rtl"] .arc-rail-label {
-          letter-spacing: 0;
-          text-transform: none;
-          font-size: 11.5px;
+          margin: 0 auto clamp(15px, 2.1vh, 23px);
+          background: linear-gradient(to right,
+            transparent,
+            color-mix(in srgb, var(--arc-muted) 34%, transparent) 26%,
+            color-mix(in srgb, var(--arc-muted) 34%, transparent) 74%,
+            transparent);
         }
 
         /* One baseline, one height, natural widths: the marks that are icons
@@ -1873,29 +1871,23 @@ export default function Hero({ ready = true }: HeroProps) {
             column that scrolls, not a screen that has to fit.
           */
           .arc-collage-frame {
-            --frame-ar: 1.42;
+            --frame-ar: 1.36;
             width: 100%;
           }
 
           .arc-showcase-frame {
-            --frame-ar: 1.5;
+            --frame-ar: 1.55;
             width: 100%;
           }
 
-          /* the caption sits under a nearly full-width window here, so it can
-             afford to be a touch larger */
-          .arc-window-caption { margin-top: 12px; }
-          .arc-window-caption b { font-size: 13px; }
-          .arc-window-caption span { font-size: 12px; }
+
 
           /* Five marks cannot sit on one line at phone widths, so the rail is
              allowed to wrap into two — which is exactly why the chips share a
              baseline now: a wrapped row of vertically-offset chips collides
              with the row above it instead of reading as a rail. */
           .arc-rail { padding-top: clamp(30px, 8vw, 42px); }
-
-          .arc-rail-head { gap: 10px; }
-          .arc-rail-rule { flex-basis: clamp(20px, 12vw, 60px); }
+          .arc-rail-rule { width: min(240px, 62%); margin-bottom: 18px; }
 
           .arc-marks {
             --mark-h: 42px;
@@ -1919,17 +1911,6 @@ export default function Hero({ ready = true }: HeroProps) {
           .fl-role { white-space: normal; overflow: visible; }
           .fl-org { font-size: 13px; line-height: 1.32; }
           .fl-role { font-size: 11px; }
-        }
-
-        /*
-          The wide phones. Everything in the showcase is a fraction of the
-          frame except the chrome bar and the caption, which are type and stay
-          the size type has to be — so as the column grows past ~400px those
-          two stop keeping up and the air under the caption opens past the 40px
-          the group is allowed. A slightly shallower frame gives it back.
-        */
-        @media (min-width: 400px) and (max-width: 767px) {
-          .arc-showcase-frame { --frame-ar: 1.45; }
         }
 
         @media (max-width: 359px) {
