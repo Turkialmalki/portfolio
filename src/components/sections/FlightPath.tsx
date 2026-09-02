@@ -489,10 +489,27 @@ export default function FlightPath() {
    * the viewport, so no single "N% visible" threshold is ever satisfied by all
    * of them, and the indicator would stall on whichever one happened to fit.
    */
+  /**
+   * Each row's top in DOCUMENT space, and the two reading lines, cached.
+   *
+   * This used to be eight getBoundingClientRect calls and two innerHeight
+   * reads per scroll frame — a forced layout on every frame of every scroll on
+   * the page, the hero's whole departure included, for a number that only
+   * changes when the page is laid out. Nothing here moves the rows: the states
+   * this effect sets are opacity, colour and transform only, so their layout
+   * positions are read when the layout actually changes and compared against
+   * the scroll offset in between.
+   */
+  const rowTops = useRef<number[]>([]);
+  const lines = useRef({ line: 0, first: 0 });
+
   useEffect(() => {
     let frame = 0;
-    const sync = () => {
-      frame = 0;
+
+    const remeasure = () => {
+      rowTops.current = rowsRef.current.map((row) =>
+        row ? row.getBoundingClientRect().top + window.scrollY : Number.POSITIVE_INFINITY,
+      );
       /*
         The reading line, except for the first stop.
 
@@ -503,25 +520,51 @@ export default function FlightPath() {
         landed in will open puts a hole in the one handover that has to be
         seamless. It opens as soon as it is on screen at all.
       */
-      const line = window.innerHeight * 0.42;
-      const firstLine = window.innerHeight * 0.94;
+      lines.current = {
+        line: window.innerHeight * 0.42,
+        first: window.innerHeight * 0.94,
+      };
+    };
+
+    const sync = () => {
+      frame = 0;
+      const top = window.scrollY;
+      const { line, first } = lines.current;
       let next = -1;
-      rowsRef.current.forEach((row, index) => {
-        if (!row) return;
-        if (row.getBoundingClientRect().top <= (index === 0 ? firstLine : line)) next = index;
+      rowTops.current.forEach((rowTop, index) => {
+        if (rowTop - top <= (index === 0 ? first : line)) next = index;
       });
       setActiveIndex((prev) => (prev === next ? prev : next));
     };
+
+    const relayout = () => {
+      remeasure();
+      sync();
+    };
+
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(sync);
     };
-    sync();
+
+    relayout();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", relayout);
+    window.addEventListener("orientationchange", relayout);
+    window.addEventListener("load", relayout);
+    /* Arabic and Latin metrics differ enough to move every row. */
+    document.fonts?.ready.then(relayout).catch(() => {});
+    /* and the belt on the braces: anything that changes a row's height at all
+       — a language switch, a card that grows — re-measures itself */
+    const ro = new ResizeObserver(relayout);
+    rowsRef.current.forEach((row) => row && ro.observe(row));
+
     return () => {
       if (frame) cancelAnimationFrame(frame);
+      ro.disconnect();
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("resize", relayout);
+      window.removeEventListener("orientationchange", relayout);
+      window.removeEventListener("load", relayout);
     };
   }, []);
 
