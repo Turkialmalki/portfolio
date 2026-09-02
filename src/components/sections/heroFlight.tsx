@@ -232,6 +232,7 @@ export function useFlightPlan(
    */
   const planRef = useRef<Plan>(EMPTY_PLAN);
   const lastSignature = useRef("");
+  const lastCopy = useRef(-1);
   const version = useMotionValue(0);
   const plan = useMemo<PlanFeed>(() => ({ read: () => planRef.current, version }), [version]);
   const publish = useCallback(
@@ -267,11 +268,46 @@ export function useFlightPlan(
   );
 
   /**
+   * How tall the identity block ACTUALLY is, published to CSS.
+   *
+   * The phone stage has to decide how wide it may be before it can know how
+   * tall the copy is: its two artifact bands are fractions of its width, so a
+   * wider stage is a taller one, and what is left for the type is what is left
+   * of one viewport. The stylesheet carries a clamp for that — and a clamp is a
+   * guess. It is right for the strapline this site ships today and wrong the
+   * moment the strapline gets longer, or a translation sets it in three lines
+   * where the other set it in two.
+   *
+   * So the guess becomes a FLOOR and this becomes the truth: the stage reserves
+   * whichever of the two is larger. The reserve can then only ever be too
+   * generous — which costs a few pixels of composition — and never too small,
+   * which would put an artifact on the name.
+   *
+   * `offsetHeight`, not a rect: the identity is scaled and translated by the
+   * transition, and the number wanted here is the layout one, which no
+   * transform can touch. It is read on layout, on font load, on resize and
+   * orientation, and whenever the block itself changes size. Never on scroll.
+   */
+  const measureCopy = useCallback(() => {
+    const stage = stageRef.current;
+    const center = centerRef.current;
+    if (!stage || !center) return;
+    const height = Math.round(center.offsetHeight);
+    /* written only when it genuinely changes: this property feeds back into the
+       stage's own width, and the observer watching that width is what calls
+       this in the first place */
+    if (height === lastCopy.current) return;
+    lastCopy.current = height;
+    stage.style.setProperty("--arc-copy-measured", `${height}px`);
+  }, []);
+
+  /**
    * Returns a signature of what it measured, so the caller can tell whether the
    * page has stopped moving underneath it — see the settle loop below.
    */
   const measure = useCallback((): string => {
     const stage = stageRef.current;
+    measureCopy();
     if (!stage || !enabled) return "";
 
     /** layout position inside the stage — never touched by any transform */
@@ -441,7 +477,7 @@ export function useFlightPlan(
     }
 
     return signature;
-  }, [flights, enabled, publish, lifted]);
+  }, [flights, enabled, publish, lifted, measureCopy]);
 
   /**
    * The rail, drawn between the first and last node exactly as the timeline
@@ -518,12 +554,25 @@ export function useFlightPlan(
     if (!enabled) {
       lastSignature.current = "";
       publish(EMPTY_PLAN);
-      /* the calm treatment still draws a route, so it still needs the line */
+      /* the calm treatment still draws a route, so it still needs the line —
+         and it still lays the composition out around the copy, so it still
+         needs to know how tall the copy really is */
+      measureCopy();
       measureRail();
-      const onResize = () => measureRail();
+      const onResize = () => {
+        measureCopy();
+        measureRail();
+      };
       window.addEventListener("resize", onResize);
+      window.addEventListener("orientationchange", onResize);
       document.fonts?.ready.then(onResize).catch(() => {});
-      return () => window.removeEventListener("resize", onResize);
+      const ro = new ResizeObserver(onResize);
+      if (centerRef.current) ro.observe(centerRef.current);
+      return () => {
+        window.removeEventListener("resize", onResize);
+        window.removeEventListener("orientationchange", onResize);
+        ro.disconnect();
+      };
     }
 
     let frame = 0;
@@ -565,20 +614,26 @@ export function useFlightPlan(
     restart();
 
     const stage = stageRef.current;
-    const ro = stage ? new ResizeObserver(restart) : null;
-    ro?.observe(stage!);
+    const ro = new ResizeObserver(restart);
+    if (stage) ro.observe(stage);
+    /* the identity block as well as the screen: a language switch resets the
+       copy without necessarily resizing anything above it, and the height of
+       that block is what the stage reserves its middle row from */
+    if (centerRef.current) ro.observe(centerRef.current);
     window.addEventListener("resize", restart);
+    window.addEventListener("orientationchange", restart);
     /* Arabic and Latin metrics differ enough to move every dock a few pixels. */
     document.fonts?.ready.then(restart).catch(() => {});
     window.addEventListener("load", restart);
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
-      ro?.disconnect();
+      ro.disconnect();
       window.removeEventListener("resize", restart);
+      window.removeEventListener("orientationchange", restart);
       window.removeEventListener("load", restart);
     };
-  }, [measure, measureRail, enabled, publish, ready]);
+  }, [measure, measureRail, measureCopy, enabled, publish, ready]);
 
   return {
     pinRef,

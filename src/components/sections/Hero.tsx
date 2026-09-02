@@ -2056,21 +2056,25 @@ export default function Hero({ ready = true }: HeroProps) {
             );
 
             /*
-              The height the middle row is BUDGETED — the copy plus the air
-              around it — for the one decision that has to be made before the
-              copy exists: how wide the stage may be.
+              The FLOOR under the height the middle row is given.
 
-              The artifact bands are fractions of the stage's width, so a wider
-              stage is a taller one; the type is not, and its height barely
-              moves between 320 and 430. This number is only ever used as a CAP,
-              and it is set well above what the copy actually measures — the
-              slack is the daylight between the type and the artifacts, and
-              erring high can only make the composition smaller than it had to
-              be, never taller than the screen.
+              The stage has to decide how wide it may be before the copy exists
+              — its artifact bands are fractions of its width, so a wider stage
+              is a taller one, and what is left for the type is what is left of
+              the band. This clamp is what that decision is made from on the
+              first paint, before anything has been measured.
 
-              It bites at exactly one place: a screen too short to hold the
-              composition at the width of its own column. Everywhere else the
-              column is the narrower cap and this term does nothing at all.
+              It is a floor and not the answer: heroFlight.tsx measures the
+              identity block for real — on layout, on font load, on resize,
+              on orientation change and whenever the block itself changes size —
+              and publishes it as --arc-copy-measured. The stage reserves
+              whichever is larger, so a longer strapline, a third line of
+              Arabic or a language that sets the same sentence taller widens
+              the reservation instead of running into the artifacts.
+
+              Erring high here costs a few pixels of composition. Erring low
+              would put an artifact on the name, which is why the two are
+              combined with max() rather than the measurement simply winning.
             */
             --arc-copy-h: clamp(162px, 44vw, 216px);
           }
@@ -2122,7 +2126,7 @@ export default function Hero({ ready = true }: HeroProps) {
 
               100% is the column. 430px stops the composition growing past
               the size it was drawn at on the widest phones. And the last term
-              is what keeps a SHORT screen honest: the bands are 49% and 48% of
+              is what keeps a SHORT screen honest: the bands are 55% and 48% of
               the width, so a stage this wide is a stage --arc-band tall, and
               the whole composition — every artifact, the identity, the marks —
               fits in the band above the navigation with at most the header's
@@ -2133,7 +2137,12 @@ export default function Hero({ ready = true }: HeroProps) {
             width: min(
               100%,
               430px,
-              calc((var(--arc-band) - var(--arc-copy-h)) / 0.97)
+              calc(
+                (
+                  var(--arc-band)
+                    - max(var(--arc-copy-h), calc(var(--arc-copy-measured, 0px) + 6px))
+                ) / 1.03
+              )
             );
             margin-inline: auto;
           }
@@ -2142,15 +2151,17 @@ export default function Hero({ ready = true }: HeroProps) {
             The upper band — set by the deepest thing hanging from the head of
             the stage, which is the window and its caption. Measured across
             every width and both scripts, that group runs to between 42% and
-            46% of the stage's width; the reserve is the top of that range plus
-            the daylight the type is owed underneath it.
+            48% of the stage's width — the top of that range being the narrow
+            stages, where the credit under the window is a fixed line of type
+            rather than a fraction of anything. The reserve is that plus the
+            daylight the name is owed underneath it.
           */
           .arc-stage::before {
             content: "";
             grid-row: 1;
             grid-column: 1;
             width: 0;
-            padding-top: 49%;
+            padding-top: 55%;
             pointer-events: none;
           }
 
@@ -2268,12 +2279,58 @@ export default function Hero({ ready = true }: HeroProps) {
             same two lines whatever that width is. Below a stage this narrow the
             window is under 130px across and neither line fits on one — the
             product's name breaks into three lines under a thumbnail and the
-            block is taller than the window it belongs to. A caption that has to
-            do that is not naming the work any more, so it stands down and the
-            window carries itself, exactly as the marks do.
+            block is taller than the window it belongs to.
+
+            It does not stand down. A screenshot with no name is decoration, and
+            a phone is where that matters most, so what changes is the SHAPE of
+            the credit rather than whether there is one: it comes out of the
+            window's column, hangs under it on one line, and is allowed to run
+            inward across the stage — anchored to the window's outer edge, so it
+            grows toward the middle of the composition where there is nothing
+            and can never reach the edge of the screen. The commissioner's name
+            is the line that goes, and it goes to screen readers rather than
+            away: the product still says what it is and who it was built for,
+            in a form 79px of window can carry.
           */
           @container arc-stage (max-width: 300px) {
-            .arc-window-caption { display: none; }
+            .arc-window-caption {
+              position: absolute;
+              top: 100%;
+              right: 0;
+              left: auto;
+              width: max-content;
+              /* twice the window, which from the window's outer edge still
+                 stops short of the far side of the stage */
+              max-width: 200%;
+              margin: 5px 0 0;
+              /* the rule sits on the outer edge in both scripts here, because
+                 the block is anchored to that edge rather than to the start of
+                 its own text */
+              border-inline-start: 0;
+              border-right: 2px solid var(--arc-accent);
+              padding-inline: 0 6px;
+              text-align: right;
+            }
+
+            .arc-window-caption b {
+              font-size: 10px;
+              line-height: 1.3;
+              white-space: nowrap;
+            }
+
+            /* present, named, and not drawn: there is no width here for a
+               second line, and dropping it from the document as well would be
+               taking the fact away rather than the pixels */
+            .arc-window-caption span {
+              position: absolute;
+              width: 1px;
+              height: 1px;
+              margin: -1px;
+              padding: 0;
+              overflow: hidden;
+              white-space: nowrap;
+              clip-path: inset(50%);
+            }
           }
 
           /* Chrome at the size the window is actually drawn at. The desktop
