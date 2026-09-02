@@ -145,7 +145,13 @@ const TILES: Tile[] = [
     z: 1,
     step: 0,
     at: { w: 84, x: -8, y: -22 },
-    atPhone: { w: 92, x: -4, y: -25 },
+    /* The phone column is narrower AND taller than the desktop one, so the
+       spots are not the desktop numbers nudged: the primary print runs almost
+       the full width at the top of its frame and the speaking frame sits well
+       clear of it, low and to the outer edge. Both are fractions of the frame,
+       so the ~28px of daylight between them is the same fraction of the
+       picture at 320px as it is at 480px. */
+    atPhone: { w: 96, x: -1, y: -24 },
   },
   {
     id: "stage",
@@ -159,7 +165,7 @@ const TILES: Tile[] = [
     z: 3,
     step: 1,
     at: { w: 36, x: 30, y: 23 },
-    atPhone: { w: 40, x: 26, y: 27 },
+    atPhone: { w: 44, x: 24, y: 27 },
   },
 ];
 
@@ -267,7 +273,7 @@ const WINDOW = {
   kind: { ar: "هيئة الأفلام السعودية", en: "Saudi Film Commission" } satisfies Bi,
   /** width as a percentage of the showcase frame */
   w: 87,
-  wPhone: 96,
+  wPhone: 92,
 };
 
 /**
@@ -307,7 +313,10 @@ const PHONES: Handset[] = [
     rotate: -2.8,
     z: 4,
     at: { w: 28, x: 2, b: 0 },
-    atPhone: { w: 31, x: 2, b: 0 },
+    /* Kept at the same fraction of the frame's HEIGHT as the desktop pair —
+       the phone frame is proportionally taller, so holding the width instead
+       would have dropped a handset through the floor of its own column. */
+    atPhone: { w: 37, x: 3, b: 0 },
   },
   {
     id: "emkan",
@@ -318,7 +327,7 @@ const PHONES: Handset[] = [
     rotate: 3.4,
     z: 3,
     at: { w: 19, x: 39, b: 12 },
-    atPhone: { w: 21, x: 43, b: 12 },
+    atPhone: { w: 25, x: 38, b: 12 },
   },
 ];
 
@@ -369,9 +378,9 @@ const FLIGHTS: Flight[] = [
   /* the banking pair leaves first and separately — one bank, one lender, two
      stops a year apart, so they must not travel as a couple */
   leg("mark-alrajhi", "alrajhi", "mark", 0.13, 0.53, -32, 7, 1.4),
-  leg("phone-alrajhi", "alrajhi", "frame", 0.16, 0.57, 72, 9, 2.4, { phone: true }),
+  leg("phone-alrajhi", "alrajhi", "frame", 0.16, 0.57, 72, 9, 2.4),
   leg("mark-emkan", "emkan", "mark", 0.17, 0.58, -26, -6, 1.4),
-  leg("phone-emkan", "emkan", "frame", 0.20, 0.63, 56, -12, 2.2, { phone: true }),
+  leg("phone-emkan", "emkan", "frame", 0.20, 0.63, 56, -12, 2.2),
   /* the collage separates in the air: the speaking frame files under the
      practice, the room under the centre it was photographed in */
   leg("tile-stage", "practice", "frame", 0.23, 0.68, -62, -12, 2.4),
@@ -382,44 +391,41 @@ const FLIGHTS: Flight[] = [
      ventures stop to the film one, because that is whose platform it is. An
      object that lands on a stop it does not belong to is the one thing this
      whole arrangement is built to make impossible. */
-  leg("window", "film", "frame", 0.34, 0.85, 68, -6, 2.8, { phone: true }),
+  leg("window", "film", "frame", 0.34, 0.85, 68, -6, 2.8),
 ];
 
 /**
- * The phone route: the three product artifacts, one simple column.
+ * The phone route — every artifact the desktop files, into every stop it has.
  *
- * The collage and the marks stay where they are here and leave with the page
- * as normal — a phone has neither the width for ten curves nor the height to
- * show them without something being clipped, and the collage's box would be
- * left as a screen-tall hole above the route if its prints flew out of it.
+ * It used to be three product screens filing into a five-stop stub while the
+ * photographs and the marks stayed behind. That emptied the composition on one
+ * side and left it as a screen-tall hole on the other, and half of the archive
+ * never departed at all. Nothing about a narrow screen makes an object belong
+ * to the career any less, so nothing is dropped here.
+ *
+ * What a phone genuinely cannot carry is the WIDTH of the desktop curves — a
+ * 72px bow across a 342px column is a detour off the side of the screen — nor
+ * the desktop's leisure: the identity has already scrolled off by the time the
+ * screen is held, so the reader is looking straight at the composition when the
+ * departure starts and the whole thing is filed a little earlier.
  */
-const PHONE_FLIGHTS: Flight[] = FLIGHTS.filter((flight) => flight.phone).map((flight) => ({
+/* One narrow column means the artifacts cross each other far more than they do
+   across a desktop spread, and a 2.8px smear on each of them turns the middle
+   of the transition into fog rather than into speed. */
+const PHONE_BLUR = 0.55;
+
+const PHONE_FLIGHTS: Flight[] = FLIGHTS.map((flight) => ({
   ...flight,
-  /* one column, so the bow is a nudge rather than a detour */
-  bow: flight.bow * 0.22,
-  start: flight.start * 0.8,
-  end: Math.min(0.88, flight.end * 0.95),
+  /* one narrow column, so the bow is a nudge rather than a detour */
+  bow: flight.bow * 0.3,
+  blur: flight.blur * PHONE_BLUR,
+  start: flight.start * 0.86,
+  end: Math.min(0.94, flight.end * 0.98),
 }));
 
-/**
- * The phone route.
- *
- * It shows five stops — the three the travelling artifacts land on, and the two
- * between them — because the route is laid over the box the showcase just
- * emptied and three rows would leave most of it blank. Only docks that actually
- * receive an artifact keep a frame; the rest are the stops ahead, listed.
- */
-const PHONE_ROUTE = new Set(["alrajhi", "emkan", "practice", "monshaat", "film"]);
-const PHONE_FRAMED = new Set(
-  PHONE_FLIGHTS.filter((flight) => flight.into === "frame").map((flight) => flight.dock),
-);
+/** Every stop the desktop route has, because every artifact still flies. */
+const PHONE_DOCKS = DOCKS;
 
-const PHONE_DOCKS = DOCKS.filter((dock) => PHONE_ROUTE.has(dock.id)).map((dock) => ({
-  ...dock,
-  mark: false,
-  lead: false,
-  ratio: PHONE_FRAMED.has(dock.id) ? dock.ratio : undefined,
-}));
 
 /* ------------------------------------------------------------------ */
 
@@ -450,35 +456,57 @@ export default function Hero({ ready = true }: HeroProps) {
    * drift out of step with the scrollbar — there is no hijack and no easing
    * that outlives the gesture.
    */
-  const pinRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: pinRef,
-    offset: ["start start", "end end"],
-  });
-  /* A light spring only takes the jitter off a trackpad; it converges on the
-     scroll value, so the animation stays a function of scroll position. */
-  const progress = useSpring(scrollYProgress, {
-    stiffness: 210,
-    damping: 38,
-    mass: 0.32,
-  });
-
   const flying = !still;
   const docks = isPhone ? PHONE_DOCKS : DOCKS;
   const flights = isPhone ? PHONE_FLIGHTS : FLIGHTS;
 
   const {
+    pinRef,
     stageRef,
     centerRef,
     collageRef,
     showcaseRef,
+    marksRef,
+    probeRef,
     railRef,
     tailRef,
     registerCraft,
     registerSlot,
     registerNode,
     plan,
-  } = useFlightPlan(flights, flying, ready);
+  } = useFlightPlan(flights, flying, ready, isPhone);
+
+  const { scrollYProgress } = useScroll({
+    target: pinRef,
+    offset: ["start start", "end end"],
+  });
+  /* A light spring only takes the jitter off a trackpad; it converges on the
+     scroll value, so the animation stays a function of scroll position. */
+  const scrolled = useSpring(scrollYProgress, {
+    stiffness: 210,
+    damping: 38,
+    mass: 0.32,
+  });
+
+  /**
+   * The pin's progress, less the part of it spent getting the screen stuck.
+   *
+   * On every width where the composition is a screen tall this is the identity
+   * function — the screen is held from the first pixel, and `lead` is zero. A
+   * phone cannot hold the identity AND both artifact columns AND the row of
+   * marks at 320x568, so its screen is pinned with a measured negative offset
+   * and the identity is what scrolls off first (see `lift` in ./heroFlight).
+   * Remapping past that is what keeps the choreography honest there: nothing
+   * takes off while the ground underneath it is still moving, so an artifact
+   * still lands exactly on its dock, and the transition is still a pure
+   * function of scroll position — reversible, and correct after a refresh at
+   * any offset.
+   */
+  const progress = useTransform<number, number>([scrolled, plan.version], ([p]) => {
+    const { lead } = plan.read();
+    if (lead <= 0.001) return p;
+    return Math.min(1, Math.max(0, (p - lead) / (1 - lead)));
+  });
 
   /**
    * The identity climbs to the head of the route and shrinks about its own top
@@ -486,11 +514,17 @@ export default function Hero({ ready = true }: HeroProps) {
    * and never lands on top of a dock, because the docks only ever occupy the
    * band below the headroom the plan measured for it.
    */
+  /* A phone's identity starts the transition ABOVE the screen — it is the part
+     of the hero the pin lifts out of the way — so it has to be back at the head
+     of the route before the first artifact docks there, which on the phone's
+     compressed timings is 0.41. Everywhere else it shrinks in place and can
+     take its time. */
+  const climb = isPhone ? { from: 0.0, span: 0.36 } : { from: 0.05, span: 0.5 };
   const centerPose = useTransform<number, { y: number; scale: number }>(
     [progress, plan.version],
     ([p]) => {
       const { dy, scale } = plan.read().center;
-      const t = Math.min(1, Math.max(0, (p - 0.05) / 0.5));
+      const t = Math.min(1, Math.max(0, (p - climb.from) / climb.span));
       const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       return { y: dy * e, scale: 1 + (scale - 1) * e };
     },
@@ -555,8 +589,8 @@ export default function Hero({ ready = true }: HeroProps) {
 
   const marksLabel =
     lang === "ar" ? "جهات ومنتجات عملت معها" : "Organisations and products I have worked with";
-  /* the phone route carries the three product artifacts only, so on a phone
-     the marks never take off — see PHONE_FLIGHTS */
+  /* true at every width now that the phone flies the whole archive; still read
+     from the plan rather than assumed, so reduced motion keeps the rule */
   const marksFly = MARKS.some((mark) => Boolean(flightFor(`mark-${mark.id}`)));
 
   return (
@@ -593,6 +627,13 @@ export default function Hero({ ready = true }: HeroProps) {
         */}
         <div className="arc-pin" ref={pinRef}>
           <div className="arc-screen" ref={stageRef}>
+            {/* The only honest way to ask this device how tall one small
+                viewport is once the floating navigation has taken its share:
+                `svh` is not innerHeight on iOS and --dock-clear is a calc()
+                around env(). Everything the phone pin measures is measured
+                against this, which is why no artifact and no dock can end up
+                underneath the navigation. */}
+            <span className="arc-probe" ref={probeRef} aria-hidden="true" />
             {/* Three grid columns: photography, identity, product. */}
             <div className="arc-stage">
               <motion.div className="arc-cell arc-collage" ref={collageRef} {...enter(0.22, 22)}>
@@ -677,7 +718,7 @@ export default function Hero({ ready = true }: HeroProps) {
                 HEAD of the route, so the reader meets the same five marks
                 twice in one movement rather than meeting a logo wall and then
                 a timeline. */}
-            <motion.div className="arc-rail" {...enter(0.42, 12)}>
+            <motion.div className="arc-rail" ref={marksRef} {...enter(0.42, 12)}>
               {/* One hairline, no words.
 
                   It is still what stops the marks reading as five logos loose
@@ -875,6 +916,24 @@ export default function Hero({ ready = true }: HeroProps) {
         .hero-support[data-live="0"] { pointer-events: none; }
 
         .arc-pin { position: relative; }
+
+        /*
+          The ruler. Its only job is to be exactly as tall as the band the
+          composition is allowed to use — one small viewport, less the strip the
+          floating navigation owns — so heroFlight.tsx can read that number off
+          the browser instead of deriving it from innerHeight and a hard-coded
+          dock height. svh is not innerHeight on iOS, and --dock-clear is a
+          calc() around env(); this is the only way to be right about both.
+        */
+        .arc-probe {
+          position: absolute;
+          top: 0;
+          inset-inline-start: 0;
+          width: 0;
+          height: calc(100svh - var(--dock-clear));
+          visibility: hidden;
+          pointer-events: none;
+        }
 
         /* Scroll distance, not content. The transition plays out over this and
            nothing is laid out inside it, so the reader never has to travel
@@ -1657,14 +1716,65 @@ export default function Hero({ ready = true }: HeroProps) {
           fixes it without opening a hole, because the space goes into the
           composition rather than under it.
 
-          A phone is the opposite — its hero is already half again as tall as
-          the screen — so it is given no runway at all and travels on the scroll
-          it already had. The min-height on the pin is only a floor, for a
-          hypothetical short-hero phone; where the hero is taller it costs
-          nothing and adds no blank page.
+          A phone pins too, and the way it does is its own block below.
+        */
+
+        /* ---------- the departure, phone ---------- */
+        /*
+          A phone is pinned exactly as a desktop is — the same sticky screen,
+          the same empty runway scrolling underneath it, the same single scroll
+          value driving every artifact — with one difference, and it is
+          measured rather than chosen.
+
+          The desktop spread is a screen tall, so its screen sticks at the top
+          of the viewport. A phone's is not: the identity is a full-width block
+          ABOVE two artifact columns and a row of marks, and at 320×568 those
+          four things cannot share one screen at any size worth looking at. So
+          a phone's screen sticks at a NEGATIVE offset — --phone-lift, the exact
+          number of pixels by which the composition overruns the band the
+          navigation leaves it, measured in heroFlight.tsx against a probe of
+          100svh minus --dock-clear rather than guessed at from innerHeight
+          and a hard-coded dock height.
+
+          The identity is therefore what leaves. It is above the work, it has
+          been read by the time anything takes off, and it comes back down to
+          the head of the route as it shrinks — the same move it makes on a
+          desktop, from the other side. Everything that has to be WATCHED — both
+          artifact columns, the marks, and every dock they fly into — is held
+          perfectly still for the whole transition, inside the band above the
+          navigation.
+
+          --phone-lift is 0 on any phone tall enough not to need it, and every
+          rule here then collapses into the desktop's own.
         */
         @media (max-width: 767px) {
-          .hero-root[data-flight="on"] .arc-pin { min-height: calc(100svh + 18vh); }
+          .hero-root[data-flight="on"] .arc-screen {
+            position: sticky;
+            top: calc(-1 * var(--phone-lift, 0px));
+            /* the held band is one viewport, whatever was lifted out above it */
+            min-height: calc(var(--phone-lift, 0px) + 100svh);
+          }
+
+          .hero-root[data-flight="on"] .hero-runway { height: 145vh; }
+
+          /*
+            The route owns the band under the name for the whole held viewport,
+            exactly as it does on a pinned desktop. That is what closes the hole
+            the old phone treatment left: the box the collage empties, the box
+            the showcase empties and the strip the marks empty are one
+            continuous landing area with the route drawn over all three, rather
+            than a route laid over one column and a screen-tall gap above it.
+
+            --fl-head is measured, not guessed: it is the headroom plus the
+            height of the shrunk name, so no dock can ever open underneath the
+            identity. --dock-clear at the other end is the same number the
+            navigation itself is built from, so no dock can hide behind it.
+          */
+          .hero-root[data-flight="on"] .fl-route {
+            top: calc(var(--phone-lift, 0px) + var(--fl-head, 76px));
+            height: auto;
+            bottom: var(--dock-clear);
+          }
         }
 
         @media (max-width: 1099px) {
@@ -1737,7 +1847,14 @@ export default function Hero({ ready = true }: HeroProps) {
              spread already runs past the fold, so "there is more below" is
              self-evident — and the only place the label could sit is inside
              the floating dock's band. */
-          .arc-screen { min-height: 0; padding-bottom: clamp(20px, 3vh, 36px); }
+          /* The row of marks is the last thing in the composition and the dock
+             floats over the bottom of the screen, so the clearance has to be
+             the dock's own number — a flat 36px put four logos behind the
+             navigation on a portrait tablet at rest. */
+          .arc-screen {
+            min-height: 0;
+            padding-bottom: calc(var(--dock-clear) + clamp(4px, 1.4vh, 16px));
+          }
 
           .arc-stage {
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -1765,138 +1882,198 @@ export default function Hero({ ready = true }: HeroProps) {
         }
 
         /* ═══════════════════════════════════════════════════════════════
-           PHONE — its own composition.
+           PHONE — the same spread, re-proportioned for one hand.
 
-           Not the spread scaled down: the three-column grid becomes one
-           column, the identity comes first and complete, and only the two
-           strongest objects follow it — the collage cropped to three frames,
-           and the product showcase. The wide strip stands down here; the
-           flight-path timeline directly below carries the same products at
-           full size a screen later.
+           Not the desktop composition cropped, and not a reduced set of it:
+           the same eleven artifacts, the same seven docks, the same
+           choreography, the same reversible scroll. What changes is the shape
+           of the page they are laid out on — the identity becomes a full-width
+           block of its own ABOVE the work rather than a column between two
+           halves of it, and the two artifact groups sit side by side under it,
+           photography on the left and product on the right exactly as they are
+           on a desktop.
+
+           Every measurement here is a fraction of something the browser was
+           asked for: the column, the frame, one small viewport, and the strip
+           the floating navigation owns. Nothing is a pixel nudge that happens
+           to work at 390.
            ═══════════════════════════════════════════════════════════════ */
 
         @media (max-width: 767px) {
           .arc-inner {
             width: 100%;
-            padding-inline: clamp(18px, 5.6vw, 26px);
+            padding-inline: clamp(15px, 4.4vw, 24px);
           }
 
-          /* the phone composition is taller than a screen by design — pinning
-             it to 100svh would only strand the collage below the fold */
           .arc-screen {
             display: block;
             min-height: 0;
-            padding-top: calc(104px + env(safe-area-inset-top, 0px));
+            /* The fixed header's own strip, safe area included. It has to clear
+               the plane-window toggle, which is the tallest control up there and
+               sits in the corner the long Latin form of the name reaches into —
+               at 74px "Turki Almalki" came within three pixels of it. */
+            padding-top: calc(clamp(94px, 11.8vh, 118px) + env(safe-area-inset-top, 0px));
             padding-bottom: 0;
           }
 
+          /*
+            Photography left, product right, in BOTH scripts — the rule the
+            desktop spread is built on, kept. The identity spans the pair and
+            comes first, so nothing is ever laid out in its column and the hard
+            guarantee holds through the stack: the name, the description and the
+            buttons cannot be overlapped by an artifact, because no artifact is
+            ever placed where they are.
+          */
           .arc-stage {
-            direction: var(--doc-dir, ltr);
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
+            direction: ltr;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            column-gap: clamp(9px, 3vw, 15px);
+            row-gap: clamp(22px, 6.4vw, 38px);
+            align-items: center;
           }
 
-          .arc-center { order: 1; padding-inline: 0; }
-          .arc-collage { order: 2; margin-top: clamp(40px, 11vw, 58px); }
-          .arc-showcase { order: 3; margin-top: clamp(46px, 13vw, 70px); }
+          .arc-center { grid-column: 1 / -1; grid-row: 1; padding-inline: 0; }
+          .arc-collage { grid-column: 1; grid-row: 2; }
+          .arc-showcase { grid-column: 2; grid-row: 2; }
 
           .hero-name-title {
             max-width: none;
-            font-size: clamp(38px, 11.4vw, 56px);
+            font-size: clamp(36px, 10.6vw, 52px);
             line-height: 1.14;
             padding-block: .06em .14em;
           }
 
           [dir="rtl"] .hero-name-title {
             max-width: none;
-            font-size: clamp(42px, 12.6vw, 64px);
-            line-height: 1.34;
-            padding-block: .08em .24em;
+            font-size: clamp(40px, 11.8vw, 58px);
+            line-height: 1.3;
+            padding-block: .08em .22em;
           }
 
           .hero-positioning {
-            max-width: 33ch;
-            margin-top: clamp(12px, 3.4vw, 18px);
-            padding-inline: 6px;
-            font-size: clamp(14.5px, 4vw, 16.5px);
-            line-height: 1.68;
+            max-width: 32ch;
+            margin-top: clamp(9px, 2.8vw, 15px);
+            padding-inline: 4px;
+            font-size: clamp(13.5px, 3.7vw, 15.5px);
+            line-height: 1.62;
           }
 
-          [dir="rtl"] .hero-positioning { max-width: 34ch; line-height: 1.85; }
+          [dir="rtl"] .hero-positioning { max-width: 33ch; line-height: 1.78; }
 
           .hero-cta-row {
             width: 100%;
-            max-width: 380px;
+            max-width: 360px;
             margin-inline: auto;
             flex-wrap: nowrap;
-            gap: 10px;
-            margin-top: clamp(22px, 6vw, 30px);
+            gap: 9px;
+            margin-top: clamp(16px, 4.6vw, 26px);
           }
 
           .hero-cta-primary,
           .hero-cta-secondary {
             flex: 1 1 0;
             min-width: 0;
-            min-height: 50px;
-            padding: 13px 12px;
-            font-size: 14px;
+            min-height: 46px;
+            padding: 11px 10px;
+            font-size: 13.5px;
           }
 
           /*
-            The phone composition is not the desktop cluster compressed — each
-            group is re-proportioned for one narrow column, and both are taller
-            than their desktop selves rather than wider.
+            Both groups are capped by the height the held band can actually give
+            them, exactly as the desktop frames are capped by the pin: one small
+            viewport, less the navigation's strip, less the room the shrunk name
+            and the row of marks need above and below. So the composition scales
+            down WHOLE on a short phone rather than being cropped by the pin or
+            pushed under the dock — and because everything inside a frame is a
+            percentage of it, every clearance scales with it.
 
-            The collage becomes a print with a second print clearly below and
-            beside it, ~35px of daylight between them, and the showcase becomes
-            a window with the pair standing under it at ~30px. Nothing is
-            allowed to lap over the window here at all: at 346px of column the
-            same overlap that reads as depth on a desktop reads as a collision.
-            Both frames drop the viewport-height cap — the phone hero is a
-            column that scrolls, not a screen that has to fit.
+            The two share one width and keep two different heights: the
+            photography column is a wide print over a tall one, the product
+            column is a window over two handsets, and a handset is nearly half
+            as tall as its frame. Forcing them to one ratio is what would drop a
+            phone through the floor of its own column.
           */
-          .arc-collage-frame {
-            --frame-ar: 1.36;
-            width: 100%;
-          }
-
+          .arc-collage-frame,
           .arc-showcase-frame {
-            --frame-ar: 1.55;
-            width: 100%;
+            width: min(100%, calc((100svh - var(--dock-clear) - 156px) / 1.9));
           }
 
+          .arc-collage-frame { --frame-ar: 1.5; }
+          .arc-showcase-frame { --frame-ar: 1.9; }
 
+          /* Five marks on one line at every phone width — the row is the head
+             of the route and a wrapped head reads as a logo wall. The chips
+             share one baseline and one height, and their natural widths do the
+             rest. */
+          .arc-rail { padding-top: clamp(16px, 4.6vw, 26px); }
 
-          /* Five marks cannot sit on one line at phone widths, so the rail is
-             allowed to wrap into two — which is exactly why the chips share a
-             baseline now: a wrapped row of vertically-offset chips collides
-             with the row above it instead of reading as a rail. */
-          .arc-rail { padding-top: clamp(30px, 8vw, 42px); }
-          .arc-rail-rule { width: min(240px, 62%); margin-bottom: 18px; }
+          .arc-rail-rule {
+            width: min(200px, 54%);
+            margin-bottom: clamp(9px, 2.8vw, 15px);
+          }
 
           .arc-marks {
-            --mark-h: 42px;
-            gap: 12px 10px;
+            --mark-h: clamp(28px, 8.2vw, 38px);
+            flex-wrap: nowrap;
+            gap: clamp(6px, 2vw, 11px);
           }
 
-          /* The phone route: one column, five stops, three of them receiving an
-             artifact. The berth narrows and the labels wrap rather than
-             truncate — there is no width here to spend on an ellipsis. */
+          .arc-mark-float { border-radius: 10px; padding: calc(var(--pad) * .7); }
+
+          /*
+            The phone route: seven stops, the same seven the desktop files into.
+            The berth is sized off the slot rather than off the viewport, so the
+            widest landing — a 3:2 frame beside a wide lockup, at Monsha'at —
+            always fits inside it, and the labels wrap rather than truncate
+            because there is no width here to spend on an ellipsis.
+          */
           .fl-route {
-            --fl-slot: 40px;
-            --fl-berth: 78px;
-            --fl-node: 18px;
+            /* svh, not vw: what a dock has room to be is decided by the height
+               of the band it is drawn in, and that band is one small viewport
+               less the navigation's strip. Sized against the width instead, the
+               route came out identical on a 568px screen and an 844px one —
+               cramped on the first and lost in the second. */
+            --fl-slot: clamp(30px, 5.6svh, 50px);
+            --fl-mark: clamp(15px, 2.8svh, 25px);
+            --fl-node: clamp(15px, 2.4svh, 20px);
+            /* wide enough for the widest landing there is — a 3:2 frame beside
+               a wide lockup, at Monsha'at — whatever the slot has become */
+            --fl-berth: calc(var(--fl-slot) * 2.9);
           }
 
           .fl-track { width: 100%; }
-          .fl-dock { gap: 10px; }
-          .fl-list { gap: clamp(8px, 2.6vw, 14px); }
+          .fl-dock { gap: 9px; }
+          .fl-berth { gap: 7px; }
+          .fl-list { gap: clamp(4px, 2.4svh, 20px); }
 
           .fl-org,
-          .fl-role { white-space: normal; overflow: visible; }
-          .fl-org { font-size: 13px; line-height: 1.32; }
-          .fl-role { font-size: 11px; }
+          .fl-role,
+          .fl-lead { white-space: normal; overflow: visible; }
+          .fl-org { font-size: 12.5px; line-height: 1.3; }
+          .fl-dock[data-lead="1"] .fl-org { font-size: 13.5px; }
+          .fl-role { font-size: 10.5px; line-height: 1.4; }
+          .fl-lead { font-size: 11px; max-width: none; }
+        }
+
+        /* A short phone has no room for the opening paragraph beside the first
+           dock — the same trade the short-laptop rule makes, for the same
+           reason: the route must end above the navigation, not behind it. */
+        @media (max-width: 767px) and (max-height: 700px) {
+          .fl-lead { display: none; }
+        }
+
+        /* A landscape phone. The composition is not pinned at this width — it
+           is a scrolling column, as it is on any short tablet — so the only
+           thing that has to be guaranteed here is that the fixed navigation
+           covers nothing that is being READ: the header strip gives back what
+           it can, and the composition keeps the dock's own clearance under it
+           so the buttons stay hittable. */
+        @media (max-width: 1099px) and (max-height: 640px) {
+          .arc-screen {
+            padding-top: calc(clamp(58px, 15vh, 88px) + env(safe-area-inset-top, 0px));
+            padding-bottom: calc(var(--dock-clear) + 8px);
+          }
         }
 
         @media (max-width: 359px) {
@@ -1920,12 +2097,16 @@ export default function Hero({ ready = true }: HeroProps) {
           .fl-berth { display: none; }
 
           /* nothing flies, so the archive never leaves the box the route would
-             have been laid over — it follows the composition instead */
+             have been laid over — it follows the composition instead, and the
+             hero keeps the dock's clearance under it so the last stop of that
+             calm list is never the thing left behind the navigation */
           .fl-route {
             position: static;
             height: auto;
             padding-top: clamp(34px, 7vh, 58px);
           }
+
+          .arc-screen { padding-bottom: var(--dock-clear); }
           .fl-node-core,
           .fl-meta { transition: none !important; }
           .fl-route { animation: fl-settle 620ms ease-out both; }

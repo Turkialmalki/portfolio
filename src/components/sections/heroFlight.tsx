@@ -70,8 +70,6 @@ export type Flight = {
   tilt: number;
   /** offset inside a shared frame, for artifacts that dock as a stack */
   stack?: { x: number; y: number; r: number };
-  /** part of the phone route */
-  phone?: boolean;
 };
 
 /**
@@ -89,8 +87,6 @@ export type Dock = {
   mark?: boolean;
   /** aspect (w/h) of that mark — kept level with MARKS in Hero.tsx */
   markRatio?: number;
-  /** part of the phone route */
-  phone?: boolean;
   /** the first milestone — the one that opens into a card as it docks */
   lead?: boolean;
 };
@@ -101,8 +97,8 @@ export const DOCKS: Dock[] = [
      landing be measured on one edge and come out right on both — see the
      scale in `measure`. Change an artifact's crop and its dock changes with
      it, or the object arrives the wrong shape. */
-  { id: "alrajhi", mark: true, markRatio: 1566 / 1527, ratio: 330 / 736, phone: true },
-  { id: "emkan", mark: true, markRatio: 209 / 192, ratio: 538 / 1200, phone: true },
+  { id: "alrajhi", mark: true, markRatio: 1566 / 1527, ratio: 330 / 736 },
+  { id: "emkan", mark: true, markRatio: 209 / 192, ratio: 538 / 1200 },
   { id: "practice", ratio: 4 / 5 },
   { id: "monshaat", mark: true, markRatio: 640 / 356, ratio: 3 / 2 },
   /* The route stops where the hero's own objects run out, and it skips the
@@ -116,7 +112,7 @@ export const DOCKS: Dock[] = [
      No mark here on purpose — the accelerator's wordmark is pale enough to
      read as an empty box at 24px, which is the same reason the timeline's own
      film stop carries no logo tile. */
-  { id: "film", ratio: 1700 / 1012, phone: true },
+  { id: "film", ratio: 1700 / 1012 },
 ];
 
 const COPY = {
@@ -148,9 +144,30 @@ export type Plan = {
   legs: Record<string, Leg>;
   /** the identity block's move to the head of the route */
   center: { dy: number; scale: number };
+  /**
+   * How far the screen is allowed to scroll BEFORE it pins, px.
+   *
+   * Desktop pins at the top of the composition and this is always 0. A phone
+   * cannot: the identity, both artifact groups and the row of marks do not fit
+   * in one viewport at 320x568, so the screen is pinned with a negative sticky
+   * top and the identity is what scrolls off. `lift` is exactly how much of
+   * the screen is above the viewport once it is stuck, measured — never a
+   * breakpoint's guess at how tall a name happens to be.
+   */
+  lift: number;
+  /**
+   * `lift` expressed as a fraction of the pin's scroll range.
+   *
+   * The choreography is driven by the pin's progress, but nothing should move
+   * until the screen is actually stuck — otherwise every artifact flies while
+   * the page underneath it is still scrolling and lands nowhere near its dock.
+   * The hero remaps progress past this fraction, so 0 is still "the screen is
+   * now held" at every width.
+   */
+  lead: number;
 };
 
-const EMPTY_PLAN: Plan = { legs: {}, center: { dy: 0, scale: 1 } };
+const EMPTY_PLAN: Plan = { legs: {}, center: { dy: 0, scale: 1 }, lift: 0, lead: 0 };
 
 /**
  * How a transform gets at the measurements.
@@ -179,11 +196,29 @@ export type PlanFeed = {
  * Both rects are read in the same frame and only their difference is kept, so
  * the scroll offset cancels out of every number here.
  */
-export function useFlightPlan(flights: Flight[], enabled: boolean, ready: boolean) {
+export function useFlightPlan(
+  flights: Flight[],
+  enabled: boolean,
+  ready: boolean,
+  /** phones pin with a measured lift; every other width pins at the top */
+  lifted: boolean,
+) {
+  const pinRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
   const collageRef = useRef<HTMLDivElement>(null);
   const showcaseRef = useRef<HTMLDivElement>(null);
+  const marksRef = useRef<HTMLDivElement>(null);
+  /*
+    One element whose only job is to be `100svh - --dock-clear` tall.
+
+    Both halves of that are CSS the JS cannot resolve — `svh` is not
+    `innerHeight` on iOS, and `--dock-clear` is a calc() containing env(). A
+    probe is the honest way to ask the browser what those two actually come to
+    on this device, and it is what every number below is measured against, so
+    the fixed navigation can never end up covering a dock.
+  */
+  const probeRef = useRef<HTMLSpanElement>(null);
   const railRef = useRef<HTMLSpanElement>(null);
   const tailRef = useRef<HTMLSpanElement>(null);
   const craft = useRef(new Map<string, HTMLElement>());
@@ -239,6 +274,17 @@ export function useFlightPlan(flights: Flight[], enabled: boolean, ready: boolea
     const stage = stageRef.current;
     if (!stage || !enabled) return "";
 
+    /** layout position inside the stage — never touched by any transform */
+    const offsetIn = (node: HTMLElement | null) => {
+      let total = 0;
+      let walk: HTMLElement | null = node;
+      while (walk && walk !== stage) {
+        total += walk.offsetTop;
+        walk = walk.offsetParent as HTMLElement | null;
+      }
+      return total;
+    };
+
     const legs: Record<string, Leg> = {};
     for (const flight of flights) {
       const from = craft.current.get(flight.id);
@@ -278,6 +324,29 @@ export function useFlightPlan(flights: Flight[], enabled: boolean, ready: boolea
     }
 
     /*
+      How much of the screen has to be above the viewport before the rest of it
+      fits.
+
+      `free` is the band the composition may actually use: one small viewport
+      less the strip the fixed navigation owns, both asked of the browser
+      rather than derived from innerHeight and a hard-coded dock height. `need`
+      is where the composition genuinely ends — the bottom of the row of marks,
+      read from layout so a half-finished transition cannot change it.
+
+      Above the phone breakpoint the two artifact columns sit either side of
+      the identity and the whole spread is a screen tall, so this is zero and
+      the screen pins at its top exactly as it always did. On a phone the
+      identity is a stacked block above the artifacts and the difference is
+      real, so the identity is what leaves — it has already been read by the
+      time anything takes off.
+    */
+    const free = probeRef.current?.offsetHeight ?? 0;
+    const need = marksRef.current
+      ? offsetIn(marksRef.current) + marksRef.current.offsetHeight
+      : 0;
+    const lift = lifted && free > 0 && need > 0 ? Math.max(0, Math.round(need - free)) : 0;
+
+    /*
       The identity climbs to the head of the route and shrinks about its own top
       edge, so the name stays the first thing read the whole way through.
 
@@ -291,16 +360,50 @@ export function useFlightPlan(flights: Flight[], enabled: boolean, ready: boolea
     */
     let center = { dy: 0, scale: 1 };
     const centerNode = centerRef.current;
+    const scale = 0.58;
     if (centerNode) {
-      let offset = 0;
-      let node: HTMLElement | null = centerNode;
-      while (node && node !== stage) {
-        offset += node.offsetTop;
-        node = node.offsetParent as HTMLElement | null;
-      }
-      const headroom = Math.min(96, stage.getBoundingClientRect().height * 0.11);
-      center = { dy: headroom - offset, scale: 0.58 };
+      const offset = offsetIn(centerNode);
+      /*
+        Where the name comes to rest, measured from the top of the band the
+        reader can actually see — which is `lift` further down the screen than
+        the screen's own top.
+
+        A phone gets a floor under that headroom, and it is the height of the
+        fixed header itself. The identity is a wide block on a narrow screen, so
+        at 320 the shrunk name reached across into the language switcher and the
+        two ended up sharing a line. Reading the header's real height is the
+        only version of this that survives a longer name, a taller control or a
+        notch; the desktop keeps the proportional headroom it was drawn with.
+      */
+      const stageH = stage.getBoundingClientRect().height;
+      const bar = document.querySelector("header");
+      const barH = bar ? bar.getBoundingClientRect().height : 0;
+      const headroom = lifted
+        ? Math.max(Math.min(96, (free || stageH) * 0.11), Math.min(112, barH - 8))
+        : Math.min(96, stageH * 0.11);
+      center = { dy: lift + headroom - offset, scale };
+
+      /*
+        Where the route is allowed to begin: under the name, once the name has
+        shrunk. Published rather than guessed at, because the one thing that
+        must never happen is a dock opening underneath the identity.
+      */
+      const title = centerNode.querySelector<HTMLElement>(".hero-name-title");
+      const head = headroom + (title ? title.offsetHeight * scale : 0) + 14;
+      stage.style.setProperty("--fl-head", `${Math.round(head)}px`);
     }
+
+    stage.style.setProperty("--phone-lift", `${lift}px`);
+
+    /*
+      The same lift as a fraction of the pin's scroll range, so the hero can
+      hold every artifact still until the screen is genuinely stuck. The range
+      is the pin's height less one viewport — the span a sticky child stays
+      stuck for, and exactly what useScroll's start/end offsets measure.
+    */
+    const pin = pinRef.current;
+    const range = pin ? pin.offsetHeight - window.innerHeight : 0;
+    const lead = lift > 0 && range > 0 ? Math.min(0.9, lift / range) : 0;
 
     /*
       Where the route is allowed to draw itself, below the width that pins the
@@ -328,7 +431,7 @@ export function useFlightPlan(flights: Flight[], enabled: boolean, ready: boolea
       stage.style.setProperty("--fl-anchor-h", `${Math.round(bottom - top)}px`);
     }
 
-    const next: Plan = { legs, center };
+    const next: Plan = { legs, center, lift, lead };
     const signature = JSON.stringify(next, (key, value) =>
       typeof value === "number" ? Math.round(value * 2) / 2 : value,
     );
@@ -338,7 +441,7 @@ export function useFlightPlan(flights: Flight[], enabled: boolean, ready: boolea
     }
 
     return signature;
-  }, [flights, enabled, publish]);
+  }, [flights, enabled, publish, lifted]);
 
   /**
    * The rail, drawn between the first and last node exactly as the timeline
@@ -478,10 +581,13 @@ export function useFlightPlan(flights: Flight[], enabled: boolean, ready: boolea
   }, [measure, measureRail, enabled, publish, ready]);
 
   return {
+    pinRef,
     stageRef,
     centerRef,
     collageRef,
     showcaseRef,
+    marksRef,
+    probeRef,
     railRef,
     tailRef,
     registerCraft,
