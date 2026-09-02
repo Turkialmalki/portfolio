@@ -102,10 +102,17 @@ const MARKS = [
   {
     src: "hero/monshaat.png",
     out: "mark-monshaat.png",
-    /* Measured ink box of the whole lockup is x56 y201 968×678; this stops
-       above the two-line descriptor, which is illegible at chip size and is
-       not part of the mark. */
-    box: { x: 56, y: 201, w: 968, h: 516 },
+    /* The mark is three bands of ink: the Arabic wordmark (y 278-559 under
+       its madda at 201-257), the latin "monsha'at" (596-736), and then the
+       two-line descriptor from 765 down, which is illegible at chip size and
+       is not part of the mark.
+
+       This box takes the first two whole and stops 25px short of the third.
+       It used to end at 717, which is 19px INSIDE the latin band — the reason
+       "monsha'at" was sitting on the floor of its chip with its feet cut off.
+       If this logo is ever replaced, re-measure the bands before touching
+       these numbers rather than nudging the height until it looks right. */
+    box: { x: 53, y: 198, w: 974, h: 542 },
     edge: 640,
     keepAlpha: true,
   },

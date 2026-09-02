@@ -224,19 +224,13 @@ const MARKS: Mark[] = [
     id: "monshaat",
     src: "/hero/archive/mark-monshaat.png",
     label: { ar: "منشآت — الهيئة العامة للمنشآت الصغيرة والمتوسطة", en: "Monsha'at" },
+    /* the baked file's own size. The chip hangs its aspect off these, so they
+       have to follow the crop — get them wrong and the mark is letterboxed
+       inside a box of the wrong shape. */
     nw: 640,
-    nh: 341,
+    nh: 356,
     pad: 9,
     rotate: 1.2,
-  },
-  {
-    id: "munasib",
-    src: "/munasiblogo.jpeg",
-    label: { ar: "مناسب", en: "Munasib" },
-    nw: 100,
-    nh: 100,
-    pad: 7,
-    rotate: -1.0,
   },
 ];
 
@@ -383,7 +377,6 @@ const FLIGHTS: Flight[] = [
   leg("tile-stage", "practice", "frame", 0.23, 0.68, -62, -12, 2.4),
   leg("mark-monshaat", "monshaat", "mark", 0.25, 0.71, -22, -5, 1.4),
   leg("tile-room", "monshaat", "frame", 0.28, 0.75, -54, 8, 2.6),
-  leg("mark-munasib", "ventures", "mark", 0.30, 0.78, 32, 9, 1.4),
   /* The anchor leaves last and lands last, so the composition empties from its
      edges inwards rather than collapsing all at once — and it files past the
      ventures stop to the film one, because that is whose platform it is. An
@@ -416,14 +409,7 @@ const PHONE_FLIGHTS: Flight[] = FLIGHTS.filter((flight) => flight.phone).map((fl
  * emptied and three rows would leave most of it blank. Only docks that actually
  * receive an artifact keep a frame; the rest are the stops ahead, listed.
  */
-const PHONE_ROUTE = new Set([
-  "alrajhi",
-  "emkan",
-  "practice",
-  "monshaat",
-  "ventures",
-  "film",
-]);
+const PHONE_ROUTE = new Set(["alrajhi", "emkan", "practice", "monshaat", "film"]);
 const PHONE_FRAMED = new Set(
   PHONE_FLIGHTS.filter((flight) => flight.into === "frame").map((flight) => flight.dock),
 );

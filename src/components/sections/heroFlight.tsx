@@ -104,11 +104,12 @@ export const DOCKS: Dock[] = [
   { id: "alrajhi", mark: true, markRatio: 1566 / 1527, ratio: 330 / 736, phone: true },
   { id: "emkan", mark: true, markRatio: 209 / 192, ratio: 538 / 1200, phone: true },
   { id: "practice", ratio: 4 / 5 },
-  { id: "monshaat", mark: true, markRatio: 640 / 341, ratio: 3 / 2 },
-  { id: "ventures", mark: true, markRatio: 1 },
-  /* The route stops where the hero's own objects run out. The stops after this
-     one are the timeline's to tell — a dock with nothing to receive is a row of
-     text pretending to be a landing.
+  { id: "monshaat", mark: true, markRatio: 640 / 356, ratio: 3 / 2 },
+  /* The route stops where the hero's own objects run out, and it skips the
+     stops in between that have nothing to receive — a dock with nothing
+     landing on it is a row of text pretending to be a landing. Ventures used
+     to sit here on the strength of one logo chip; with that chip gone it was
+     exactly that row, so it goes back to being the timeline's to tell.
 
      Film is last because the window is: it carries the accelerator's platform,
      so it flies past the ventures stop to the one that is actually about it.
