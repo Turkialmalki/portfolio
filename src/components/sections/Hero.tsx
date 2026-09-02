@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ComponentProps,
   type CSSProperties,
 } from "react";
 import {
@@ -123,6 +124,51 @@ type Spot = { w: number; x: number; y: number };
 type Berth = { w: number; x: number; top?: number; bottom?: number };
 
 /**
+ * How a screenshot sits inside the frame drawn around it.
+ *
+ * There is no global crop rule in this hero, because there is no global
+ * answer: a browser viewport, a full-bleed app home screen and a photographic
+ * print are three different shapes of source with three different reasons to
+ * be cropped or not. Each artifact declares its own, and the default is the
+ * one every honest source should need — the file already carries the frame's
+ * aspect, so `cover` and `contain` are the same picture and neither stretches
+ * anything.
+ *
+ *   fit       cover for a file designed to fill its screen edge to edge;
+ *             contain for one that must not lose a pixel to a crop
+ *   position  object-position, for an optical nudge inside a crop
+ *   scale     the shot's size inside its viewport, 1 being exactly filling it
+ *   offsetX   a nudge across the viewport, as a percentage of the shot
+ *   offsetY   and down it
+ *
+ * `scale` and the offsets exist so a screen that needs an optical adjustment
+ * gets one HERE, named, on the artifact that needs it — rather than as a
+ * transform sprinkled into the stylesheet where the next person has to work
+ * out which artifact it was for. They are at their defaults everywhere they
+ * are not needed, and every default is a no-op.
+ */
+type Screen = {
+  fit: "cover" | "contain";
+  position: string;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+};
+
+/** the source already carries the frame's shape: fill it, touch nothing */
+const FLUSH: Screen = { fit: "cover", position: "50% 50%", scale: 1, offsetX: 0, offsetY: 0 };
+
+function screenVars(screen: Screen): Record<string, string> {
+  return {
+    "--fit": screen.fit,
+    "--pos": screen.position,
+    "--scale": String(screen.scale),
+    "--ox": `${screen.offsetX}%`,
+    "--oy": `${screen.offsetY}%`,
+  };
+}
+
+/**
  * The custom properties one berth resolves to.
  *
  * `--t` and `--bt` are handed straight to `top` and `bottom`, so an artifact
@@ -149,6 +195,8 @@ function berthVars(spot: Berth): Record<string, string> {
 type Tile = {
   id: string;
   src: string;
+  /** the same crop at the size a phone actually draws it — see `Art` */
+  small: string;
   alt: Bi;
   ratio: number;
   rotate: number;
@@ -176,6 +224,7 @@ const TILES: Tile[] = [
   {
     id: "room",
     src: "/hero/archive/room.jpg",
+    small: "/hero/archive/room@sm.jpg",
     alt: {
       ar: "ورشة المنتج القابل للتنفيذ في مركز الابتكار — منشآت",
       en: "MVP workshop at the Innovation Center — Monsha'at",
@@ -194,6 +243,7 @@ const TILES: Tile[] = [
   {
     id: "stage",
     src: "/hero/archive/stage.jpg",
+    small: "/hero/archive/stage@sm.jpg",
     alt: {
       ar: "على منصة هيئة الأدب والنشر والترجمة",
       en: "On stage at the Literature, Publishing & Translation Commission",
@@ -233,7 +283,8 @@ type Mark = {
   /** the last of the tilt. The chips used to sit at five different heights
       and five real angles, which is what made them read as loose stickers
       under the composition rather than as stops on a line. They share one
-      baseline now, and keep barely enough angle to stay hand-set. */
+      baseline now, and every angle is held under a single degree — enough to
+      read as hand-set, not enough to read as a tilt. */
   rotate: number;
 };
 
@@ -245,7 +296,7 @@ const MARKS: Mark[] = [
     nw: 327,
     nh: 119,
     pad: 9,
-    rotate: -1.1,
+    rotate: -0.8,
   },
   {
     id: "alrajhi",
@@ -254,7 +305,7 @@ const MARKS: Mark[] = [
     nw: 1566,
     nh: 1527,
     pad: 11,
-    rotate: 0.9,
+    rotate: 0.7,
   },
   {
     id: "emkan",
@@ -263,7 +314,7 @@ const MARKS: Mark[] = [
     nw: 209,
     nh: 192,
     pad: 10,
-    rotate: -0.7,
+    rotate: -0.6,
   },
   {
     id: "monshaat",
@@ -275,7 +326,7 @@ const MARKS: Mark[] = [
     nw: 640,
     nh: 356,
     pad: 9,
-    rotate: 1.2,
+    rotate: 0.9,
   },
 ];
 
@@ -287,20 +338,29 @@ const MARKS: Mark[] = [
  * The platform window — the anchor of the right column, and the only object
  * in it that is deliberately kept STRAIGHT.
  *
- * The Film Business Accelerator's sign-in, shown whole. The file is already a
- * real browser viewport (1700×1012) with nothing running off an edge, so it
- * needs no crop and — unlike a page photographed inside a laptop — no bezel
- * removed before this frame can put its own chrome around it. At the size the
- * hero actually draws it, "Sign in", both fields, the orange button and the
- * bilingual lockup all still read, which is more than a dashboard survives at
- * 324px.
+ * The Film Business Accelerator's sign-in, shown whole. The file is a real
+ * browser viewport — the page itself, not a photograph of a laptop with the
+ * page in it — so this frame's chrome is the ONLY chrome in the picture:
+ * there is no second bezel, no rounded device body and no drop shadow baked
+ * into the source for a card to sit inside a card. It needs no crop either,
+ * and the shot's box carries the file's own aspect, so the product UI is
+ * neither letterboxed nor stretched at any width.
+ *
+ * At the size the hero actually draws it, "Sign in", both fields, the orange
+ * button and the bilingual lockup all still read, which is more than a
+ * dashboard survives at 324px.
  *
  * It is also the one artifact that carries words at rest: a caption naming the
  * product and who it was built for. A screenshot without a name is decoration.
  */
 const WINDOW = {
   src: "/hero/archive/window-fba.jpg",
-  ratio: 1700 / 1012,
+  /* the baked file's own size, so the shot's box is exactly the shape of the
+     picture in it — the number the crop resolves to, never the number the
+     source happened to be before it was baked */
+  ratio: 1120 / 666,
+  /* a browser viewport is designed to fill its viewport: nothing to nudge */
+  screen: FLUSH,
   alt: {
     ar: "شاشة الدخول إلى منصة مسرّعة أعمال الأفلام",
     en: "The Film Business Accelerator sign-in screen",
@@ -342,6 +402,8 @@ type Handset = {
   /** intrinsic size of the screen file — the bezel is drawn around it */
   nw: number;
   nh: number;
+  /** how this screen sits inside that bezel, per handset */
+  screen: Screen;
   rotate: number;
   z: number;
   at: { w: number; x: number; b: number };
@@ -353,8 +415,14 @@ const PHONES: Handset[] = [
     id: "alrajhi",
     src: "/hero/archive/alrajhi-screen.jpg",
     alt: { ar: "تطبيق مصرف الراجحي", en: "The Al Rajhi Bank app" },
-    nw: 330,
-    nh: 736,
+    /* the baked screen's own size — the whole of the render's screen, top
+       edge to bottom edge. It used to be a 330×736 window cut out of the
+       middle of that screen, which is why the front phone in this hero used
+       to end on a row of half-drawn cards. */
+    nw: 353,
+    nh: 788,
+    /* full-bleed home screen, at the bezel's own aspect to a thousandth */
+    screen: FLUSH,
     rotate: -2.8,
     z: 4,
     at: { w: 28, x: 2, b: 0 },
@@ -366,10 +434,14 @@ const PHONES: Handset[] = [
   },
   {
     id: "emkan",
-    src: "/hero/emkan-screen.png",
+    src: "/hero/archive/emkan-screen.jpg",
     alt: { ar: "تطبيق إمكان للتمويل", en: "The Emkan Finance app" },
-    nw: 538,
-    nh: 1200,
+    /* the same screen the 538×1200 PNG carried, at the width the smaller of
+       the two handsets is ever drawn at on a 3× display. Nothing was cropped
+       and nothing was enlarged; what went was 100KB nobody could see. */
+    nw: 420,
+    nh: 937,
+    screen: FLUSH,
     rotate: 3.4,
     z: 3,
     at: { w: 19, x: 39, b: 12 },
@@ -684,7 +756,6 @@ export default function Hero({ ready = true }: HeroProps) {
     lang === "ar" ? "جهات ومنتجات عملت معها" : "Organisations and products I have worked with";
   /* true at every width now that the phone flies the whole archive; still read
      from the plan rather than assumed, so reduced motion keeps the rule */
-  const marksFly = MARKS.some((mark) => Boolean(flightFor(`mark-${mark.id}`)));
 
   return (
     <section
@@ -806,25 +877,14 @@ export default function Hero({ ready = true }: HeroProps) {
             {/* The marks of the places the work was actually done — and, once
                 the departure starts, the metadata each stop is labelled with.
 
-                The rule either side of the title is doing real work: it is
-                what turns a horizontal row of other people's logos into the
-                HEAD of the route, so the reader meets the same five marks
-                twice in one movement rather than meeting a logo wall and then
-                a timeline. */}
+                There is no rule over them and no element reserving the space
+                one would take. A hairline made this a logo strip: four chips
+                pressed into a row under a line, read as one object. What
+                separates them from the work above is now air, and what
+                separates them from each other is air — so they read as four
+                floating route markers waiting to be called, which is what they
+                are about to become. */}
             <motion.div className="arc-rail" ref={marksRef} {...enter(0.42, 12)}>
-              {/* One hairline, no words.
-
-                  It is still what stops the marks reading as five logos loose
-                  under the composition — it draws the ground they stand on and
-                  separates them from the work above — and it stands down with
-                  the buttons where the marks actually leave. On a phone, where
-                  they stay put, it stays with them. */}
-              <motion.span
-                className="arc-rail-rule"
-                aria-hidden="true"
-                style={marksFly ? { opacity: supportOpacity } : undefined}
-              />
-
               <ul className="arc-marks" aria-label={marksLabel}>
                 {MARKS.map((mark, index) => (
                   <MarkChip
@@ -1247,6 +1307,16 @@ export default function Hero({ ready = true }: HeroProps) {
            no-op that later reads as a setting somebody can tune. */
         .arc-tile-shot img { object-fit: cover; }
 
+        /* the picture element an art-directed artifact is delivered through:
+           the shot's own box, so nothing about the layout can tell it is
+           there — and a positioned one, which is what a fill image asks its
+           parent to be */
+        .arc-art {
+          position: absolute;
+          inset: 0;
+          display: block;
+        }
+
         /* ---------- right: the product showcase ---------- */
 
         /* The window is the back layer and the only object here kept straight.
@@ -1349,9 +1419,20 @@ export default function Hero({ ready = true }: HeroProps) {
 
         [data-theme="dark"] .arc-window-shot { background: #1b1e25; }
 
-        /* product UI is never cropped: the container carries the file's own
-           aspect, so contain fits it exactly and there is nothing to letterbox */
-        .arc-window-shot img { object-fit: contain; }
+        /* The product UI is never cropped and never stretched: the shot's box
+           carries the FILE's own aspect, so cover and contain resolve to the
+           same picture and there is nothing to letterbox. The controls are
+           here rather than hard-coded because the answer belongs to the
+           artifact — a 16:9 dashboard dropped into this frame would need a
+           different one, and would say so on the artifact instead of here. */
+        .arc-window-shot {
+          overflow: hidden;
+        }
+
+        .arc-window-shot img {
+          object-fit: var(--fit, cover);
+          object-position: var(--pos, 50% 50%);
+        }
 
         /* The caption. A screenshot with no name is decoration — this is what
            makes the window a piece of work with a subject and a category. */
@@ -1428,22 +1509,44 @@ export default function Hero({ ready = true }: HeroProps) {
         /* the front phone is the only object in the hero on the front lift */
         .arc-phone[data-lead="1"] .arc-phone-body { box-shadow: var(--arc-lift-front); }
 
-        .arc-phone-screen {
-          position: relative;
-          display: block;
-          overflow: hidden;
-          border-radius: 13.2% / 6.1%;
-          background: #000;
-        }
+        /*
+          The screen is the viewport, and it is the thing that owns the shape:
+          it carries the handset's aspect and clips to it, so the shot inside
+          can be scaled or nudged without the bezel following it around. That
+          separation is the whole reason a per-handset optical adjustment is
+          possible here at all — before it, the shot's own box was what gave
+          the screen its height, and any correction resized the phone.
 
-        .arc-phone-shot {
+          Every screen file is baked to this same aspect, so at the defaults
+          the shot fills the viewport exactly: no stretch, no letterbox, no
+          white edge between the picture and the bezel.
+        */
+        .arc-phone-screen {
           position: relative;
           display: block;
           width: 100%;
           aspect-ratio: var(--ar);
+          overflow: hidden;
+          border-radius: 13.2% / 6.1%;
+          /* seen only where a screen is deliberately inset — and black, so a
+             handset that shows any of it shows a switched-off phone rather
+             than a white margin */
+          background: #000;
         }
 
-        .arc-phone-shot img { object-fit: contain; }
+        .arc-phone-shot {
+          position: absolute;
+          inset: 0;
+          display: block;
+          transform: translate(var(--ox, 0%), var(--oy, 0%)) scale(var(--scale, 1));
+        }
+
+        /* per handset, never global: cover for a screen designed to fill the
+           glass, contain for one that must not lose a pixel */
+        .arc-phone-shot img {
+          object-fit: var(--fit, cover);
+          object-position: var(--pos, 50% 50%);
+        }
 
         .arc-phone-gloss {
           position: absolute;
@@ -1456,45 +1559,44 @@ export default function Hero({ ready = true }: HeroProps) {
         /* ---------- the rail of marks ---------- */
 
         /*
-          Not a logo wall. The rule either side of the title is what makes this
-          the horizontal head of the vertical route below it: the reader is
-          told what the five marks are before the departure turns each of them
-          into the label beside a year.
+          Four floating markers, not a logo strip.
+
+          There is no rule here and nothing draws one: no border on the rail,
+          no ::before or ::after, no gradient standing in for a divider. The
+          hairline that used to run over this row is gone from the markup as
+          well as from the stylesheet — it was what pressed four separate
+          objects into a single band of other people's logos.
+
+          The daylight it used to take is now the rail's own headroom, so the
+          marks sit exactly as far below the composition as they did, on
+          nothing.
         */
         .arc-rail {
           flex: 0 0 auto;
           position: relative;
           z-index: 2;
-          padding-top: clamp(22px, 3.2vh, 38px);
-        }
-
-        /* A rule that fades out at both ends rather than stopping: it grounds
-           the row without drawing a box under it. It is set a little stronger
-           than the hairlines elsewhere in the hero because it is now carrying
-           on its own what a title used to help it do — at border weight it
-           read as a rendering artifact rather than a line somebody drew. */
-        .arc-rail-rule {
-          display: block;
-          width: min(420px, 46%);
-          height: 1px;
-          margin: 0 auto clamp(15px, 2.1vh, 23px);
-          background: linear-gradient(to right,
-            transparent,
-            color-mix(in srgb, var(--arc-muted) 34%, transparent) 26%,
-            color-mix(in srgb, var(--arc-muted) 34%, transparent) 74%,
-            transparent);
+          padding-top: clamp(34px, 5vh, 58px);
         }
 
         /* One baseline, one height, natural widths: the marks that are icons
            stay square and the ones that are lockups stay wide, which is how a
-           real client row reads. */
+           real client row reads.
+
+           The gap is the whole difference between a strip and a set of
+           markers, so it is a controlled ratio of the viewport rather than a
+           number per breakpoint: it never closes below 18px — under which the
+           Aramco lockup and the Monsha'at wordmark start reading as one long
+           mark — and never opens past 36px, where four chips stop being a
+           group. It holds four marks on one line at 320px and in both
+           scripts; nothing here offsets them vertically, so the baseline the
+           row is read along survives the spacing. */
         .arc-marks {
           --mark-h: 52px;
           display: flex;
           flex-wrap: wrap;
           align-items: center;
           justify-content: center;
-          gap: clamp(10px, 1.4vw, 18px);
+          gap: clamp(18px, 2.5vw, 36px);
           margin: 0;
           padding: 0;
           list-style: none;
@@ -1982,6 +2084,68 @@ export default function Hero({ ready = true }: HeroProps) {
           .arc-showcase-frame { width: min(100%, 372px); }
         }
 
+        /*
+          A PORTRAIT tablet pins to a HARD height — exactly one viewport — and
+          that is what made the row of marks the thing paying for it: the
+          composition above them is a full-width identity with two 372px frames
+          under it, the screen centres whatever does not fit, and the overflow
+          came out of the bottom, under the floating navigation. At 768×1024
+          four logos were sitting an inch behind the dock.
+
+          So the frames are capped against the height this viewport actually
+          has left, exactly as they are on a desktop — the difference being
+          that on a tablet the identity is a ROW above them rather than a
+          column beside them, so it is part of the reserve. Every term is a
+          strip this screen has already promised to something else, and the
+          identity's is the measured one heroFlight.tsx publishes rather than a
+          guess about how tall two lines of Arabic set.
+
+          It sits after the block above because it has to WIN over the flat
+          372px cap in it, and the two match on specificity.
+        */
+        @media (min-width: 768px) and (max-width: 1099px) and (min-height: 1000px) {
+          .arc-screen {
+            --arc-tab-head: clamp(88px, 9.5vh, 130px);
+            --arc-tab-gap: clamp(30px, 5vh, 52px);
+            --arc-tab-rail: clamp(22px, 3vh, 40px);
+            /* the chips' own height, named once so the reserve and the row
+               itself can never disagree about it */
+            --arc-tab-mark: 52px;
+            /* the product column starts a few pixels lower than the collage
+               beside it, so the taller of the two rows is that much taller —
+               named here because the reserve has to know about it */
+            --arc-tab-lead: 6px;
+            --arc-tab-foot: calc(var(--dock-clear) + clamp(4px, 1.4vh, 16px));
+            padding-top: var(--arc-tab-head);
+            padding-bottom: var(--arc-tab-foot);
+          }
+
+          .arc-stage { row-gap: var(--arc-tab-gap); }
+          .arc-showcase { padding-top: var(--arc-tab-lead); }
+          .arc-rail { padding-top: var(--arc-tab-rail); }
+          .arc-marks { --mark-h: var(--arc-tab-mark); }
+
+          .arc-collage-frame,
+          .arc-showcase-frame {
+            width: min(
+              100%,
+              372px,
+              calc(
+                (
+                  100svh
+                    - var(--arc-tab-head)
+                    - max(176px, var(--arc-copy-measured, 0px))
+                    - var(--arc-tab-gap)
+                    - var(--arc-tab-lead)
+                    - var(--arc-tab-rail)
+                    - var(--arc-tab-mark)
+                    - var(--arc-tab-foot)
+                ) / var(--frame-ar)
+              )
+            );
+          }
+        }
+
         /* ═══════════════════════════════════════════════════════════════
            PHONE — one stage, with the identity standing in the middle of it.
 
@@ -2023,14 +2187,15 @@ export default function Hero({ ready = true }: HeroProps) {
             --arc-pad: clamp(15px, 4.4vw, 24px);
             --arc-head-pad: calc(clamp(94px, 11.8vh, 118px) + env(safe-area-inset-top, 0px));
 
-            /* the strip of marks, built from the parts it is actually made of
-               so the band below can be reserved exactly rather than guessed */
+            /* the row of marks, built from the parts it is actually made of
+               so the band below can be reserved exactly rather than guessed.
+               There were three parts; the middle one was the clearance under a
+               hairline, and both the hairline and its clearance are gone. The
+               headroom absorbed what it measured, so the row still stands
+               where it stood and the reserve below is still exact. */
             --arc-mark-h: clamp(26px, 7.6vw, 36px);
-            --arc-rail-top: clamp(14px, 4vw, 22px);
-            --arc-rail-gap: clamp(8px, 2.4vw, 13px);
-            --arc-marks-band: calc(
-              var(--arc-rail-top) + var(--arc-rail-gap) + var(--arc-mark-h) + 1px
-            );
+            --arc-rail-top: clamp(22px, 6.4vw, 35px);
+            --arc-marks-band: calc(var(--arc-rail-top) + var(--arc-mark-h) + 1px);
 
             /*
               The height the composition may actually use.
@@ -2394,22 +2559,21 @@ export default function Hero({ ready = true }: HeroProps) {
 
           /* ---------- the marks ---------- */
 
-          /* Four marks on one line at every phone width — the row is the head
-             of the route and a wrapped head reads as a logo wall. The chips
-             share one baseline and one height, and their natural widths do the
-             rest. The three parts are the same three the band above reserved,
-             so the row is exactly as tall as the layout was told it is. */
-          .arc-rail { padding-top: var(--arc-rail-top); }
+          /* Four marks on one line at every phone width — a wrapped row is a
+             second band the stage above was never told to reserve, and it
+             would come out from under the navigation. The chips keep the same
+             gap they have everywhere else: at 320px the four natural widths
+             come to 173px and three 18px gaps to 54px, inside the 290px the
+             padded column leaves, so the row floats apart at the narrowest
+             width this site is built for without ever wrapping.
 
-          .arc-rail-rule {
-            width: min(200px, 54%);
-            margin-bottom: var(--arc-rail-gap);
-          }
+             The two parts left are the same two the band above reserves, so
+             the row is exactly as tall as the layout was told it is. */
+          .arc-rail { padding-top: var(--arc-rail-top); }
 
           .arc-marks {
             --mark-h: var(--arc-mark-h);
             flex-wrap: nowrap;
-            gap: clamp(6px, 2vw, 11px);
           }
 
           .arc-mark-float { border-radius: 10px; padding: calc(var(--pad) * .7); }
@@ -2599,6 +2763,48 @@ type FlightProps = {
 };
 
 /* ------------------------------------------------------------------ */
+/* Artwork                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One artifact's picture, at the size the device asking for it will draw it.
+ *
+ * next.config.ts sets `images.unoptimized` — the site is a static export, so
+ * next/image builds no srcset of its own and the file in public/ is exactly
+ * what comes down the wire. A phone was therefore fetching and decoding the
+ * 1120px print of the workshop to show it 155px wide.
+ *
+ * The fix is a `<picture>` and not a media query in JavaScript: the browser
+ * resolves `<source media>` during preload, before React exists, so the small
+ * file is the ONLY one a phone ever requests — where switching `src` off a
+ * matchMedia hook would download the desktop file first and swap it after
+ * hydration, which is slower than doing nothing. `<picture>` does not
+ * establish a containing block either, so a `fill` image inside it still
+ * absolutely positions against the shot's own box.
+ *
+ * Same crop, same subject, same composition at both sizes. This is delivery,
+ * not art direction: nothing here shows a phone a different picture.
+ *
+ * The element is laid over its shot rather than left to `display: contents`,
+ * so it is a positioned box of exactly the shot's size: a `fill` image asks
+ * for one, and given a static parent next/image spends a console warning
+ * saying so on every load in development.
+ */
+function Art({
+  small,
+  alt,
+  ...props
+}: { small?: string } & ComponentProps<typeof Image>) {
+  if (!small) return <Image alt={alt} {...props} />;
+  return (
+    <picture className="arc-art">
+      <source media={PHONE_QUERY} srcSet={small} />
+      <Image alt={alt} {...props} />
+    </picture>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* The collage                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -2704,11 +2910,22 @@ const CollageTile = memo(function CollageTile({
           <span className="arc-tile-float">
             <span className="arc-tile-inner">
               <span className="arc-tile-shot" style={{ "--ar": tile.ratio } as CSSProperties}>
-                <Image
+                <Art
                   src={tile.src}
+                  small={tile.small}
                   alt={tile.alt[lang]}
                   fill
-                  sizes="(max-width: 767px) 48vw, 320px"
+                  /* the print's own share of the stage on a phone, and the
+                     widest this column is ever drawn at on a desktop */
+                  sizes={
+                    tile.id === "room"
+                      ? "(max-width: 767px) 46vw, 440px"
+                      : "(max-width: 767px) 28vw, 190px"
+                  }
+                  /* both prints are below the fold of nothing — they are in
+                     the first screen — but only one artifact is the hero's
+                     largest paint, and it is the window */
+                  loading="eager"
                 />
               </span>
             </span>
@@ -2873,12 +3090,25 @@ const Showcase = memo(function Showcase({
                   </span>
                 </div>
 
-                <span className="arc-window-shot" style={{ "--ar": WINDOW.ratio } as CSSProperties}>
+                <span
+                  className="arc-window-shot"
+                  style={
+                    {
+                      "--ar": WINDOW.ratio,
+                      ...screenVars(WINDOW.screen),
+                    } as CSSProperties
+                  }
+                >
+                  {/* The largest artifact in the composition and the anchor of
+                      it, so it is the one that is preloaded — and the one that
+                      is NOT art-directed: a second source would have the phone
+                      preloading the desktop file and then fetching the small
+                      one. One file, sized for the widest draw there is. */}
                   <Image
                     src={WINDOW.src}
                     alt={WINDOW.alt[lang]}
                     fill
-                    sizes="(max-width: 767px) 47vw, 400px"
+                    sizes="(max-width: 767px) 47vw, 460px"
                     priority
                   />
                 </span>
@@ -2972,13 +3202,15 @@ const ShowcasePhone = memo(function ShowcasePhone({
         <motion.div className="arc-phone-drift" style={still ? undefined : { x: px, y: py }}>
           <span className="arc-phone-float">
             <span className="arc-phone-body">
-              <span className="arc-phone-screen">
+              {/* the bezel owns the screen's shape; the shot fills it, and
+                  only the shot is ever nudged inside it */}
+              <span className="arc-phone-screen" style={screenVars(phone.screen) as CSSProperties}>
                 <span className="arc-phone-shot">
                   <Image
                     src={phone.src}
                     alt={phone.alt[lang]}
                     fill
-                    sizes="(max-width: 767px) 19vw, 120px"
+                    sizes={lead ? "(max-width: 767px) 19vw, 130px" : "(max-width: 767px) 14vw, 90px"}
                   />
                 </span>
               </span>
