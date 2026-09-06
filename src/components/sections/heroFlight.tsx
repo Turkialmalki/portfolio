@@ -196,6 +196,16 @@ export type PlanFeed = {
  * Both rects are read in the same frame and only their difference is kept, so
  * the scroll offset cancels out of every number here.
  */
+/**
+ * Every box that has to fit inside the phone's visual stage.
+ *
+ * The caption is listed separately from the window it belongs to because at the
+ * narrowest stages it comes out of the window's column and hangs under it
+ * absolutely — at which point the stack's own height stops including it, and
+ * it is the deepest thing on that side of the composition.
+ */
+const ART_SELECTOR = ".arc-tile, .arc-phone, .arc-window-stack, .arc-window-caption";
+
 export function useFlightPlan(
   flights: Flight[],
   enabled: boolean,
@@ -233,6 +243,7 @@ export function useFlightPlan(
   const planRef = useRef<Plan>(EMPTY_PLAN);
   const lastSignature = useRef("");
   const lastCopy = useRef(-1);
+  const lastArt = useRef(-1);
   const version = useMotionValue(0);
   const plan = useMemo<PlanFeed>(() => ({ read: () => planRef.current, version }), [version]);
   const publish = useCallback(
@@ -302,11 +313,70 @@ export function useFlightPlan(
   }, []);
 
   /**
+   * How deep the phone's visual stage ACTUALLY is, published to CSS.
+   *
+   * The stylesheet carries a ratio for this — every berth is a fraction of the
+   * stage's width and every artifact's height is a fraction of its own width,
+   * so the depth of the composition can be written down as one percentage. It
+   * is right, and it is right about the wrong thing: the window's caption is
+   * two lines of TYPE, and type is the one part of the composition that is not
+   * a fraction of anything. A longer product name, a script that sets the same
+   * words taller, or the fallback font while the webfont is still loading all
+   * make that group deeper than any ratio predicts.
+   *
+   * So the ratio becomes a floor and this becomes the truth: the band reserves
+   * whichever is deeper, and can therefore only ever be too generous — which
+   * costs a few pixels of air under the composition — and never too small,
+   * which would put a handset on the name.
+   *
+   * Rects, not offsets, and deliberately: the placements carry a rotation, and
+   * what has to clear the name is where the corner of a tilted print actually
+   * reaches, not where its untilted box would have ended. No transform from the
+   * departure is included — every one of them is applied to a wrapper INSIDE
+   * these containers, so a container's box is its resting box however far
+   * through the flight the reader already is, which is what makes this safe to
+   * re-run after a refresh halfway down.
+   *
+   * Read on layout, on font load, on resize, on orientation change and through
+   * the ResizeObserver below. Never on scroll.
+   */
+  const measureArt = useCallback(() => {
+    const stage = stageRef.current;
+    const layer = collageRef.current;
+    if (!stage) return;
+    /* only the phone lays the archive out as one band above the identity;
+       every other width gives it columns either side, where this number is
+       meaningless and must not be left behind from a narrower layout */
+    if (!lifted || !layer) {
+      if (lastArt.current !== -1) {
+        lastArt.current = -1;
+        stage.style.removeProperty("--arc-art-measured");
+      }
+      return;
+    }
+    const head = layer.getBoundingClientRect().top;
+    let deep = 0;
+    for (const node of stage.querySelectorAll<HTMLElement>(ART_SELECTOR)) {
+      const reach = node.getBoundingClientRect().bottom - head;
+      if (reach > deep) deep = reach;
+    }
+    if (deep <= 0) return;
+    const height = Math.ceil(deep);
+    /* the same guard the copy uses, and for the same reason: this property is
+       read by the reserve that decides the band's height, and the observer
+       watching that band is what calls this */
+    if (Math.abs(height - lastArt.current) < 2) return;
+    lastArt.current = height;
+    stage.style.setProperty("--arc-art-measured", `${height}px`);
+  }, [lifted]);
+
+  /**
    * Returns a signature of what it measured, so the caller can tell whether the
    * page has stopped moving underneath it — see the settle loop below.
    */
   const measure = useCallback((): string => {
     const stage = stageRef.current;
+    measureArt();
     measureCopy();
     if (!stage || !enabled) return "";
 
@@ -477,7 +547,7 @@ export function useFlightPlan(
     }
 
     return signature;
-  }, [flights, enabled, publish, lifted, measureCopy]);
+  }, [flights, enabled, publish, lifted, measureCopy, measureArt]);
 
   /**
    * The rail, drawn between the first and last node exactly as the timeline
@@ -556,10 +626,14 @@ export function useFlightPlan(
       publish(EMPTY_PLAN);
       /* the calm treatment still draws a route, so it still needs the line —
          and it still lays the composition out around the copy, so it still
-         needs to know how tall the copy really is */
+         needs to know how deep the composition is and how tall the copy is.
+         A reader who has asked for no motion gets the complete, correctly
+         spaced arrangement, which means these two run for them as well. */
+      measureArt();
       measureCopy();
       measureRail();
       const onResize = () => {
+        measureArt();
         measureCopy();
         measureRail();
       };
@@ -568,6 +642,10 @@ export function useFlightPlan(
       document.fonts?.ready.then(onResize).catch(() => {});
       const ro = new ResizeObserver(onResize);
       if (centerRef.current) ro.observe(centerRef.current);
+      /* the artifact layer as well: the band it is stretched over is the thing
+         being measured, and a font swap resizes the caption inside it without
+         touching anything else on the page */
+      if (collageRef.current) ro.observe(collageRef.current);
       return () => {
         window.removeEventListener("resize", onResize);
         window.removeEventListener("orientationchange", onResize);
@@ -618,8 +696,12 @@ export function useFlightPlan(
     if (stage) ro.observe(stage);
     /* the identity block as well as the screen: a language switch resets the
        copy without necessarily resizing anything above it, and the height of
-       that block is what the stage reserves its middle row from */
+       that block is what the stage reserves its second row from */
     if (centerRef.current) ro.observe(centerRef.current);
+    /* and the artifact layer, which is the band the first row reserves: the
+       window's caption is type, and a font swap or a language switch changes
+       how deep the composition is without moving anything else */
+    if (collageRef.current) ro.observe(collageRef.current);
     window.addEventListener("resize", restart);
     window.addEventListener("orientationchange", restart);
     /* Arabic and Latin metrics differ enough to move every dock a few pixels. */
@@ -633,7 +715,7 @@ export function useFlightPlan(
       window.removeEventListener("orientationchange", restart);
       window.removeEventListener("load", restart);
     };
-  }, [measure, measureRail, measureCopy, enabled, publish, ready]);
+  }, [measure, measureRail, measureCopy, measureArt, enabled, publish, ready]);
 
   return {
     pinRef,

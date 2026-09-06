@@ -102,26 +102,24 @@ function useIsPhone() {
 type Spot = { w: number; x: number; y: number };
 
 /**
- * Where an object rests on the PHONE stage.
+ * Where an object rests on the phone's VISUAL STAGE.
  *
  * A phone has no room for two columns either side of the identity, so it does
- * not get them: it gets ONE stage, with the identity in the middle of it and
- * the archive laid around the outside — photography down the left, product
- * down the right, exactly the relationship the desktop spread is built on,
- * folded into a single column.
+ * not get them: it gets one bounded stage that sits ABOVE the identity and
+ * holds the whole archive — photography down its left, product down its right,
+ * the handsets standing on its lower right. The name, the description and the
+ * buttons follow it in normal document flow, and nothing in this table can
+ * reach them, because the artifact layer is a different row of the same grid.
  *
- * `w` and `x` are fractions of that stage's width, as they are of a desktop
- * frame. The vertical anchor deliberately is NOT a fraction of its height:
- * `top` measures down from the stage's head and `bottom` up from its floor,
- * both in cqw — hundredths of the stage's own WIDTH, read off the artifact
- * layer's container. So the upper group always hugs the head of the stage and
- * the lower group always hugs its floor, at the same size relative to each
- * other, while the band between them — the one the name, the description and
- * the buttons live in — is free to be as tall as the copy needs. That is the
- * whole reason nothing here can ever land on the type: the two are laid out in
- * different rows of the same grid, not in one box with hand-tuned gaps.
+ * `w` and `x` are fractions of the stage's width, as they are of a desktop
+ * frame. `top` is measured down from the head of the visual stage in cqw —
+ * hundredths of that same width — so an artifact's whole box (where it starts
+ * and how far down it reaches) is a pure function of ONE number, the stage's
+ * width. Nothing is anchored to the stage's floor: the floor is what these
+ * berths decide, not the other way round, which is what lets the band be as
+ * tall as its contents actually are instead of as tall as somebody guessed.
  */
-type Berth = { w: number; x: number; top?: number; bottom?: number };
+type Berth = { w: number; x: number; top: number };
 
 /**
  * How a screenshot sits inside the frame drawn around it.
@@ -158,6 +156,19 @@ type Screen = {
 /** the source already carries the frame's shape: fill it, touch nothing */
 const FLUSH: Screen = { fit: "cover", position: "50% 50%", scale: 1, offsetX: 0, offsetY: 0 };
 
+/**
+ * A product interface, shown whole.
+ *
+ * Every screen file in this hero is baked to the exact aspect of the box drawn
+ * around it, so `contain` and `cover` resolve to the same picture — but they
+ * are not the same PROMISE. `cover` says "crop whatever does not fit"; on a
+ * screenshot there is nothing that may be cropped, and the day a source is
+ * re-exported a pixel off, `cover` silently eats a row of the UI while
+ * `contain` shows the whole of it. Photography keeps FLUSH, because a
+ * photograph has no correct letterbox and its crop is deliberate.
+ */
+const UI: Screen = { ...FLUSH, fit: "contain" };
+
 function screenVars(screen: Screen): Record<string, string> {
   return {
     "--fit": screen.fit,
@@ -171,16 +182,17 @@ function screenVars(screen: Screen): Record<string, string> {
 /**
  * The custom properties one berth resolves to.
  *
- * `--t` and `--bt` are handed straight to `top` and `bottom`, so an artifact
- * declares which edge of the stage it belongs to and the CSS never has to know
- * which of the two it was given.
+ * `--d` is the artifact's own depth — how far below its top edge its box
+ * actually reaches, in the same cqw the placement is written in. It is not
+ * used to draw anything; it is what the stage adds to `--t` to work out how
+ * tall it has to be, so the band is sized from the artifacts in it rather than
+ * from a number typed into the stylesheet. See `--arc-art-floor`.
  */
 function berthVars(spot: Berth): Record<string, string> {
   return {
     "--w": `${spot.w}%`,
     "--x": `${spot.x}%`,
-    "--t": spot.top === undefined ? "auto" : `${spot.top}cqw`,
-    "--bt": spot.bottom === undefined ? "auto" : `${spot.bottom}cqw`,
+    "--t": `${spot.top}cqw`,
   };
 }
 
@@ -234,11 +246,12 @@ const TILES: Tile[] = [
     z: 1,
     step: 0,
     at: { w: 84, x: -8, y: -22 },
-    /* Upper LEFT of the phone stage — the same corner of the composition it
+    /* Upper LEFT of the visual stage — the same corner of the composition it
        holds on a desktop, at the size a hand can still read a room full of
-       people at. It sits a little lower than the window opposite it so the two
-       upper objects are a pair rather than a lintel. */
-    atPhone: { w: 48, x: -24, top: 8 },
+       people at. It is the widest thing in the band and it starts at its head,
+       which is what makes it read as the primary rather than as one of four
+       similar cards. */
+    atPhone: { w: 47, x: -25.5, top: 0 },
   },
   {
     id: "stage",
@@ -253,8 +266,11 @@ const TILES: Tile[] = [
     z: 3,
     step: 1,
     at: { w: 36, x: 30, y: 23 },
-    /* lower LEFT, under the speaking frame's own half of the stage */
-    atPhone: { w: 29, x: -27, bottom: 6 },
+    /* Lower LEFT, directly under the room and on the same side of the stage:
+       photography owns this column top to bottom, exactly as it owns the left
+       of the desktop spread. The gap above it is 7% of the stage's width, so
+       it is the same piece of daylight at 320px as at 430px. */
+    atPhone: { w: 30, x: -31, top: 40 },
   },
 ];
 
@@ -359,8 +375,9 @@ const WINDOW = {
      picture in it — the number the crop resolves to, never the number the
      source happened to be before it was baked */
   ratio: 1120 / 666,
-  /* a browser viewport is designed to fill its viewport: nothing to nudge */
-  screen: FLUSH,
+  /* a browser viewport at the box's own aspect: nothing to nudge, and
+     nothing that may be cropped */
+  screen: UI,
   alt: {
     ar: "شاشة الدخول إلى منصة مسرّعة أعمال الأفلام",
     en: "The Film Business Accelerator sign-in screen",
@@ -372,13 +389,13 @@ const WINDOW = {
   kind: { ar: "هيئة الأفلام السعودية", en: "Saudi Film Commission" } satisfies Bi,
   /** width as a percentage of the showcase frame */
   w: 87,
-  /* Upper RIGHT of the phone stage — the anchor of the product side, kept on
+  /* Upper RIGHT of the visual stage — the anchor of the product side, kept on
      the side of the composition it holds on a desktop. Hung from the head of
      the stage rather than centred on a point, because the caption underneath
      it is type and therefore a fixed height: anchoring the group by its top is
-     what keeps the daylight between the caption and the name the same at every
-     width instead of growing and shrinking with the caption's leading. */
-  atPhone: { w: 47, x: 25.5, top: 2 } satisfies Berth,
+     what keeps the daylight under it the same at every width instead of
+     growing and shrinking with the caption's leading. */
+  atPhone: { w: 45, x: 26.5, top: 2 } satisfies Berth,
 };
 
 /**
@@ -422,15 +439,15 @@ const PHONES: Handset[] = [
     nw: 353,
     nh: 788,
     /* full-bleed home screen, at the bezel's own aspect to a thousandth */
-    screen: FLUSH,
+    screen: UI,
     rotate: -2.8,
     z: 4,
     at: { w: 28, x: 2, b: 0 },
-    /* Lower RIGHT, standing on the stage's floor. A handset is over twice as
-       tall as it is wide, so this width is set by the height the lower band
-       has to give it — 19% of the stage is 41% of it back again in height,
-       which is the deepest object in the band and therefore what sizes it. */
-    atPhone: { w: 19, x: 22, bottom: 3 },
+    /* Lower RIGHT, under the product window it belongs beside. A handset is
+       over twice as tall as it is wide, so 19.5% of the stage comes back as
+       42% of it in height — this is the deepest object in the composition and
+       therefore the one that decides where the stage's floor is. */
+    atPhone: { w: 19.5, x: 20, top: 50 },
   },
   {
     id: "emkan",
@@ -441,13 +458,14 @@ const PHONES: Handset[] = [
        and nothing was enlarged; what went was 100KB nobody could see. */
     nw: 420,
     nh: 937,
-    screen: FLUSH,
+    screen: UI,
     rotate: 3.4,
     z: 3,
     at: { w: 19, x: 39, b: 12 },
-    /* the second of the pair, smaller and lifted off the same floor — the same
-       lap over the one in front of it that the desktop pair keeps */
-    atPhone: { w: 14, x: 36, bottom: 10 },
+    /* the second of the pair, smaller and set a little lower down the stage,
+       with the same controlled lap over the one in front of it that the
+       desktop pair keeps — two sizes and two levels, never a couple */
+    atPhone: { w: 14.5, x: 34.5, top: 56 },
   },
 ];
 
@@ -546,22 +564,30 @@ const PHONE_BLUR = 0;
 /**
  * Who leaves first on a phone — which is not who left first on a desktop.
  *
- * The head of the phone's route is the band the upper two artifacts are resting
- * in, and it is also where the identity goes. On a desktop the identity climbs
- * up its own empty column and meets nothing; here the band has to be emptying
- * while the identity is arriving in it, and the two objects in it are the
- * window and the room.
+ * The phone's whole archive rests in one band ABOVE the identity, and the
+ * identity's own move is to climb out from underneath it to the head of the
+ * route. So it enters the composition at the bottom and leaves at the top, and
+ * the composition has to empty in front of it: the two handsets first, because
+ * they stand on the stage's floor and are what the name meets first, then the
+ * speaking frame beside them, then the product window and the room at the head
+ * of the stage, which the name reaches last.
  *
- * So on the phone route those two are given the earliest DEPARTURES, and
- * nothing else changes: every `end` is untouched, so the order the archive
- * ARRIVES in — which is the order that tells the story, earliest work to
- * latest — is exactly the desktop's. What changes is only the order it empties
- * in, and it empties from the top of the composition down, which is the one
- * thing a phone needs it to do.
+ * Only the DEPARTURES are re-ordered. Every `end` is untouched, so the order
+ * the archive ARRIVES in — which is the order that tells the story, earliest
+ * work to latest — is exactly the desktop's. What changes is the order it
+ * empties in, and it empties from the floor of the composition upward, which
+ * is the one thing this layout needs it to do.
+ *
+ * The four marks are not in this table: they rest in the row BELOW the copy,
+ * which the climbing name moves away from rather than through, so they keep
+ * the desktop's own order scaled to the phone's shorter runway.
  */
 const PHONE_LEAVES_FIRST: Record<string, number> = {
-  window: 0.02,
-  "tile-room": 0.05,
+  "phone-alrajhi": 0.02,
+  "phone-emkan": 0.045,
+  "tile-stage": 0.075,
+  window: 0.105,
+  "tile-room": 0.135,
 };
 
 const PHONE_FLIGHTS: Flight[] = FLIGHTS.map((flight) => ({
@@ -665,19 +691,22 @@ export default function Hero({ ready = true }: HeroProps) {
    * band below the headroom the plan measured for it.
    */
   /*
-    A phone's identity climbs from the MIDDLE of the stage to the head of the
-    route, and the band it has to pass through is where the upper two artifacts
-    are resting. So on a phone it goes early and it goes quickly — up and clear
-    of them by 0.26, while they are still barely under way (see
-    PHONE_LEAVES_FIRST) — and they then descend past a band it has already left.
-    The two are never in the same place at the same time in either direction,
-    which is the only version of this that also survives being scrolled
-    backwards.
+    A phone's identity climbs out from UNDER the visual stage to the head of the
+    route, so it has the whole composition to pass through and it goes early and
+    quickly — clear by 0.28, against a band that has been emptying from its
+    floor upward since 0.02 (see PHONE_LEAVES_FIRST). The name is the last thing
+    up and the artifacts are all on their way down, so the two cross once,
+    moving apart, in both scroll directions.
+
+    They cross BEHIND it in every case: the identity's cell carries a higher
+    z-index than either artifact layer, so at no point in the transition — and
+    at no scroll offset a refresh can land on — can a print or a handset be
+    drawn over the name.
 
     Everywhere else the identity shrinks in its own empty column, meets nothing
     on the way, and can take its time.
   */
-  const climb = isPhone ? { from: 0.04, span: 0.22 } : { from: 0.05, span: 0.5 };
+  const climb = isPhone ? { from: 0.04, span: 0.24 } : { from: 0.05, span: 0.5 };
   const centerPose = useTransform<number, { y: number; scale: number }>(
     [progress, plan.version],
     ([p]) => {
@@ -700,9 +729,31 @@ export default function Hero({ ready = true }: HeroProps) {
    * `pointer-events` in sync with an animating opacity.
    */
   const [supportLive, setSupportLive] = useState(true);
+  /**
+   * Whether anything is actually moving.
+   *
+   * `will-change: transform` on nine artifacts is nine compositor layers, and
+   * a phone holds them for the whole life of the page if the hint is left on —
+   * including while the reader is three sections further down and the hero is
+   * parked at either end of its range. This flips false at both ends of the
+   * transition and true inside it, so the promotion exists exactly while there
+   * is a departure to promote and not one frame longer.
+   *
+   * It is a boolean, not a number: two state changes per pass over the hero,
+   * both of them at a threshold, so the scroll itself never re-renders this
+   * tree. Everything that moves per-frame is a MotionValue and touches the DOM
+   * directly.
+   */
+  const [airborne, setAirborne] = useState(false);
   useMotionValueEvent(progress, "change", (p) => {
     const live = p < 0.2;
     setSupportLive((prev) => (prev === live ? prev : live));
+    /* the margins are the spring's own resting epsilon, not a guess at one:
+       a spring converges asymptotically and stops a hair short of the value
+       it is chasing, so a threshold any tighter than this never flips back at
+       the ends and the hint is never actually released */
+    const moving = p > 0.01 && p < 0.99;
+    setAirborne((prev) => (prev === moving ? prev : moving));
   });
 
   const atmosphere = useTransform(progress, [0.05, 0.62], [0, 1]);
@@ -763,6 +814,7 @@ export default function Hero({ ready = true }: HeroProps) {
       ref={rootRef}
       className="hero-root"
       data-flight={flying ? "on" : "off"}
+      data-airborne={flying && airborne ? "1" : "0"}
       onPointerMove={onPointerMove}
       onPointerLeave={resetPointer}
       style={{ "--doc-dir": lang === "ar" ? "rtl" : "ltr" } as CSSProperties}
@@ -1617,15 +1669,17 @@ export default function Hero({ ready = true }: HeroProps) {
 
         /*
           The hint goes on the four wrappers that are ACTUALLY driven by the
-          scroll, and only while there is a departure to drive them. Under
-          reduced motion — and for the paint before data-flight is decided —
-          nothing here moves, and a permanently promoted layer per artifact is
-          eleven compositor layers a phone is holding for nothing.
+          scroll, and only while they are actually being driven: data-airborne
+          is true between the two ends of the pin's range and false at both of
+          them, so the layers exist during the departure and at no other time.
+          Under reduced motion — and for the paint before data-flight is
+          decided — it is never true at all, and eleven promoted layers is
+          exactly what a phone must not be holding for nothing.
         */
-        .hero-root[data-flight="on"] .arc-tile-fly,
-        .hero-root[data-flight="on"] .arc-window-fly,
-        .hero-root[data-flight="on"] .arc-phone-fly,
-        .hero-root[data-flight="on"] .arc-mark-fly { will-change: transform; }
+        .hero-root[data-airborne="1"] .arc-tile-fly,
+        .hero-root[data-airborne="1"] .arc-window-fly,
+        .hero-root[data-airborne="1"] .arc-phone-fly,
+        .hero-root[data-airborne="1"] .arc-mark-fly { will-change: transform; }
 
         .arc-mark-float {
           display: flex;
@@ -2185,7 +2239,7 @@ export default function Hero({ ready = true }: HeroProps) {
                measurement in heroFlight.tsx through the probe. A number that
                appears twice is a number that goes wrong on one phone. */
             --arc-pad: clamp(15px, 4.4vw, 24px);
-            --arc-head-pad: calc(clamp(94px, 11.8vh, 118px) + env(safe-area-inset-top, 0px));
+            --arc-head-pad: calc(clamp(78px, 9.8vh, 98px) + env(safe-area-inset-top, 0px));
 
             /* the row of marks, built from the parts it is actually made of
                so the band below can be reserved exactly rather than guessed.
@@ -2242,6 +2296,75 @@ export default function Hero({ ready = true }: HeroProps) {
               combined with max() rather than the measurement simply winning.
             */
             --arc-copy-h: clamp(162px, 44vw, 216px);
+
+            /*
+              The daylight between the composition and the name.
+
+              A ratio, not a gap in pixels: it is the same piece of air at
+              320px as at 430px, and it is subtracted from the band BEFORE the
+              stage is allowed to choose its width, so it can never be the
+              thing that gets squeezed out on a short screen.
+            */
+            --arc-art-gap: clamp(16px, 5.4vw, 30px);
+
+            /*
+              How deep the visual stage is, as a fraction of its own width.
+
+              This is not a guess and it is not a round number: it is the
+              deepest berth in the composition worked out from the table it is
+              declared in. The front handset is berthed at 48cqw and a handset
+              is 2.168 times as tall as it is wide, so at 19.5% of the stage it
+              reaches 48 + 42.3 = 90.3cqw, and the rotations in the group carry
+              its corners about a point past that. Change a berth and this
+              number changes with it — which is exactly why the measurement
+              below exists as well.
+            */
+            --arc-art-floor: 94%;
+
+            /*
+              Where the product window's box actually ends, written out.
+
+              Every clearance in this composition is a ratio of the stage's
+              width — except two, and they are both in this group. The credit
+              under the window is TYPE, and the browser bar above it has a
+              floor, because a chrome bar under 13px stops reading as chrome.
+              On a tall phone the ratio slot between the window and the
+              handsets is generous and neither matters. On a short one the
+              stage gets narrow so the composition still fits above the
+              navigation, the slot shrinks with it, and the two fixed things
+              stay exactly the size they were — which is how a credit line ends
+              up printed across the front handset.
+
+              So the slot is not left to the ratio. This is the window's real
+              bottom edge: its berth, plus its bar, plus its screen at the
+              file's own aspect. 26.76cqw is 45cqw of window divided by the
+              1.6817 the shot is baked to; 4.05cqw is the bar's 9% of that same
+              window. Both are the same numbers the artifacts are drawn from,
+              expressed against the stage instead of against the window.
+            */
+            --arc-win-bottom: calc(2cqw + clamp(13px, 4.05cqw, 22px) + 26.76cqw);
+
+            /*
+              What the credit needs under it — the two-line form, which is the
+              one in use at every stage wide enough to set it. The one-line
+              form used at the narrowest stages asks for less and says so
+              itself, in the container query below.
+            */
+            --arc-cap-h: 40px;
+
+            /*
+              And what that costs the handsets: nothing at all wherever their
+              own berth already clears it — which is every width where the
+              ratio was generous enough — and exactly the shortfall where it
+              does not. Both handsets take the same push, so the pair keeps its
+              own relationship, and the band they end up in grows with them
+              because heroFlight.tsx measures where the composition really
+              reaches rather than trusting the ratio.
+            */
+            --arc-phone-push: max(
+              0px,
+              calc(var(--arc-win-bottom) + var(--arc-cap-h) - 50cqw)
+            );
           }
 
           .arc-inner {
@@ -2252,10 +2375,12 @@ export default function Hero({ ready = true }: HeroProps) {
           .arc-screen {
             display: block;
             min-height: 0;
-            /* The fixed header's own strip, safe area included. It has to clear
-               the plane-window toggle, which is the tallest control up there and
-               sits in the corner the long Latin form of the name reaches into —
-               at 74px "Turki Almalki" came within three pixels of it. */
+            /* The fixed header's own strip, safe area included. It clears the
+               tallest control up there, which is now a 38px pill rather than
+               the 78px drawn cabin window this corner used to carry — so the
+               reserve came down with it and the composition got the difference
+               back. The identity's own headroom is measured off the header's
+               real height in heroFlight.tsx, not off this. */
             padding-top: var(--arc-head-pad);
             padding-bottom: 0;
           }
@@ -2263,41 +2388,48 @@ export default function Hero({ ready = true }: HeroProps) {
           /* ---------- the stage ---------- */
 
           /*
-            Three rows: the upper artifacts, the identity, the lower artifacts.
+            TWO rows: the visual stage, then the identity.
 
-            The two artifact rows hold no content — they are ::before and
-            ::after, reserving height and nothing else, because the artifacts
-            themselves are absolutely positioned across the whole stage. That is
-            what makes the guarantee structural: the copy is the only thing ever
-            laid out in row two, and the artifacts only ever hang off the outer
-            edges of rows one and three, so an overlap is not something this
-            layout can express.
+            Row one is the whole composition — every photograph, the product
+            window, both handsets — and it holds no content of its own. It is a
+            ::before reserving height and nothing else, because the artifacts
+            are absolutely positioned inside a layer stretched over that same
+            row. Row two is the name, the description and the buttons, in
+            normal document flow underneath it.
 
-            The reserves are percentages, which on a grid item resolve against
-            the grid area's width — so both bands are a fraction of the stage's
-            own width and the whole composition scales as one object.
+            That is what makes the guarantee structural rather than tuned: the
+            copy is the only thing ever laid out in row two, the artifacts are
+            only ever laid out inside row one, and "an artifact below the
+            buttons" is not a thing this layout can express. It is also why
+            there is no ::after any more — there is no band under the copy for
+            anything to be left in.
+
+            The reserve is a percentage, which on a grid item resolves against
+            the grid area's width, so the composition is a fraction of the
+            stage's own width and scales as one object at every size.
           */
           .arc-stage {
             direction: ltr;
             position: relative;
             display: grid;
             grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: auto auto auto;
+            grid-template-rows: auto auto;
             column-gap: 0;
-            row-gap: 0;
+            /* the clear space the name is owed under the composition */
+            row-gap: var(--arc-art-gap);
             align-items: stretch;
             /*
               Capped three ways, and the third is the one that matters.
 
               100% is the column. 430px stops the composition growing past
               the size it was drawn at on the widest phones. And the last term
-              is what keeps a SHORT screen honest: the bands are 55% and 48% of
-              the width, so a stage this wide is a stage --arc-band tall, and
-              the whole composition — every artifact, the identity, the marks —
-              fits in the band above the navigation with at most the header's
-              own padding scrolled out of the way. The composition scales down
-              WHOLE on a short phone rather than being cropped or pushed under
-              the dock.
+              is what keeps a SHORT screen honest: the visual stage is
+              --arc-art-floor of its own width, so choosing a width is choosing
+              a height, and this is the widest one whose composition, gap, copy
+              and row of marks all still fit in --arc-band — one small viewport
+              less the header's padding and less the strip the floating
+              navigation owns. The composition scales down WHOLE on a short
+              phone rather than being cropped or pushed under the dock.
             */
             width: min(
               100%,
@@ -2306,41 +2438,66 @@ export default function Hero({ ready = true }: HeroProps) {
                 (
                   var(--arc-band)
                     - max(var(--arc-copy-h), calc(var(--arc-copy-measured, 0px) + 6px))
-                ) / 1.03
+                    - var(--arc-art-gap)
+                ) / 0.94
+              ),
+              /*
+                And the same sum again, for the stages where the composition
+                is deeper than --arc-art-floor.
+
+                Below about 221px of stage the two fixed things in the window
+                group — its 13px chrome floor and its 34px credit reserve —
+                stop fitting the ratio slot above the handsets, so
+                --arc-phone-push moves the pair down and the band gets deeper
+                than 94% of its width. Solving that for the width is this term:
+                the window's box is .2876 of the stage plus its 13px floor,
+                the credit under it reserves 34, the handsets berth at .50, so
+                the push is 47px less .2124 of the stage, and the band is
+                .7276 of the stage plus 47px.
+
+                It is a min(), not a replacement, because the two cross at
+                exactly the width where the push turns on: above it this term
+                is the larger of the two and the ratio wins, below it this one
+                does. Nothing has to know which regime it is in.
+              */
+              calc(
+                (
+                  var(--arc-band)
+                    - max(var(--arc-copy-h), calc(var(--arc-copy-measured, 0px) + 6px))
+                    - var(--arc-art-gap)
+                    - 47px
+                ) / 0.7276
               )
             );
             margin-inline: auto;
           }
 
           /*
-            The upper band — set by the deepest thing hanging from the head of
-            the stage, which is the window and its caption. Measured across
-            every width and both scripts, that group runs to between 42% and
-            48% of the stage's width — the top of that range being the narrow
-            stages, where the credit under the window is a fixed line of type
-            rather than a fraction of anything. The reserve is that plus the
-            daylight the name is owed underneath it.
+            The floor of the visual stage.
+
+            Two answers, and it takes the deeper. --arc-art-floor is the
+            geometry: every berth is a fraction of the stage's width and every
+            artifact's height is a fraction of its own width, so the depth of
+            the composition is a fraction of the stage's width and can be
+            written down. --arc-art-measured is the truth: heroFlight.tsx reads
+            the real bottom edge of every artifact — on layout, on font load,
+            on resize, on orientation change and through a ResizeObserver, and
+            never on scroll — and publishes it here.
+
+            The measurement is what catches the parts of the composition that
+            are NOT a fraction of anything: the window's caption is two lines of
+            type, and a longer product name, a taller script or a fallback font
+            makes that block deeper than any ratio can predict. Taking the
+            larger of the two means the band can only ever be too generous,
+            which costs a few pixels of air, and never too small, which would
+            put a handset on the name.
           */
           .arc-stage::before {
             content: "";
             grid-row: 1;
             grid-column: 1;
             width: 0;
-            padding-top: 55%;
-            pointer-events: none;
-          }
-
-          /* the lower band — set by the front handset, which is over twice as
-             tall as it is wide and is therefore the only thing this number is
-             about: the group runs to 44.6% of the stage's width, at every width
-             and in both scripts, because every part of it is a fraction of that
-             same width */
-          .arc-stage::after {
-            content: "";
-            grid-row: 3;
-            grid-column: 1;
-            width: 0;
-            padding-top: 48%;
+            padding-top: max(var(--arc-art-floor), var(--arc-art-measured, 0px));
             pointer-events: none;
           }
 
@@ -2357,16 +2514,21 @@ export default function Hero({ ready = true }: HeroProps) {
             grid-row: 2;
             grid-column: 1;
             justify-self: center;
-            align-self: center;
+            align-self: start;
             z-index: 3;
             width: min(430px, calc(100vw - var(--arc-pad) * 2));
             padding-inline: 0;
           }
 
           /*
-            The artifact layer. Absolute over the whole stage, never in flow,
-            and never a pointer target — the buttons underneath it stay
-            hittable at every width whatever passes over them mid-flight.
+            The artifact layer — stretched over ROW ONE and nothing else.
+
+            It is a grid item rather than an "inset: 0" overlay on purpose: the
+            browser is what works out where row one ends, so the layer the
+            artifacts are positioned inside is always exactly the visual stage,
+            however tall the reserve above turns out to be. Nothing in it is
+            ever a pointer target, so the buttons below stay hittable at every
+            width whatever passes over them mid-flight.
 
             direction: ltr on both, so photography stays on the left of the
             composition and product on the right in Arabic exactly as in
@@ -2375,8 +2537,13 @@ export default function Hero({ ready = true }: HeroProps) {
           */
           .arc-collage,
           .arc-showcase {
-            position: absolute;
-            inset: 0;
+            position: relative;
+            grid-row: 1;
+            grid-column: 1;
+            align-self: stretch;
+            justify-self: stretch;
+            width: 100%;
+            min-width: 0;
             direction: ltr;
             pointer-events: none;
           }
@@ -2402,11 +2569,13 @@ export default function Hero({ ready = true }: HeroProps) {
           /*
             Where each artifact hangs.
 
-            --x is a fraction of the stage's width from its centre line, and
-            --t / --bt are hundredths of that same width measured down from
-            the stage's head or up from its floor. One of the two is always
-            auto, so an artifact belongs to the upper band or the lower one
-            and cannot drift between them as the copy changes height.
+            --x is a fraction of the stage's width from its centre line and --t
+            is hundredths of that same width measured down from the stage's
+            HEAD. Every artifact in the composition is anchored the same way,
+            top edge only: nothing hangs off the floor, because the floor is
+            what these placements decide. That is what makes the band's depth
+            computable rather than negotiated — and it is also why the copy
+            changing height can no longer move a single artifact by a pixel.
           */
           /* the logical inset the desktop anchors by is cleared FIRST: it
              resolves to left in a left-to-right layer, so clearing it after
@@ -2417,16 +2586,19 @@ export default function Hero({ ready = true }: HeroProps) {
             left: calc(50% + var(--x));
             right: auto;
             top: var(--t);
-            bottom: var(--bt);
+            bottom: auto;
             transform: translate(-50%, 0) rotate(var(--r));
           }
+
+          /* the handsets stand under the window's credit, never on it */
+          .arc-phone { top: calc(var(--t) + var(--arc-phone-push)); }
 
           .arc-window-stack {
             inset-inline: auto;
             left: calc(50% + var(--x));
             right: auto;
             top: var(--t);
-            bottom: var(--bt);
+            bottom: auto;
             transform: translate(-50%, 0);
             /* the window's own chrome is sized against the WINDOW, not against
                the stage: a browser bar is a fraction of its browser */
@@ -2457,16 +2629,50 @@ export default function Hero({ ready = true }: HeroProps) {
             away: the product still says what it is and who it was built for,
             in a form 79px of window can carry.
           */
-          @container arc-stage (max-width: 300px) {
+          /*
+            The credit is type at the size the stage draws it.
+
+            Its two lines are set against the WINDOW's width — the desktop's
+            floors are 11px and 10px, which are the sizes those lines stop
+            being readable below, and they hold at every stage wide enough for
+            the product's name to still sit on one line. This is where the
+            column stops being wide enough for that, and where the credit
+            changes shape rather than standing down.
+          */
+          .arc-window-caption b { font-size: clamp(10px, 3.36cqw, 13px); }
+          .arc-window-caption span { font-size: clamp(9px, 2.96cqw, 11.5px); }
+
+          @container arc-stage (max-width: 312px) {
+            /* the one-line form is shallower, and the handsets get the
+               difference back rather than being pushed down for a line that
+               is not being set. It reserves TWO of those lines even so — the
+               name wraps rather than overflowing now, and a reserve that only
+               covers the line it usually needs is the same bug in the other
+               direction. */
+            .arc-phone { --arc-cap-h: 34px; }
+
             .arc-window-caption {
               position: absolute;
               top: 100%;
               right: 0;
               left: auto;
               width: max-content;
-              /* twice the window, which from the window's outer edge still
-                 stops short of the far side of the stage */
-              max-width: 200%;
+              /*
+                How far inward the credit is allowed to run, and it is not a
+                round number either.
+
+                It hangs from the window's outer edge, which is 49% of the
+                stage from its centre, and the deepest thing it must clear is
+                the speaking frame on the other side of the composition, whose
+                inner edge is 16% short of that centre. So the credit may cross
+                65% of the stage before it reaches anything — 1.44 windows —
+                and it is held to 1.3 of them, which leaves 6.5% of the stage
+                between the two — the same kind of ratio clearance every other
+                gap in this file is written as. Where the name does not fit
+                that in one line it takes two, which the reserve below already
+                covers; what it never does is run out of the box.
+              */
+              max-width: 130%;
               margin: 5px 0 0;
               /* the rule sits on the outer edge in both scripts here, because
                  the block is anchored to that edge rather than to the start of
@@ -2477,10 +2683,21 @@ export default function Hero({ ready = true }: HeroProps) {
               text-align: right;
             }
 
+            /*
+              The credit's one line, sized so it fits the reach above.
+
+              It used to be 10px and nowrap, which meant max-width bounded the
+              BOX and the text simply ran out of it — across the speaking frame
+              on the other side of the stage, at exactly the narrow widths this
+              rule exists for. So it wraps now, which makes the bound real, and
+              the type shrinks with the stage so that in practice it never has
+              to: 6.4cqw is the stage width the product's name occupies per
+              pixel of type, less the padding, and 8px is where the line stops
+              being readable and the wrap takes over instead.
+            */
             .arc-window-caption b {
-              font-size: 10px;
+              font-size: clamp(8px, calc(6.4cqw - 0.8px), 10px);
               line-height: 1.3;
-              white-space: nowrap;
             }
 
             /* present, named, and not drawn: there is no width here for a
