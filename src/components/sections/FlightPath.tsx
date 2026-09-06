@@ -108,9 +108,9 @@ export const STOPS: Stop[] = [
     year: "2018",
     period: { ar: "2018", en: "2018" },
     org: { ar: "أرامكو السعودية", en: "Saudi Aramco" },
-    role: { ar: "تدريب تعاوني — هندسة", en: "Engineering Co-op" },
+    role: { ar: "تدريب تعاوني — مطور برمجيات و محلل بيانات", en: "Engineering Co-op" },
     summary: {
-      ar: "من هنا بدأت الرحلة: أساسيات العمل المؤسسي، وتسليم البرمجيات، وحل المشكلات الهندسية بطريقة منظّمة.",
+      ar: "من هنا بدأت الرحلة: أساسيات البرمجه، وحل المشكلات البرمجيه بطريقة منظّمة و تحليل البيانات",
       en: "Where the journey began — enterprise foundations, software delivery, and structured engineering problem-solving.",
     },
     ratio: 1.62,
@@ -128,14 +128,14 @@ export const STOPS: Stop[] = [
     layout: "award",
     anchor: "trophy",
     period: { ar: "نموّ مستمر", en: "Continuous growth" },
-    org: { ar: "جوائز وتأسيس أكاديمي", en: "Awards & foundation" },
+    org: { ar: "بداية طموح", en: "Awards & foundation" },
     role: { ar: "مسابقات برمجية وشهادة جامعية", en: "Programming competitions & degree" },
     summary: {
-      ar: "المركز الأول في مسابقة أرامكو «وعد» للبرمجة، والمركز الثاني في مسابقة كاوست، وبكالوريوس علوم حاسب من جامعة الملك فيصل بتكريم من عميد الكلية.",
+      ar: "المركز الأول في مسابقة أرامكو «واعد» للبرمجة، والمركز الثاني في مسابقة كاوست، وبكالوريوس علوم حاسب من جامعة الملك فيصل بتكريم خاص من عميد الكلية.",
       en: "1st place at the Aramco Wa'ed programming competition, 2nd at KAUST, and a Computer Science degree from King Faisal University, recognized by the College Dean.",
     },
     badges: [
-      { icon: "trophy", text: { ar: "المركز الأول — وعد", en: "1st — Wa'ed" } },
+      { icon: "trophy", text: { ar: "المركز الأول — واعد", en: "1st — Wa'ed" } },
       { icon: "medal", text: { ar: "المركز الثاني — كاوست", en: "2nd — KAUST" } },
       { icon: "cap", text: { ar: "بكالوريوس علوم حاسب", en: "BSc Computer Science" } },
     ],
@@ -143,7 +143,7 @@ export const STOPS: Stop[] = [
     proof: [
       {
         src: "/IMG-20181201-WA0054.jpg",
-        label: { ar: "فريق مسابقة وعد", en: "Wa'ed competition team" },
+        label: { ar: "فريق مسابقة واعد", en: "Wa'ed competition team" },
         meta: { ar: "المركز الأول", en: "1st place" },
         pos: "center 40%",
       },
@@ -209,9 +209,9 @@ export const STOPS: Stop[] = [
     anchor: "spark",
     period: { ar: "على امتداد الرحلة", en: "Across the journey" },
     org: { ar: "ورش عمل واستشارات", en: "Workshops & consulting" },
-    role: { ar: "مستشار أعمال معتمد · مدرّب", en: "Certified business consultant · Instructor" },
+    role: { ar: "مستشار و مدرّب", en: "Certified business consultant · Instructor" },
     summary: {
-      ar: "أدرّب الفرق ورواد الأعمال على الطريق من الفكرة إلى MVP، وأقدّم استشارات تقنية رسمية عبر منصة منشآت، وأُدرّس هندسة البرمجيات عبر منصة iHash+.",
+      ar: "أدرّب الفرق ورواد الأعمال على الطريق من الفكرة إلى MVP، وأقدّم استشارات تقنية رسمية عبر منصة منشآت، وأُدرّس اساسيات البرمجة عبر منصة iHash+.",
       en: "I coach teams and founders on the road from idea to MVP, consult officially through the Monshaat platform, and teach software engineering on iHash+.",
     },
     metrics: [
@@ -313,9 +313,9 @@ export const STOPS: Stop[] = [
     year: "2026",
     period: { ar: "2026", en: "2026" },
     org: { ar: "مسرّعة أعمال الأفلام", en: "Film Business Accelerator" },
-    role: { ar: "لوحة متابعة المحفظة · هيئة الأفلام", en: "Portfolio dashboard · Saudi Film Commission" },
+    role: { ar: "لوحة متابعة البيانات · هيئة الأفلام", en: "Portfolio dashboard · Saudi Film Commission" },
     summary: {
-      ar: "حوّلت بيانات دفعة من 20 شركة إلى لوحة قرار تنفيذية: الجاهزية، مراحل الاستثمار، ومؤشر صحة المحفظة.",
+      ar: "حوّلت بيانات دفعة من 20 شركة إلى لوحة قرار تنفيذية: الجاهزية، مراحل الاستثمار، ومؤشر صحة البيانات.",
       en: "Turned the raw data of a 20-company batch into an executive decision dashboard — readiness, investment stages, and a portfolio health index.",
     },
     /* No logo tile here on purpose: the accelerator's mark is a pale wordmark
@@ -367,7 +367,7 @@ const COPY = {
     years: "‎+9 سنوات",
     arrivalKicker: "الوجهة الحالية",
     arrival: "اليوم",
-    arrivalLine: "الرحلة مستمرة — والمحطة القادمة قد تكون معك.",
+    arrivalLine: "الرحلة مستمرة",
     arrivalCta: "لنتحدث",
     credentialsLabel: "اعتمادات",
     proofLabel: "أعمال داعمة",
