@@ -198,7 +198,29 @@ export default function PrivacyClient() {
       <TopBar />
       <Navbar />
 
-      <main className="mx-auto max-w-[760px] px-6 pb-24 pt-32 sm:pt-40">
+      {/*
+        The spacing is inline, not Tailwind.
+
+        globals.css carries an UNLAYERED `* { margin: 0; padding: 0 }` reset,
+        and an unlayered rule outranks anything in `@layer utilities` no matter
+        how specific — so every `pt-*`, `px-*`, `mt-*` on this page resolves to
+        zero and always has. That left the page with no headroom at all, which
+        is why the fixed header sat on the title. The three values below are
+        the site's own conventions — the head clearance /career and /blog
+        reserve, and --dock-clear for the floating navigation at the foot —
+        written where the reset cannot reach them.
+
+        The `mt-*` utilities further down this file are dead for the same
+        reason — a separate, page-wide fix, not one to make from here.
+      */}
+      <main
+        className="mx-auto max-w-[760px]"
+        style={{
+          paddingTop: "clamp(112px, 13vw, 160px)",
+          paddingBottom: "calc(var(--dock-clear) + clamp(24px, 5vw, 48px))",
+          paddingInline: "clamp(20px, 6vw, 24px)",
+        }}
+      >
         <p
           className="text-xs font-medium uppercase tracking-[0.18em]"
           style={{ color: "var(--color-text-secondary)" }}
