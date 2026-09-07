@@ -25,20 +25,15 @@ const translations = {
       contact: "تواصل",
     },
     topbar: {
-      connect: "تواصل معي",
-      toggleTheme: "تبديل المظهر",
+      /* the cabin window, which is the theme control */
+      toggleTheme: "تبديل المظهر — اسحب ستارة النافذة",
       switchLanguage: "تغيير اللغة",
-      /* the identity capsule */
-      fullName: "تركي المالكي",
-      role: "قائد هندسة البرمجيات",
+      /* the identity card */
       portraitAlt: "صورة تركي المالكي",
       openProfile: "افتح بطاقة التواصل",
       panelLabel: "بطاقة التواصل",
       closeProfile: "أغلق بطاقة التواصل",
       emailLabel: "راسلني",
-      copyEmail: "انسخ البريد الإلكتروني",
-      copied: "تم النسخ",
-      linkedin: "لينكدإن",
     },
     hero: {
       eyebrow: "قائد هندسة برمجيات · مستشار تقني",
@@ -170,20 +165,15 @@ const translations = {
       contact: "Contact",
     },
     topbar: {
-      connect: "Connect",
-      toggleTheme: "Toggle theme",
+      /* the cabin window, which is the theme control */
+      toggleTheme: "Toggle theme — pull the window shade",
       switchLanguage: "Switch language",
-      /* the identity capsule */
-      fullName: "Turki Almalki",
-      role: "Engineering Leader",
+      /* the identity card */
       portraitAlt: "Portrait of Turki Almalki",
       openProfile: "Open contact card",
       panelLabel: "Contact card",
       closeProfile: "Close contact card",
       emailLabel: "Email me",
-      copyEmail: "Copy email address",
-      copied: "Copied",
-      linkedin: "LinkedIn",
     },
     hero: {
       eyebrow: "Engineering Leader · Technology Consultant",

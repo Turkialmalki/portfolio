@@ -19,26 +19,28 @@ import type { Language } from "@/i18n/translations";
 
 /**
  * ════════════════════════════════════════════════════════════════════════
- * THE HEADER IS TWO OBJECTS, AND BOTH OF THEM FOLD
+ * TWO OBJECTS: A NAME ON THE LEFT, A WINDOW ON THE RIGHT
  * ────────────────────────────────────────────────────────────────────────
- * At the inline start sits the identity capsule: a portrait, a name and a
- * role on one glass pill. It is not a dropdown. Asking it for more opens it
- * SIDEWAYS, inside the strip it already occupies — the actions unfold out of
- * the same pill on a stagger, and on a phone the name folds away to make room
- * for them. Nothing is ever laid out below the header, so nothing the capsule
- * does can cover the hero's artwork, its name, its copy or its buttons, and
- * the header's own height never changes: the hero reserves a strip for this
- * bar and that reserve stays true whether the capsule is open or shut.
+ * Physically left — in Arabic as much as in English — sits the identity
+ * card: the portrait, the name, the role. One language at a time, whichever
+ * the document is in. It is not a dropdown: asking it for more opens it
+ * SIDEWAYS inside the strip it already occupies, and all it offers is the
+ * two things worth offering from a header — write to me, and read me in the
+ * other language. Nothing is ever laid out below the bar, which is why the
+ * card cannot cover the hero's name, its copy, its buttons or the flight
+ * path, and why the bar's height never changes whether it is open or shut.
  *
- * At the inline end sits the theme control: one round window of sky with a
- * paper plane in it. Pressing it flies the plane out of frame, changes the
- * sky underneath while it is gone, and flies it back — the theme flips at the
- * moment the frame is empty, which is what makes it read as one move rather
- * than a switch that happened to be animated.
+ * Physically right sits one cabin window, and it is the theme control. It is
+ * not a button decorated with an aeroplane: pressing it pulls the shade down
+ * over the glass, the sky outside changes from day to night while the glass
+ * is covered, and the shade goes back up. The theme change is the view out
+ * of the window, so the animation is the explanation rather than decoration
+ * laid over one.
  *
- * Neither of them keeps a copy of any state that already exists elsewhere:
- * the theme is `data-theme` on <html>, the language is the provider's, and
- * both are read through subscriptions rather than mirrored into React.
+ * Neither object keeps a copy of state that already exists elsewhere: the
+ * theme is `data-theme` on <html>, the language is the provider's. React
+ * state is for the one thing that is genuinely React's — whether the card is
+ * open — and the shade is an attribute written straight to the DOM.
  * ════════════════════════════════════════════════════════════════════════
  */
 
@@ -73,8 +75,8 @@ const HOVER_QUERY = "(hover: hover) and (pointer: fine)";
 /**
  * Hover is a capability, not a width.
  *
- * The capsule opens on hover only where hovering is a real thing the device
- * can do; a touch screen gets tap and nothing else, so the panel can never be
+ * The card opens on hover only where hovering is a real thing the device can
+ * do; a touch screen gets tap and nothing else, so the panel can never be
  * opened by a stray "hover" that a tap synthesises and then never undoes.
  * Read through useSyncExternalStore so the server snapshot (false) is what
  * hydration compares against.
@@ -92,6 +94,36 @@ function useHasHover() {
 }
 
 /* ------------------------------------------------------------------ */
+/* The identity                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One language at a time. The document is in Arabic or it is in English, and
+ * the card says so in that language only — a header is not the place to print
+ * a name twice.
+ */
+const IDENTITY = {
+  name: { ar: "تركي", en: "Turki" },
+  role: { ar: "قائد هندسة البرمجيات", en: "Engineering Leader" },
+} as const;
+
+/* ------------------------------------------------------------------ */
+/* The shade's timing                                                  */
+/* ------------------------------------------------------------------ */
+
+/** the longest a shade leg may take, when it has the whole glass to cross */
+const TRAVEL_MAX_MS = 420;
+/** the shortest, when the hand already did nearly all of it */
+const TRAVEL_MIN_MS = 140;
+/** how far the hand must carry the shade before letting go commits the change */
+const COMMIT_AT = 0.42;
+/** past this many pixels a press is a drag and not a tap */
+const DRAG_SLOP = 3;
+/** pulling down is weighted; letting go is a release */
+const EASE_PULL = "cubic-bezier(.36,0,.16,1)";
+const EASE_LIFT = "cubic-bezier(.16,1,.3,1)";
+
+/* ------------------------------------------------------------------ */
 
 export default function TopBar() {
   const { t, lang, setLang } = useLanguage();
@@ -106,11 +138,10 @@ export default function TopBar() {
     if (localStorage.getItem("portfolio-theme") === "dark") applyTheme(true);
   }, []);
 
-  const toggleTheme = useCallback(() => applyTheme(!readTheme()), []);
-
   return (
     <motion.header
       className="tb-root"
+      style={{ "--doc-dir": lang === "ar" ? "rtl" : "ltr" } as CSSProperties}
       initial={{ opacity: 0, y: -16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={
@@ -119,37 +150,17 @@ export default function TopBar() {
           : { duration: 0.9, delay: 0.25, ease: [0.16, 1, 0.3, 1] }
       }
     >
+      {/*
+        `direction: ltr` on the row, and only on the row. It is what makes
+        "the name is on the left and the window is on the right" a fact of the
+        layout rather than something that happens to be true in English — the
+        two children are laid out in physical order in both scripts. The text
+        inside the card takes the document's direction back through --doc-dir,
+        so Arabic still reads right to left where it is read.
+      */}
       <div className="tb-row">
-        <ProfileCapsule
-          t={t}
-          lang={lang}
-          setLang={setLang}
-          hasHover={hasHover}
-        />
-
-        <div className="tb-end">
-          <ThemePlane
-            dark={dark}
-            onToggle={toggleTheme}
-            label={t.topbar.toggleTheme}
-            reduced={reduced}
-          />
-
-          <motion.button
-            type="button"
-            className="topbar-connect-btn"
-            whileHover={reduced ? undefined : { scale: 1.04 }}
-            whileTap={reduced ? undefined : { scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 400, damping: 22 }}
-            onClick={() =>
-              document
-                .querySelector("footer")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
-          >
-            {t.topbar.connect}
-          </motion.button>
-        </div>
+        <ProfileCard t={t} lang={lang} setLang={setLang} hasHover={hasHover} />
+        <CabinWindow dark={dark} label={t.topbar.toggleTheme} reduced={reduced} />
       </div>
 
       <style>{TOPBAR_CSS}</style>
@@ -158,12 +169,12 @@ export default function TopBar() {
 }
 
 /* ------------------------------------------------------------------ */
-/* The identity capsule                                                */
+/* The identity card                                                   */
 /* ------------------------------------------------------------------ */
 
 type Dict = ReturnType<typeof useLanguage>["t"];
 
-function ProfileCapsule({
+function ProfileCard({
   t,
   lang,
   setLang,
@@ -178,32 +189,22 @@ function ProfileCapsule({
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const copyTimer = useRef<number | null>(null);
 
   /* Hover peeks, press pins.
-     A mouse that has already opened the capsule must not close it again the
+     A mouse that has already opened the card must not close it again the
      moment it is clicked — the pointer entered first, so a plain toggle would
-     make the click read as "shut". The capsule therefore remembers WHY it is
+     make the click read as "shut". The card therefore remembers WHY it is
      open: a hover-open closes itself when the pointer leaves, a press-open
      stays until it is pressed again, and pressing a hover-open promotes it
      rather than reversing it. */
   const openedBy = useRef<"hover" | "press" | null>(null);
 
   /* Escape has to put focus back on the trigger, and putting focus back on the
-     trigger is exactly what opens the capsule — so without this the panel shuts
+     trigger is exactly what opens the card — so without this the panel shuts
      and springs open again in the same tick. The flag lives for one microtask,
      which is long enough to cover the synchronous focus event `.focus()`
      dispatches and short enough that the next real Tab still opens it. */
   const refocusing = useRef(false);
-
-
-  useEffect(
-    () => () => {
-      if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
-    },
-    [],
-  );
 
   /* Escape and tap-outside, listened for only while there is something open
      to close — an idle header adds no listeners to the document at all. */
@@ -235,17 +236,6 @@ function ProfileCapsule({
       document.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [open]);
-
-  const copyEmail = useCallback(() => {
-    const write = navigator.clipboard?.writeText(CONTACT.email);
-    const done = () => {
-      setCopied(true);
-      if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
-      copyTimer.current = window.setTimeout(() => setCopied(false), 1800);
-    };
-    if (write) write.then(done, done);
-    else done();
-  }, []);
 
   /* Keyboard opens it; a mouse click does not, because the click handler
      already owns that and two owners is how a control ends up reopening
@@ -300,7 +290,7 @@ function ProfileCapsule({
   return (
     <div
       ref={wrapRef}
-      className="tb-capsule"
+      className="tb-card"
       data-open={open ? "1" : "0"}
       onPointerEnter={hasHover ? enter : undefined}
       onPointerLeave={hasHover ? leave : undefined}
@@ -318,26 +308,22 @@ function ProfileCapsule({
         <span className="tb-portrait">
           <Image
             className="tb-portrait-img"
-            src="/hero/portrait-turki.webp"
-            alt=""
-            width={224}
-            height={224}
-            sizes="44px"
+            src="/hero/portrait-turki-tab.jpg"
+            alt={t.topbar.portraitAlt}
+            width={320}
+            height={320}
+            sizes="(max-width: 767px) 40px, (max-width: 1023px) 50px, 54px"
             priority
           />
         </span>
 
+        {/* one grid column of its own, so a phone can fold the words away and
+            give their width to the actions — without them ever wrapping */}
         <span className="tb-idwrap">
           <span className="tb-idtext">
-            <span className="tb-name">{t.topbar.fullName}</span>
-            <span className="tb-role">{t.topbar.role}</span>
+            <span className="tb-name">{IDENTITY.name[lang]}</span>
+            <span className="tb-role">{IDENTITY.role[lang]}</span>
           </span>
-        </span>
-
-        <span className="tb-caret" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
         </span>
 
         <span className="tb-sr">
@@ -345,16 +331,24 @@ function ProfileCapsule({
         </span>
       </button>
 
-      {/* The fold. Absolutely nothing here is laid out outside the capsule:
-          it is one grid column that goes from 0fr to 1fr, so opening it is a
-          width reveal inside a bar whose height never changes. `inert` is what
-          keeps the clipped actions out of the tab order while it is shut. */}
-      <div className="tb-fold" id={panelId} inert={!open} role="group" aria-label={t.topbar.panelLabel}>
+      {/* The fold. Nothing here is laid out outside the card: it is one grid
+          column that goes from 0fr to 1fr, so opening it is a width reveal
+          inside a bar whose height never changes. `inert` is what keeps the
+          clipped actions out of the tab order while it is shut. */}
+      <div
+        className="tb-fold"
+        id={panelId}
+        inert={!open}
+        role="group"
+        aria-label={t.topbar.panelLabel}
+      >
         <div className="tb-fold-in">
-          <span className="tb-sep" aria-hidden="true" />
-
+          {/* An icon, not an address. The address is in the label, where a
+              screen reader will read it and a tooltip will show it, and in the
+              mailto the icon opens — printing it across the header only made
+              the card long. */}
           <a
-            className="tb-act tb-act-mail"
+            className="tb-act"
             href={`mailto:${CONTACT.email}`}
             style={act(0)}
             aria-label={`${t.topbar.emailLabel} — ${CONTACT.email}`}
@@ -364,49 +358,12 @@ function ProfileCapsule({
               <rect x="2.6" y="4.8" width="18.8" height="14.4" rx="3" />
               <path d="m3.4 7.4 7.5 5.2a2 2 0 0 0 2.2 0l7.5-5.2" />
             </svg>
-            <span className="tb-act-text">{CONTACT.email}</span>
           </a>
 
-          <button
-            type="button"
-            className="tb-act"
-            style={act(1)}
-            onClick={copyEmail}
-            aria-label={copied ? t.topbar.copied : t.topbar.copyEmail}
-            data-done={copied ? "1" : "0"}
-          >
-            {copied ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="m4.8 12.6 4.6 4.6 9.8-10.4" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="8.6" y="8.6" width="11.8" height="11.8" rx="2.6" />
-                <path d="M15.4 5.6a2.6 2.6 0 0 0-2.6-2h-6a3 3 0 0 0-3 3v6a2.6 2.6 0 0 0 2 2.6" />
-              </svg>
-            )}
-          </button>
-
-          <span className="tb-langslot" style={act(2)}>
+          <span className="tb-langslot" style={act(1)}>
             <LanguagePill lang={lang} setLang={setLang} label={t.topbar.switchLanguage} />
             <LanguageFlip lang={lang} setLang={setLang} label={t.topbar.switchLanguage} />
           </span>
-
-          {CONTACT.linkedinUrl && (
-            <a
-              className="tb-act"
-              style={act(3)}
-              href={CONTACT.linkedinUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t.topbar.linkedin}
-              title={t.topbar.linkedin}
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M6.2 8.9H3.1V21h3.1V8.9ZM4.65 3.2A1.85 1.85 0 1 0 4.65 6.9a1.85 1.85 0 0 0 0-3.7ZM21 14.1c0-3.4-1.82-4.98-4.24-4.98-1.96 0-2.83 1.08-3.32 1.83V8.9H10.3c.04.9 0 12.1 0 12.1h3.14v-6.76c0-.3.02-.6.11-.82.24-.6.79-1.23 1.72-1.23 1.21 0 1.7.93 1.7 2.28V21H21v-6.9Z" />
-              </svg>
-            </a>
-          )}
         </div>
       </div>
     </div>
@@ -486,98 +443,264 @@ function LanguageFlip({
 }
 
 /* ------------------------------------------------------------------ */
-/* The theme control                                                   */
+/* The cabin window — which is the theme control                       */
 /* ------------------------------------------------------------------ */
 
-const FLY_MS = 760;
-const FLIP_AT = 285;
-
 /**
- * A round window of sky with a paper plane in it.
+ * One window in the fuselage, and the theme IS the shade's position.
  *
- * Pressing it starts one CSS animation on the plane and one timer. The plane
- * banks, folds along its own axis and leaves the frame; at 270ms — the point
- * the keyframes have it fully out and invisible — the timer flips the theme,
- * so the sky and the orb change while nothing is there to see them change;
- * then the plane comes back in from the other side, unfolds and settles.
+ * Light is a window with the shade up and the sky outside. Dark is a window
+ * with the shade pulled down — closed, the way a cabin window is closed when
+ * the lights go off. So the control does not "play an animation and return":
+ * it goes somewhere and stays there, and where it is tells you which theme you
+ * are in without a single icon.
  *
- * The running flag is an attribute set through a ref, not React state: this
- * plays 60 times a second and there is no reason for the tree to re-render
- * for any of them. Under reduced motion there is no flight at all — the theme
- * changes on the press, which is what the control was for.
+ * THE SHADE IS DRAGGED. Put a finger or a cursor on it and move, and it comes
+ * with you one to one, clamped to the glass, in whichever direction it has
+ * room to go — down when it is up, up when it is down. Carry it past 42% and
+ * letting go completes the move and changes the theme; let go short of that
+ * and it returns to where it started and nothing changes. A tap toggles, and
+ * so does the keyboard.
+ *
+ * The sky always changes under cover: on the way down it changes as the shade
+ * lands, and on the way up it changes BEFORE the lift starts — the shade is
+ * already covering the glass at that moment, so the day it reveals was there
+ * all along.
+ *
+ * Nothing here is React state, and nothing animates through a CSS variable.
+ * The offset is written straight to `style.transform` as pixels, which is the
+ * one form a browser can hand to the compositor; a custom property inside a
+ * transform cannot be composited and invalidates style on every frame, which
+ * is exactly what made the earlier version stutter.
  */
-function ThemePlane({
+function CabinWindow({
   dark,
-  onToggle,
   label,
   reduced,
 }: {
   dark: boolean;
-  onToggle: () => void;
   label: string;
   reduced: boolean;
 }) {
   const btnRef = useRef<HTMLButtonElement>(null);
-  const flipTimer = useRef<number | null>(null);
-  const landTimer = useRef<number | null>(null);
+  const shadeRef = useRef<HTMLSpanElement>(null);
+  /* the live gesture, if there is one — never state, so a drag renders nothing */
+  const drag = useRef<{
+    id: number;
+    startY: number;
+    travel: number;
+    from: number;
+    moved: boolean;
+  } | null>(null);
+  const timers = useRef<number[]>([]);
 
-  useEffect(
-    () => () => {
-      if (flipTimer.current !== null) window.clearTimeout(flipTimer.current);
-      if (landTimer.current !== null) window.clearTimeout(landTimer.current);
+  const clearTimers = useCallback(() => {
+    timers.current.forEach((id) => window.clearTimeout(id));
+    timers.current = [];
+  }, []);
+
+  useEffect(() => clearTimers, [clearTimers]);
+
+  /** where the shade rests for a theme: covered at 0, parked one height above */
+  const restFor = (isDark: boolean, travel: number) => (isDark ? 0 : -travel);
+
+  const setY = (px: number, ms?: number, ease?: string) => {
+    const shade = shadeRef.current;
+    if (!shade) return;
+    if (ms !== undefined) {
+      shade.style.transitionDuration = `${ms}ms`;
+      shade.style.transitionTimingFunction = ease ?? EASE_LIFT;
+    }
+    shade.style.transform = `translate3d(0, ${px}px, 0)`;
+  };
+
+  /* Hand the shade back to the stylesheet, which positions it from the theme
+     alone. Clearing the inline transform is only ever done at a moment when
+     the two already agree, so it is never a visible step. */
+  const handBack = useCallback(() => {
+    const node = btnRef.current;
+    const shade = shadeRef.current;
+    node?.removeAttribute("data-busy");
+    if (!shade) return;
+    shade.style.transform = "";
+    shade.style.transitionDuration = "";
+    shade.style.transitionTimingFunction = "";
+  }, []);
+
+  const legMs = (fromPx: number, toPx: number, travel: number) =>
+    Math.round(
+      TRAVEL_MIN_MS +
+        (Math.abs(toPx - fromPx) / travel) * (TRAVEL_MAX_MS - TRAVEL_MIN_MS),
+    );
+
+  /** Finish the move from wherever the shade is, and land in the new theme. */
+  const settle = useCallback(
+    (fromPx: number, travel: number, toDark: boolean) => {
+      const node = btnRef.current;
+      if (!node || travel <= 0) return;
+      clearTimers();
+      node.dataset.busy = "1";
+      node.removeAttribute("data-drag");
+
+      const target = restFor(toDark, travel);
+      const ms = legMs(fromPx, target, travel);
+
+      if (toDark) {
+        /* Closing. The glass is open right now, so the sky may only change once
+           the shade has landed on it — which is the end of this leg. */
+        requestAnimationFrame(() => setY(target, ms, EASE_PULL));
+        timers.current.push(
+          window.setTimeout(() => {
+            applyTheme(true);
+            handBack();
+          }, ms + 30),
+        );
+      } else {
+        /* Opening. The shade is covering the glass at this instant, so the sky
+           changes FIRST and the lift reveals a day that was already there. The
+           inline transform still holds the shade where it is, so changing the
+           theme underneath it moves nothing. */
+        applyTheme(false);
+        requestAnimationFrame(() => setY(target, ms, EASE_LIFT));
+        timers.current.push(window.setTimeout(handBack, ms + 30));
+      }
     },
-    [],
+    [clearTimers, handBack],
   );
 
-  const fly = () => {
+  /** Let go too early: back where it started, and the theme is untouched. */
+  const abort = useCallback(
+    (fromPx: number, travel: number, isDark: boolean) => {
+      const node = btnRef.current;
+      if (!node || travel <= 0) return;
+      clearTimers();
+      node.removeAttribute("data-drag");
+      node.dataset.busy = "1";
+      const target = restFor(isDark, travel);
+      const ms = legMs(fromPx, target, travel);
+      requestAnimationFrame(() => setY(target, ms, EASE_LIFT));
+      timers.current.push(window.setTimeout(handBack, ms + 30));
+    },
+    [clearTimers, handBack],
+  );
+
+  const onPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     const node = btnRef.current;
-    if (reduced || !node) {
-      onToggle();
+    const shade = shadeRef.current;
+    /* Under reduced motion there is no gesture to make — the click handler
+       moves the shade to the other end with no travel at all. */
+    if (reduced || !node || !shade) return;
+    if (drag.current || node.dataset.busy === "1") return;
+    if (event.button !== undefined && event.button !== 0) return;
+
+    clearTimers();
+    /* one rectangle read, at the start of the gesture — never during it */
+    const travel = shade.getBoundingClientRect().height;
+    if (travel <= 0) return;
+
+    const from = restFor(readTheme(), travel);
+    node.setPointerCapture(event.pointerId);
+    node.dataset.drag = "1";
+    node.dataset.busy = "1";
+    /* pin it where it is, so the hover peek cannot count as a head start */
+    setY(from, 0);
+    drag.current = { id: event.pointerId, startY: event.clientY, travel, from, moved: false };
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const d = drag.current;
+    if (!d || event.pointerId !== d.id) return;
+    const dy = event.clientY - d.startY;
+    if (!d.moved && Math.abs(dy) > DRAG_SLOP) d.moved = true;
+    /* the shade cannot leave its track at either end */
+    setY(Math.max(-d.travel, Math.min(0, d.from + dy)));
+  };
+
+  const endDrag = (event: React.PointerEvent<HTMLButtonElement>, cancelled: boolean) => {
+    const d = drag.current;
+    if (!d || event.pointerId !== d.id) return;
+    drag.current = null;
+    btnRef.current?.releasePointerCapture?.(d.id);
+
+    const isDark = readTheme();
+    const y = Math.max(-d.travel, Math.min(0, d.from + (event.clientY - d.startY)));
+
+    if (cancelled) abort(y, d.travel, isDark);
+    /* a press that never moved is a tap, and a tap goes to the other end */
+    else if (!d.moved) settle(y, d.travel, !isDark);
+    /* otherwise it is how far the hand carried it, from wherever it started */
+    else if (Math.abs(y - d.from) / d.travel >= COMMIT_AT) settle(y, d.travel, !isDark);
+    else abort(y, d.travel, isDark);
+  };
+
+  /**
+   * Keyboard only. A mouse click arrives after the pointer sequence that has
+   * already decided what happens, and `detail` is how the two are told apart:
+   * a real click carries the click count, Enter and Space carry 0.
+   */
+  const onClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (reduced) {
+      applyTheme(!readTheme());
       return;
     }
-    if (node.dataset.flying === "1") return;
-
-    node.dataset.flying = "1";
-    flipTimer.current = window.setTimeout(onToggle, FLIP_AT);
-    landTimer.current = window.setTimeout(() => {
-      node.removeAttribute("data-flying");
-    }, FLY_MS);
+    if (event.detail !== 0) return;
+    const node = btnRef.current;
+    const shade = shadeRef.current;
+    if (!node || !shade || node.dataset.busy === "1") return;
+    const travel = shade.getBoundingClientRect().height;
+    const isDark = readTheme();
+    settle(restFor(isDark, travel), travel, !isDark);
   };
 
   return (
     <button
       ref={btnRef}
       type="button"
-      className="tb-plane"
-      onClick={fly}
+      className="tw"
+      onClick={onClick}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={(e) => endDrag(e, false)}
+      onPointerCancel={(e) => endDrag(e, true)}
       aria-label={label}
       aria-pressed={dark}
     >
-      <span className="tb-sky tb-sky-day" aria-hidden="true" />
-      <span className="tb-sky tb-sky-night" aria-hidden="true" />
+      {/* the fuselage panel the window is cut into */}
+      <span className="tw-hull" aria-hidden="true">
+        {/* the recessed inner frame */}
+        <span className="tw-bezel">
+          <span className="tw-glass">
+            {/* Day and night are both painted; only one is opaque. They swap
+                instantly rather than cross-fading, because the swap happens
+                under the shade where a cross-fade would be a wasted frame. */}
+            <span className="tw-sky tw-day">
+              <i className="tw-cloud tw-cloud-a" />
+              <i className="tw-cloud tw-cloud-b" />
+              <i className="tw-cloud tw-cloud-c" />
+            </span>
 
-      <span className="tb-orb tb-orb-sun" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round">
-          <circle cx="12" cy="12" r="4.6" />
-          <path d="M12 1.6v2.4M12 20v2.4M1.6 12h2.4M20 12h2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M19.4 4.6l-1.7 1.7M6.3 17.7l-1.7 1.7" />
-        </svg>
-      </span>
+            <span className="tw-sky tw-night">
+              <i className="tw-moon" />
+              <i className="tw-star tw-star-a" />
+              <i className="tw-star tw-star-b" />
+              <i className="tw-star tw-star-c" />
+              <i className="tw-star tw-star-d" />
+            </span>
 
-      <span className="tb-orb tb-orb-moon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M20.6 14.6A8.9 8.9 0 0 1 9.4 3.4a8.9 8.9 0 1 0 11.2 11.2Z" />
-        </svg>
-      </span>
+            {/* the light falling across the pane */}
+            <span className="tw-gloss" />
 
-      <span className="tb-plane-mark" aria-hidden="true">
-        {/* Two folds of one sheet: the upper wing lies back at half weight, the
-            body carries the tip. Drawn as two triangles rather than one outline
-            so the crease is real geometry — it is what the fold animation
-            collapses along. */}
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M21.9 2.1 2.4 10.1l8 3.5 11.5-11.5Z" opacity=".5" />
-          <path d="M21.9 2.1 10.4 13.6l3.5 8 8-19.5Z" />
-        </svg>
+            {/* the shade, parked above the glass until it is pulled down */}
+            <span ref={shadeRef} className="tw-shade">
+              <i className="tw-grip" />
+            </span>
+          </span>
+
+          {/* The shade's parked lip, sitting proud at the top of the glass —
+              the detail that makes the frame read as a window with a blind in
+              it rather than a rounded rectangle with a picture in it. */}
+          <span className="tw-lip" />
+        </span>
       </span>
     </button>
   );
@@ -596,56 +719,72 @@ const TOPBAR_CSS = `
     pointer-events: none;
 
     /* ONE surface system for both objects in the bar: the same glass, the
-       same hairline, the same two depths. What separates the capsule from
-       the theme window is what they do, never how they are painted. */
-    --tb-surface:    rgba(255,255,255,.72);
-    --tb-surface-hi: rgba(255,255,255,.90);
+       same hairline, the same two depths. */
+    --tb-surface:    rgba(255,255,255,.74);
+    --tb-surface-hi: rgba(255,255,255,.92);
     --tb-border:     rgba(13,14,18,.10);
     --tb-border-hi:  rgba(13,14,18,.16);
     --tb-chip:       rgba(13,14,18,.055);
     --tb-chip-hi:    rgba(13,14,18,.10);
+    /* the pill's own surface: opaque, so its width can animate for free */
+    --tb-solid:      #ffffff;
+    --tb-edge:       rgba(13,14,18,.07);
     --tb-ink:        var(--text-primary, #0d0e12);
     --tb-ink-soft:   var(--text-secondary, #626262);
     --tb-lift:       0 10px 30px -16px rgba(15,23,42,.34), 0 2px 8px -5px rgba(15,23,42,.16);
     --tb-lift-hi:    0 18px 44px -18px rgba(15,23,42,.40), 0 3px 10px -5px rgba(15,23,42,.18);
     --tb-ring:       0 0 0 3px rgba(20,149,255,.42);
     --tb-ease:       cubic-bezier(.16,1,.3,1);
-    /* +1 reading left-to-right, -1 reading right-to-left. Every horizontal
-       motion in this file is multiplied by it, so the actions unfold and the
-       plane departs in the direction the script is read. */
-    --tb-dir: 1;
+    --tb-blur:       blur(12px) saturate(150%);
+
+    /* ---- the window's own palette ---- */
+    /* the fuselage: warm off-white, lit from above, exactly as a cabin wall */
+    --tw-hull-a:   #fdfcfb;
+    --tw-hull-b:   #e7e3de;
+    --tw-hull-ring:rgba(13,14,18,.13);
+    --tw-bezel-a:  #f6f3f0;
+    --tw-bezel-b:  #dcd8d2;
+    --tw-shade-a:  #f7f5f2;
+    --tw-shade-b:  #e2ded8;
+    --tw-grip:     rgba(13,14,18,.16);
+    --tw-ease:     cubic-bezier(.16,1,.3,1);
   }
 
-  :root[dir="rtl"] .tb-root { --tb-dir: -1; }
-
   [data-theme="dark"] .tb-root {
-    --tb-surface:    rgba(24,26,33,.72);
-    --tb-surface-hi: rgba(28,31,39,.90);
+    --tb-surface:    rgba(24,26,33,.74);
+    --tb-surface-hi: rgba(28,31,39,.92);
     --tb-border:     rgba(255,255,255,.11);
     --tb-border-hi:  rgba(255,255,255,.18);
     --tb-chip:       rgba(255,255,255,.07);
     --tb-chip-hi:    rgba(255,255,255,.13);
+    --tb-solid:      #191c23;
+    --tb-edge:       rgba(255,255,255,.09);
     --tb-ink-soft:   rgba(240,240,239,.62);
     --tb-lift:       0 12px 32px -16px rgba(0,0,0,.75), 0 2px 8px -5px rgba(0,0,0,.5);
     --tb-lift-hi:    0 20px 48px -18px rgba(0,0,0,.82), 0 3px 10px -5px rgba(0,0,0,.55);
+
+    /* the cabin at night: the same panel, lit by the reading light instead */
+    --tw-hull-a:   #333844;
+    --tw-hull-b:   #1b1f28;
+    --tw-hull-ring:rgba(255,255,255,.13);
+    --tw-bezel-a:  #2b303b;
+    --tw-bezel-b:  #171b23;
+    --tw-shade-a:  #454c5b;
+    --tw-shade-b:  #2d323d;
+    --tw-grip:     rgba(255,255,255,.34);
   }
 
   .tb-row {
-    max-width: 1200px;
+    /* the one rule that pins the composition to physical sides */
+    direction: ltr;
+    max-width: 1240px;
     margin: 0 auto;
-    padding: 13px clamp(14px, 4vw, 32px);
+    padding: 12px clamp(14px, 4vw, 32px);
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-  }
-
-  .tb-end {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 0 0 auto;
-    pointer-events: auto;
+    gap: 10px;
   }
 
   .tb-sr {
@@ -657,9 +796,9 @@ const TOPBAR_CSS = `
     white-space: nowrap;
   }
 
-  /* ══════════════ the identity capsule ══════════════ */
+  /* ══════════════ the identity card ══════════════ */
 
-  .tb-capsule {
+  .tb-card {
     pointer-events: auto;
     position: relative;
     display: flex;
@@ -669,38 +808,56 @@ const TOPBAR_CSS = `
     /* fixed, so opening it can never change the strip the hero reserves */
     height: 48px;
     padding: 5px;
-    border: 1px solid var(--tb-border);
-    border-radius: 100px;
-    background: var(--tb-surface);
-    -webkit-backdrop-filter: blur(14px) saturate(170%);
-    backdrop-filter: blur(14px) saturate(170%);
+    /* A PILL, not a squircle. The radius is half the height at every size, so
+       the card is one continuous capsule around a circular portrait rather
+       than a rounded box with a rounded box inside it. */
+    border-radius: 999px;
+    border: 1px solid var(--tb-edge);
+    /*
+      Solid, not glass. Two reasons, and the second is the important one:
+      the reference this is modelled on is a clean white pill, and a
+      backdrop-filter on an element whose WIDTH animates forces the browser to
+      re-blur everything behind it on every frame of the open. That single
+      property was most of why this transition stuttered.
+    */
+    background: var(--tb-solid);
     box-shadow: var(--tb-lift);
     transition:
-      background-color .45s ease,
-      border-color .45s ease,
-      box-shadow .45s var(--tb-ease),
-      transform .45s var(--tb-ease);
+      background-color .4s ease,
+      border-color .4s ease,
+      box-shadow .4s var(--tb-ease),
+      transform .4s var(--tb-ease);
   }
 
-  .tb-capsule[data-open="1"] {
-    background: var(--tb-surface-hi);
-    border-color: var(--tb-border-hi);
+  .tb-card[data-open="1"] {
     box-shadow: var(--tb-lift-hi);
     transform: translate3d(0,-1px,0);
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .tb-capsule:hover { box-shadow: var(--tb-lift-hi); transform: translate3d(0,-1px,0); }
+    .tb-card:hover { box-shadow: var(--tb-lift-hi); transform: translate3d(0,-1px,0); }
   }
 
+  /*
+    The card is pinned physically left; its CONTENTS are not.
+    In Arabic the portrait moves to the trailing side so the text's right edge
+    sits against it, and the chevron lands at the end of the reading order on
+    the far left. That is what closes the hole this used to have between the
+    portrait and a right-aligned name: the two lines are ragged on the side
+    away from the photograph, in both scripts, instead of only in English.
+    The card itself stays LTR, so the fold is always physically last and the
+    card can only ever grow toward the middle of the screen.
+  */
   .tb-id {
+    position: relative;
+    direction: var(--doc-dir, rtl);
     display: flex;
     align-items: center;
     min-width: 0;
     height: 100%;
     padding: 0;
     border: 0;
-    border-radius: 100px;
+    border-radius: 999px;
     background: none;
     color: var(--tb-ink);
     font-family: inherit;
@@ -709,37 +866,50 @@ const TOPBAR_CSS = `
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Open on a phone this button is just the portrait, so the target is the
+     portrait plus the card's own padding — 44 in both directions, stopping
+     short of the first action rather than overlapping it. */
+  .tb-id::after {
+    content: "";
+    position: absolute;
+    /* symmetric, because the portrait sits on the leading side in English and
+       the trailing side in Arabic — the target has to be right either way */
+    inset: -6px -4px;
+    border-radius: 999px;
+  }
+
   .tb-id:focus-visible { outline: none; box-shadow: var(--tb-ring); }
 
   .tb-portrait {
     position: relative;
     flex: 0 0 auto;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
+    /* a circle, always — not a squircle that rounds up when the card opens */
     border-radius: 50%;
     overflow: hidden;
     background: var(--tb-chip);
     box-shadow: 0 0 0 1px var(--tb-border), inset 0 0 0 1px rgba(255,255,255,.28);
-    transition: transform .5s var(--tb-ease), box-shadow .45s ease;
+    transition: box-shadow .45s ease;
   }
 
   .tb-portrait-img {
     width: 100%;
     height: 100%;
+    /* A real photograph, cut on purpose: the derivative is already a square
+       crop of the head and shoulders off the full-resolution original, so the
+       frame receives a 1:1 picture and has nothing left to decide. */
     object-fit: cover;
-    object-position: 50% 46%;
+    object-position: 50% 50%;
     display: block;
   }
 
-  /* the portrait is the anchor of the fold: it lifts a hair and tightens its
-     ring as the capsule opens, so the move starts AT the face */
-  .tb-capsule[data-open="1"] .tb-portrait {
-    transform: scale(1.045);
+  /* the portrait is the anchor of the fold: it lifts a hair and rounds as the
+     card opens, so the move starts AT the face */
+  .tb-card[data-open="1"] .tb-portrait {
     box-shadow: 0 0 0 1px var(--tb-border-hi), inset 0 0 0 1px rgba(255,255,255,.34);
   }
 
-  /* the name is a grid column of its own so a phone can fold it away and give
-     its width to the actions — without it ever wrapping or reflowing */
   .tb-idwrap {
     display: grid;
     grid-template-columns: 1fr;
@@ -748,52 +918,46 @@ const TOPBAR_CSS = `
   }
 
   .tb-idtext {
+    /* direction is inherited from .tb-id, which is where it is decided */
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 1px;
+    gap: 0;
     min-width: 0;
+    /* clips horizontally so the words can fold away on a phone — which is
+       exactly why the lines below must carry their own descender room */
     overflow: hidden;
-    padding-inline: 9px 2px;
+    padding-inline: 11px 18px;
     transition: opacity .28s ease;
   }
 
+  /*
+    Thmanyah Sans is 1000/-250 per em: its glyph box is 1.25em tall BEFORE any
+    line-height applies. A line-height of 1.25 therefore leaves the tail of ي
+    sitting exactly on the edge of the line box, and the moment an ancestor
+    clips — .tb-idtext does — the descender is cut off. 1.45 is the room the
+    script actually needs, and it costs nothing: these are two single lines in
+    a flex column, so the extra leading is centred, not stacked.
+
+    Neither line truncates any more either. There is one name and one role, in
+    one language, and both are short — an ellipsis here only ever hid a letter.
+  */
   .tb-name {
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1.2;
+    font-size: var(--chrome-name, 15px);
+    font-weight: var(--chrome-name-weight, 700);
+    line-height: 1.45;
     letter-spacing: -.01em;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .tb-role {
-    font-size: 10px;
-    font-weight: 500;
-    line-height: 1.25;
+    font-size: var(--chrome-label, 11px);
+    font-weight: var(--chrome-label-weight, 500);
+    line-height: 1.45;
     color: var(--tb-ink-soft);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     transition: color .45s ease;
   }
-
-  .tb-caret {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 15px;
-    height: 15px;
-    margin-inline: 3px 4px;
-    color: var(--tb-ink-soft);
-    opacity: .85;
-    transition: transform .5s var(--tb-ease), opacity .3s ease, width .5s var(--tb-ease), margin .5s var(--tb-ease);
-  }
-
-  .tb-caret svg { width: 100%; height: 100%; }
-  .tb-capsule[data-open="1"] .tb-caret { transform: rotate(180deg); }
 
   /* the fold itself */
   .tb-fold {
@@ -803,37 +967,32 @@ const TOPBAR_CSS = `
     transition: grid-template-columns .55s var(--tb-ease);
   }
 
-  .tb-capsule[data-open="1"] .tb-fold { grid-template-columns: 1fr; }
+  .tb-card[data-open="1"] .tb-fold { grid-template-columns: 1fr; }
 
   .tb-fold-in {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     min-width: 0;
     height: 100%;
     overflow: hidden;
+    padding-inline-start: 6px;
   }
 
-  .tb-sep {
-    flex: 0 0 auto;
-    width: 1px;
-    height: 20px;
-    margin-inline-start: 2px;
-    background: var(--tb-border-hi);
-  }
-
-  /* the stagger. Every child carries its own index, so the order the actions
-     arrive in is data on the element rather than a chain of nth-child rules */
+  /* the stagger. Each child carries its own index, so the order the actions
+     arrive in is data on the element rather than a chain of nth-child rules.
+     The card is pinned to the physical left, so they always unfold physically
+     rightward — this offset is not mirrored by script. */
   .tb-fold-in > * {
     opacity: 0;
-    transform: translate3d(calc(var(--tb-dir) * -10px), 0, 0) scale(.86);
+    transform: translate3d(-10px, 0, 0) scale(.86);
     transition: opacity .3s ease, transform .5s var(--tb-ease);
   }
 
-  .tb-capsule[data-open="1"] .tb-fold-in > * {
+  .tb-card[data-open="1"] .tb-fold-in > * {
     opacity: 1;
     transform: none;
-    transition-delay: calc(80ms + var(--i, 0) * 55ms);
+    transition-delay: calc(80ms + var(--i, 0) * 70ms);
   }
 
   .tb-act {
@@ -842,41 +1001,39 @@ const TOPBAR_CSS = `
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    height: 36px;
-    min-width: 36px;
+    height: 38px;
+    min-width: 38px;
     padding: 0;
     border: 0;
-    border-radius: 100px;
+    /* round chips inside a pill — one shape language, not two */
+    border-radius: 50%;
     background: var(--tb-chip);
     color: var(--tb-ink);
     font-family: inherit;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: var(--chrome-action, 13px);
+    font-weight: var(--chrome-action-weight, 600);
     text-decoration: none;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     transition: background-color .3s ease, color .3s ease;
   }
 
-  /* the visual chip is 36px; the thing a thumb has to hit is the full height
-     of the capsule and the gap on either side of it — comfortably past 44 */
+  /* the visual chip is 40px and the target is 44 — the 4px gap between chips
+     is spent entirely on the two targets either side of it, so every pixel of
+     the row belongs to precisely one action and no seam is ambiguous */
   .tb-act::after {
     content: "";
     position: absolute;
-    inset: -6px -3px;
-    border-radius: 100px;
+    inset: -3px;
+    border-radius: 50%;
   }
 
-  .tb-act svg { width: 16px; height: 16px; display: block; }
+  .tb-act svg { width: 17px; height: 17px; display: block; }
   .tb-act:focus-visible { outline: none; box-shadow: var(--tb-ring); }
-  .tb-act[data-done="1"] { background: rgba(20,149,255,.16); color: var(--accent, #1495ff); }
 
   @media (hover: hover) and (pointer: fine) {
     .tb-act:hover { background: var(--tb-chip-hi); }
   }
-
-  .tb-act-text { display: none; }
 
   .tb-langslot { flex: 0 0 auto; display: flex; align-items: center; }
 
@@ -886,7 +1043,7 @@ const TOPBAR_CSS = `
     align-items: center;
     gap: 2px;
     padding: 3px;
-    border-radius: 100px;
+    border-radius: 999px;
     background: var(--tb-chip);
   }
 
@@ -894,30 +1051,32 @@ const TOPBAR_CSS = `
     position: absolute;
     z-index: 0;
     top: 3px;
-    inset-inline-start: 3px;
-    width: 30px;
-    height: 30px;
-    border-radius: 100px;
+    left: 3px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     background: var(--tb-ink);
     transform: translate3d(0,0,0);
     transition: transform .42s var(--tb-ease), background-color .45s ease;
   }
 
-  :root[data-lang="en"] .tb-lang-knob { transform: translate3d(32px,0,0); }
+  /* the pill is laid out physically (the card is), so the knob travels
+     physically too — no direction term to get wrong */
+  :root[data-lang="en"] .tb-lang-knob { transform: translate3d(34px,0,0); }
 
   .tb-lang-opt {
     position: relative;
     z-index: 1;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     border: 0;
-    border-radius: 100px;
+    border-radius: 50%;
     background: none;
     color: var(--tb-ink);
     font-family: inherit;
-    font-size: 12.5px;
-    font-weight: 600;
+    font-size: var(--chrome-action, 13px);
+    font-weight: var(--chrome-action-weight, 600);
     cursor: pointer;
     opacity: .58;
     -webkit-tap-highlight-color: transparent;
@@ -932,230 +1091,369 @@ const TOPBAR_CSS = `
 
   .tb-lang-opt:focus-visible { outline: none; box-shadow: var(--tb-ring); }
 
-  .tb-langflip { font-size: 11.5px; font-weight: 700; letter-spacing: .02em; }
+  .tb-langflip { font-weight: 700; letter-spacing: .02em; }
 
-  /* ══════════════ the theme control ══════════════ */
+  /* ══════════════ the cabin window ══════════════ */
 
-  .tb-plane {
+  .tw {
+    pointer-events: auto;
     position: relative;
     flex: 0 0 auto;
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 50px;
     padding: 0;
-    border: 1px solid var(--tb-border);
-    border-radius: 50%;
-    background: var(--tb-surface);
-    -webkit-backdrop-filter: blur(14px) saturate(170%);
-    backdrop-filter: blur(14px) saturate(170%);
-    box-shadow: var(--tb-lift);
-    color: var(--tb-ink);
-    cursor: pointer;
-    overflow: hidden;
-    -webkit-tap-highlight-color: transparent;
-    transition:
-      border-color .45s ease,
-      background-color .45s ease,
-      box-shadow .45s var(--tb-ease),
-      transform .35s var(--tb-ease);
-  }
-
-  .tb-plane:focus-visible { outline: none; box-shadow: var(--tb-lift), var(--tb-ring); }
-  .tb-plane:active { transform: scale(.94); }
-
-  @media (hover: hover) and (pointer: fine) {
-    .tb-plane:hover { box-shadow: var(--tb-lift-hi); transform: translate3d(0,-1px,0); }
-  }
-
-  /* the sky: two flat gradients cross-fading, so nothing has to interpolate a
-     gradient and nothing is ever blurred per frame */
-  .tb-sky {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    opacity: 0;
-    transition: opacity .3s ease;
-  }
-
-  .tb-sky-day   { background: radial-gradient(120% 120% at 30% 18%, #e8f3ff 0%, #ffffff 72%); }
-  .tb-sky-night { background: radial-gradient(120% 120% at 30% 18%, #222c46 0%, #0e1220 74%); }
-
-  html:not([data-theme="dark"]) .tb-sky-day,
-  [data-theme="light"] .tb-sky-day,
-  [data-theme="dark"] .tb-sky-night { opacity: 1; }
-
-  .tb-orb {
-    position: absolute;
-    top: 6px;
-    inset-inline-start: 6px;
-    width: 11px;
-    height: 11px;
-    opacity: 0;
-    transform: scale(.5);
-    transition: opacity .28s ease, transform .45s var(--tb-ease);
-  }
-
-  .tb-orb svg { width: 100%; height: 100%; display: block; }
-  .tb-orb-sun  { color: #f0a500; }
-  .tb-orb-moon { color: #cdd7f2; }
-
-  html:not([data-theme="dark"]) .tb-orb-sun,
-  [data-theme="light"] .tb-orb-sun,
-  [data-theme="dark"] .tb-orb-moon { opacity: 1; transform: none; }
-
-  /* The mark fills the window and centres its own glyph, so the box the
-     keyframes rotate and fold is concentric with the circle it flies in — no
-     margin arithmetic, and nothing to mirror when the script flips. The
-     resting bank and the offset that keeps the plane clear of the orb live on
-     the glyph inside it, where the animation cannot disturb them. */
-  .tb-plane-mark {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    color: var(--tb-ink);
-    transition: color .45s ease;
-  }
-
-  /* scaleX(-1) in Arabic: the plane must point the way the page is read, or it
-     departs backwards. The mirror is outermost so it flips the already-banked
-     glyph rather than the angle it is banked at. */
-  .tb-plane-mark svg {
-    width: 15px;
-    height: 15px;
-    display: block;
-    transform: translate(calc(var(--tb-dir) * 3px), 3px) scaleX(var(--tb-dir)) rotate(-12deg);
-  }
-
-  /* fold · glide · (theme changes here) · unfold · settle */
-  /* Nine frames, played linearly, because the shape of the move is in WHERE
-     the plane is at each moment rather than in an easing curve laid over two
-     endpoints. It banks and folds along its crease on the way out, is gone
-     between 37% and 40% — 285ms, which is when the timer flips the theme —
-     and comes back in from the far side still folded, opening out as it
-     settles. Every value that has a direction is multiplied by --tb-dir, so
-     Arabic gets the same flight read the other way. */
-  @keyframes tb-plane-fly {
-    0%   { transform: translate3d(0,0,0) rotate(0deg) scaleX(1);                                                        opacity: 1; }
-    16%  { transform: translate3d(calc(var(--tb-dir) *  6px), -2px,0) rotate(calc(var(--tb-dir) * -14deg)) scaleX(.82);  opacity: 1; }
-    30%  { transform: translate3d(calc(var(--tb-dir) * 22px), -8px,0) rotate(calc(var(--tb-dir) * -30deg)) scaleX(.32);  opacity: .38; }
-    37%  { transform: translate3d(calc(var(--tb-dir) * 32px),-12px,0) rotate(calc(var(--tb-dir) * -34deg)) scaleX(.2);   opacity: 0; }
-    40%  { transform: translate3d(calc(var(--tb-dir) *-30px), 12px,0) rotate(calc(var(--tb-dir) *  28deg)) scaleX(.2);   opacity: 0; }
-    52%  { transform: translate3d(calc(var(--tb-dir) *-16px),  7px,0) rotate(calc(var(--tb-dir) *  18deg)) scaleX(.46);  opacity: .55; }
-    70%  { transform: translate3d(calc(var(--tb-dir) * -5px),  2px,0) rotate(calc(var(--tb-dir) *   6deg)) scaleX(.86);  opacity: 1; }
-    86%  { transform: translate3d(calc(var(--tb-dir) *  1px),  0,   0) rotate(calc(var(--tb-dir) *  -2deg)) scaleX(1.03); opacity: 1; }
-    100% { transform: translate3d(0,0,0) rotate(0deg) scaleX(1);                                                        opacity: 1; }
-  }
-
-  .tb-plane[data-flying="1"] .tb-plane-mark {
-    will-change: transform, opacity;
-    animation: tb-plane-fly ${FLY_MS}ms linear both;
-  }
-
-  /* ══════════════ the connect button ══════════════ */
-
-  .topbar-connect-btn {
-    flex: 0 0 auto;
-    padding: 11px 22px;
     border: 0;
-    border-radius: 100px;
-    background: var(--text-primary);
-    color: var(--bg-primary);
-    font-family: inherit;
-    font-size: 13.5px;
-    font-weight: 700;
-    white-space: nowrap;
-    cursor: pointer;
-    box-shadow: 0 2px 12px rgba(0,0,0,.18);
-    transition: background-color .45s ease, color .45s ease;
+    background: none;
+    /* it is pulled, so it says so — and it never selects the page behind it */
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    /* the browser must not steal a downward drag for scrolling: on a phone,
+       that gesture IS the control */
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .topbar-connect-btn:focus-visible { outline: none; box-shadow: var(--tb-ring); }
+  .tw[data-drag="1"] { cursor: grabbing; }
+
+  /* the visual window is 36 wide; the target around it is 44 */
+  .tw::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 20px;
+  }
+
+  /* The ring goes on the target box, not on the hull — putting it on the hull
+     would replace the frame's own five-layer shadow and flatten the window
+     for as long as it had focus. */
+  .tw:focus-visible { outline: none; }
+  .tw:focus-visible::after { box-shadow: var(--tb-ring); }
+
+  /* The fuselage panel. Two rounded rectangles nested inside each other with
+     a highlight along the top lip and a shadow along the bottom is the whole
+     illusion — no filters, no blend modes, nothing that repaints per frame. */
+  .tw-hull {
+    position: absolute;
+    inset: 0;
+    display: block;
+    padding: 4px;
+    border-radius: 40% / 28%;
+    background: linear-gradient(172deg, var(--tw-hull-a) 0%, var(--tw-hull-b) 100%);
+    box-shadow:
+      inset 0 1.5px 0 rgba(255,255,255,.85),
+      inset 0 -1.5px 2px rgba(13,14,18,.10),
+      0 0 0 1px var(--tw-hull-ring),
+      0 10px 20px -12px rgba(15,23,42,.55),
+      0 2px 5px -2px rgba(15,23,42,.16);
+    transition: transform .4s var(--tw-ease);
+  }
+
+  [data-theme="dark"] .tw-hull {
+    box-shadow:
+      inset 0 1.5px 0 rgba(255,255,255,.10),
+      inset 0 -1.5px 2px rgba(0,0,0,.5),
+      0 0 0 1px var(--tw-hull-ring),
+      0 10px 22px -12px rgba(0,0,0,.85),
+      0 2px 5px -2px rgba(0,0,0,.5);
+  }
+
+  /* the recessed inner frame — the second ring in the reference */
+  .tw-bezel {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 2px;
+    border-radius: 38% / 27%;
+    background: linear-gradient(172deg, var(--tw-bezel-b) 0%, var(--tw-bezel-a) 100%);
+    box-shadow:
+      inset 0 1px 2px rgba(13,14,18,.22),
+      0 1px 0 rgba(255,255,255,.6);
+  }
+
+  [data-theme="dark"] .tw-bezel {
+    box-shadow:
+      inset 0 1px 2px rgba(0,0,0,.6),
+      0 1px 0 rgba(255,255,255,.07);
+  }
+
+  .tw-glass {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 37% / 26%;
+    box-shadow: inset 0 0 0 1px rgba(13,14,18,.16);
+  }
+
+  .tw-sky {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+  }
+
+  /* Daylight at altitude: a deep blue overhead falling to haze, with the
+     cloud deck below. */
+  .tw-day {
+    background: linear-gradient(180deg,
+      #6fb0ea 0%,
+      #93c8f3 34%,
+      #c4e0f8 62%,
+      #e9f2fb 82%,
+      #f7fbfe 100%);
+  }
+
+  /* Night at altitude: no city, no horizon glow — just the dark and the stars. */
+  .tw-night {
+    background: linear-gradient(180deg,
+      #070c1a 0%,
+      #0e1730 42%,
+      #1a2747 74%,
+      #24365e 100%);
+  }
+
+  html:not([data-theme="dark"]) .tw-day,
+  [data-theme="light"] .tw-day,
+  [data-theme="dark"] .tw-night { opacity: 1; }
+
+  /* Clouds: soft radial puffs, which cost one gradient each. A blur filter
+     here would be a per-frame repaint of the whole pane for the same look. */
+  .tw-cloud {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(closest-side,
+      rgba(255,255,255,.98) 0%,
+      rgba(255,255,255,.82) 52%,
+      rgba(255,255,255,0) 100%);
+  }
+
+  /* the deck below, then two banks standing off it — three puffs is enough
+     to read as weather rather than as a white smudge */
+  .tw-cloud-a { left: -24%; bottom: -6%; width: 96%; height: 40%; }
+  .tw-cloud-b { right: -28%; bottom: 2%;  width: 92%; height: 36%; }
+  .tw-cloud-c { left: 10%;  bottom: 20%; width: 70%; height: 24%; opacity: .78; }
+
+  .tw-moon {
+    position: absolute;
+    top: 15%;
+    right: 20%;
+    width: 26%;
+    height: 19%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side,
+      #fdfcf4 0%,
+      #f2eddb 62%,
+      rgba(242,237,219,.30) 82%,
+      rgba(242,237,219,0) 100%);
+  }
+
+  .tw-star {
+    position: absolute;
+    width: 1.5px;
+    height: 1.5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.92);
+  }
+
+  .tw-star-a { top: 22%; left: 24%; }
+  .tw-star-b { top: 38%; left: 62%; opacity: .7; }
+  .tw-star-c { top: 54%; left: 32%; opacity: .55; }
+  .tw-star-d { top: 30%; left: 44%; opacity: .85; }
+
+  /* the light falling across the pane, and the seal darkening its lower edge */
+  .tw-gloss {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(148deg,
+        rgba(255,255,255,.42) 0%,
+        rgba(255,255,255,.12) 24%,
+        rgba(255,255,255,0) 44%),
+      linear-gradient(0deg, rgba(13,14,18,.16) 0%, rgba(13,14,18,0) 34%);
+  }
+
+  /* The shade. Parked above the glass, clipped by it, and pulled down over
+     it — transform only, so the whole move is one composited layer. */
+  /*
+    The shade rides on ONE number: --sh, how many pixels down the glass it has
+    been drawn. Parked is 0. During a drag the pointer handler writes it every
+    frame; for the machine-driven legs the same property is transitioned. That
+    is why a dragged shade and a tapped one cannot disagree — there is one
+    position in the system, and everything writes to it.
+  */
+  /*
+    THE SHADE'S POSITION IS THE THEME.
+    Up and the sky is out there: that is light. Down and the window is closed:
+    that is dark. Nothing here is a "state plus an animation" — there is one
+    position, the stylesheet derives it from data-theme, and a gesture moves
+    it. Both values are plain transforms with no custom property in them, so
+    the browser can hand the whole move to the compositor.
+  */
+  .tw-shade {
+    position: absolute;
+    inset: -1px;
+    display: block;
+    border-radius: 4px;
+    background: linear-gradient(178deg, var(--tw-shade-a) 0%, var(--tw-shade-b) 100%);
+    box-shadow:
+      /* the drop it casts onto the glass just below its edge */
+      0 3px 7px -2px rgba(13,14,18,.55),
+      /* and the housing's own shadow falling across its head */
+      inset 0 3px 5px -3px rgba(13,14,18,.75);
+    transform: translate3d(0,-100%,0);
+    transition: transform 420ms cubic-bezier(.16,1,.3,1);
+  }
+
+  /* closed for the night */
+  [data-theme="dark"] .tw-shade { transform: translate3d(0,0,0); }
+
+  /* A hand on the shade beats any curve: while the pointer is down the shade
+     is wherever the finger is, this frame, with nothing interpolating. */
+  .tw[data-drag="1"] .tw-shade { transition: none; }
+
+  /* the pull-grip along the shade's lower lip */
+  .tw-grip {
+    position: absolute;
+    left: 50%;
+    bottom: 4px;
+    width: 42%;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--tw-grip);
+    box-shadow: 0 1px 0 rgba(255,255,255,.35);
+    transform: translateX(-50%);
+  }
+
+  /* The parked shade, sitting proud at the head of the glass. It is a sibling
+     of the pane and declared after it, so it paints on top — which is what
+     makes the shade look like it comes out from UNDER this lip rather than
+     appearing at the top edge from nowhere. */
+  .tw-lip {
+    position: absolute;
+    z-index: 2;
+    top: 2px;
+    left: 50%;
+    width: 62%;
+    height: 7%;
+    min-height: 3px;
+    border-radius: 0 0 3px 3px / 0 0 2px 2px;
+    background: linear-gradient(178deg, var(--tw-hull-a) 0%, var(--tw-hull-b) 100%);
+    box-shadow:
+      0 1px 2px rgba(13,14,18,.34),
+      inset 0 1px 0 rgba(255,255,255,.8);
+    transform: translateX(-50%);
+  }
+
+  [data-theme="dark"] .tw-lip {
+    box-shadow:
+      0 1px 2px rgba(0,0,0,.6),
+      inset 0 1px 0 rgba(255,255,255,.10);
+  }
+
+  /* will-change, gated: only while the shade is actually travelling */
+  .tw[data-busy="1"] .tw-shade,
+  .tw[data-drag="1"] .tw-shade { will-change: transform; }
+
+  /* The affordance, and it points the way the shade can actually go: an open
+     window peeks its shade down, a closed one lifts a sliver to show the night
+     behind it. An inline transform from a real gesture always outranks both. */
+  @media (hover: hover) and (pointer: fine) {
+    .tw:hover .tw-shade { transform: translate3d(0, calc(-100% + 7px), 0); }
+    [data-theme="dark"] .tw:hover .tw-shade { transform: translate3d(0,-7px,0); }
+    .tw:hover .tw-hull { transform: translate3d(0,-1.5px,0); }
+    .tw[data-drag="1"] .tw-hull { transform: scale(.975); }
+  }
 
   /* ══════════════ widths ══════════════ */
 
-  /* Below the tablet the capsule folds its own name away when it opens: the
+  /* Below the tablet the card folds its own words away when it opens: the
      actions need that width more than the bar needs to repeat a name the hero
      is about to say in 96px type. The portrait stays, so the identity never
      disappears — it just gets out of the way of what it is offering. */
   @media (max-width: 767px) {
-    .tb-capsule[data-open="1"] .tb-idwrap { grid-template-columns: 0fr; }
-    .tb-capsule[data-open="1"] .tb-idtext { opacity: 0; }
-    .tb-capsule[data-open="1"] .tb-caret { width: 0; margin-inline: 0 2px; opacity: 0; }
-    .tb-sep { display: none; }
+    .tb-root { --tb-blur: blur(8px) saturate(130%); }
+    /* a phone has no hover, so the only thing these shadows ever animated for
+       is a theme change — a repaint of a blurred box for no gain */
+    .tb-card {
+      transition: background-color .45s ease, border-color .45s ease, transform .45s var(--tb-ease);
+    }
+    .tb-card[data-open="1"] .tb-idwrap { grid-template-columns: 0fr; }
+    .tb-card[data-open="1"] .tb-idtext { opacity: 0; }
   }
 
-  @media (max-width: 559px) {
-    .topbar-connect-btn { display: none; }
-  }
-
-  /* The narrowest phones. Every chip gives back 2px and the row gives back
-     its gaps, which is what keeps four actions, a portrait and the theme
-     window inside 320 without a scrollbar. */
+  /* The narrowest phones. The chips do not shrink — they are the one thing a
+     thumb has to hit — so the width comes out of the type and the window. */
   @media (max-width: 379px) {
-    .tb-row { gap: 6px; }
-    .tb-fold-in { gap: 4px; }
-    .tb-act { height: 34px; min-width: 34px; }
-    .tb-act svg { width: 15px; height: 15px; }
-    .tb-name { font-size: 12.5px; }
-    .tb-role { font-size: 9.5px; }
+    .tb-row { gap: 8px; padding-inline: 12px; }
+    .tw { width: 33px; height: 46px; }
+    .tw::after { inset: -6px -6px; }
   }
 
   @media (min-width: 768px) {
-    .tb-row { padding-block: 18px; }
-    .tb-capsule { height: 56px; padding: 6px; }
-    .tb-portrait { width: 44px; height: 44px; }
-    .tb-idtext { padding-inline: 10px 2px; }
-    .tb-name { font-size: 14.5px; }
-    .tb-role { font-size: 11px; }
-    .tb-caret { width: 16px; height: 16px; margin-inline: 4px 6px; }
-    .tb-fold-in { gap: 6px; }
-    .tb-sep { margin-inline-start: 4px; height: 24px; }
-    .tb-act { height: 40px; min-width: 40px; }
-    .tb-act svg { width: 17px; height: 17px; }
-    .tb-plane { width: 46px; height: 46px; }
-    .tb-plane-mark svg { width: 16px; height: 16px; }
-    .tb-orb { width: 12px; height: 12px; top: 7px; inset-inline-start: 7px; }
-    .tb-end { gap: 10px; }
+    .tb-row { padding-block: 14px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
+    .tb-card { height: 54px; padding: 6px; }
+    .tb-id::after { inset: -6px -3px; }
+    .tb-portrait { width: 42px; height: 42px; }
+    .tb-idtext { padding-inline: 12px 20px; }
+    .tb-fold-in { gap: 6px; padding-inline-start: 8px; }
+    .tb-act { height: 42px; min-width: 42px; }
+    /* room to spare on a pointer device, so the targets take it */
+    .tb-act::after { inset: -1px; }
+    .tb-act svg { width: 19px; height: 19px; }
     .tb-lang { display: flex; }
     .tb-langflip { display: none; }
-    .tb-lang-knob { width: 34px; height: 34px; }
-    :root[data-lang="en"] .tb-lang-knob { transform: translate3d(36px,0,0); }
-    .tb-lang-opt { width: 34px; height: 34px; font-size: 13px; }
+    .tb-lang-knob { width: 36px; height: 36px; }
+    :root[data-lang="en"] .tb-lang-knob { transform: translate3d(38px,0,0); }
+    .tb-lang-opt { width: 36px; height: 36px; }
+    .tw { width: 46px; height: 64px; }
+    .tw::after { inset: -6px 0; }
+    .tw-hull { padding: 5px; }
+    .tw-bezel { padding: 2.5px; }
+    .tw-star { width: 1.8px; height: 1.8px; }
   }
 
-  /* Wide enough to say the address out loud rather than draw an envelope. */
-  @media (min-width: 1000px) {
-    .tb-act-mail { padding-inline: 13px 15px; }
-    .tb-act-text { display: inline; }
+  /* The window at full size is 72px inside 10px of padding, which is the same
+     92px strip this bar has always occupied — the hero's reserve did not have
+     to move for any of this. */
+  @media (min-width: 1024px) {
+    .tb-row { padding-block: 10px; padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+    .tb-card { height: 58px; padding: 6px; }
+    .tb-portrait { width: 46px; height: 46px; }
+    .tw { width: 52px; height: 72px; }
+    .tw-hull { padding: 5.5px; }
+    .tw-grip { bottom: 5px; }
   }
 
   /* ══════════════ reduced motion ══════════════ */
 
+  /* Every pose still resolves — the card still opens, the sky is still the
+     right sky — but nothing travels to get there. */
   @media (prefers-reduced-motion: reduce) {
     .tb-root { opacity: 1 !important; transform: none !important; }
-    .tb-capsule,
-    .tb-capsule[data-open="1"],
+    .tb-card,
+    .tb-card[data-open="1"],
     .tb-portrait,
     .tb-idwrap,
     .tb-idtext,
-    .tb-caret,
     .tb-fold,
     .tb-fold-in > *,
     .tb-act,
     .tb-lang-knob,
     .tb-lang-opt,
-    .tb-sky,
-    .tb-orb,
-    .tb-plane,
-    .tb-plane-mark,
-    .topbar-connect-btn {
+    .tw-hull,
+    .tw-shade {
       transition: none !important;
       animation: none !important;
       transition-delay: 0ms !important;
+      will-change: auto !important;
     }
-    .tb-capsule[data-open="1"],
-    .tb-capsule:hover,
-    .tb-plane:hover { transform: none !important; }
-    .tb-capsule[data-open="1"] .tb-portrait { transform: none !important; }
+    .tb-card[data-open="1"],
+    .tb-card:hover { transform: none !important; }
+    .tb-card[data-open="1"] .tb-portrait { transform: none !important; }
+    .tw:hover .tw-hull,
+    .tw[data-drag="1"] .tw-hull { transform: none !important; }
+    .tw:hover .tw-shade { --sh: 0px !important; }
   }
 `;

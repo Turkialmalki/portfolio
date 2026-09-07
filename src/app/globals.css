@@ -101,6 +101,20 @@
      dock is the only navigation there is. One value, one definition — the
      hero's pin, its runway, the timeline and the footer all reserve this. */
   --mobile-nav-reserve: var(--dock-clear);
+
+  /* ── Chrome typography ──
+     The fixed header at the top and the floating dock at the bottom are one
+     navigation system, and they set type from ONE number rather than two sets
+     of guesses. --dock-label-size is that number: it already exists, it is
+     already responsive, and it is what the dock's own labels use — so the role
+     under the name in the header is literally the same size as a tab label in
+     the dock, at every width, and the two cannot drift apart. */
+  --chrome-label:  var(--dock-label-size);
+  --chrome-action: calc(var(--dock-label-size) + 2px);
+  --chrome-name:   calc(var(--dock-label-size) + 6px);
+  --chrome-label-weight:  500;
+  --chrome-action-weight: 600;
+  --chrome-name-weight:   700;
 }
 
 /* Six labelled tabs have to fit inside 320px. Every pixel of chrome the dock
