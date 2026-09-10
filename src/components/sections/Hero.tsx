@@ -22,6 +22,11 @@ import {
 } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
 import { WORK_HREF } from "@/config/siteFlags";
+import {
+  HERO_VISUAL_VARIANT,
+  heroVariantOverride,
+  type HeroVariant,
+} from "@/config/heroVariant";
 import { useSafeReducedMotion } from "@/hooks/useSafeReducedMotion";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import {
@@ -29,6 +34,7 @@ import {
   FlightRoute,
   useFlightPlan,
   useFlightStyle,
+  type Dock,
   type Flight,
   type PlanFeed,
 } from "./heroFlight";
@@ -61,6 +67,17 @@ const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 /** the one breakpoint this file switches composition on */
 const PHONE_QUERY = "(max-width: 767px)";
 
+/**
+ * The width at which the meaningful composition stops being a band above the
+ * identity and becomes a RING around it.
+ *
+ * It is the same breakpoint the classic spread pins at, and for the same
+ * reason: below it there is no such thing as three columns wide enough to hold
+ * work either side of a name, and the composition folds to one stage above the
+ * copy instead.
+ */
+const RING_QUERY = "(min-width: 1100px)";
+
 type Bi = { ar: string; en: string };
 
 /**
@@ -73,15 +90,40 @@ type Bi = { ar: string; en: string };
  * value it must render (false, so hydration matches) and every render after
  * that the real one.
  */
-function useIsPhone() {
+function useMedia(query: string) {
   return useSyncExternalStore(
     (notify) => {
-      const media = window.matchMedia(PHONE_QUERY);
+      const media = window.matchMedia(query);
       media.addEventListener("change", notify);
       return () => media.removeEventListener("change", notify);
     },
-    () => window.matchMedia(PHONE_QUERY).matches,
+    () => window.matchMedia(query).matches,
     () => false,
+  );
+}
+
+const useIsPhone = () => useMedia(PHONE_QUERY);
+const useIsWide = () => useMedia(RING_QUERY);
+
+/**
+ * Which composition to draw.
+ *
+ * The build-time answer is what the server renders and what the first client
+ * paint must therefore be — anything else is a hydration mismatch. The `?hero=`
+ * override is applied in an effect, one render later, and only in development;
+ * everything it changes is a class name, an attribute and one extra element, so
+ * flipping it after mount re-lays the composition and re-measures it through
+ * the ResizeObserver that is already watching the stage.
+ */
+function useHeroVariant(): HeroVariant {
+  return useSyncExternalStore(
+    (notify) => {
+      /* the only thing that can change `?hero=` without a fresh document */
+      window.addEventListener("popstate", notify);
+      return () => window.removeEventListener("popstate", notify);
+    },
+    () => heroVariantOverride() ?? HERO_VISUAL_VARIANT,
+    () => HERO_VISUAL_VARIANT,
   );
 }
 
@@ -120,6 +162,105 @@ type Spot = { w: number; x: number; y: number };
  * tall as its contents actually are instead of as tall as somebody guessed.
  */
 type Berth = { w: number; x: number; top: number };
+
+/**
+ * Which of the three placement tables an artifact is being laid out from.
+ *
+ *   spread      the classic archive — two columns either side of the identity,
+ *               each artifact a percentage of its own frame (`at`)
+ *   phone       the classic composition folded on to one stage above the
+ *               identity, at a phone's width (`atPhone`)
+ *   stage       the meaningful composition — one stage above the identity, at
+ *               every width above a phone's (`atStage`)
+ *   stagePhone  the same composition at a phone's width (`atStagePhone`)
+ *   ring        the meaningful composition where there is room for it — work
+ *               scattered around the identity rather than piled above it, in
+ *               two frames either side of it (`atRing`)
+ *
+ * Four of the five are berths and resolve through `berthVars`; only the
+ * classic spread anchors an artifact inside a frame by its centre.
+ *
+ * `ring` berths in the same units as the two stages, with one difference that
+ * matters: the container they are a fraction OF is the frame they sit in
+ * rather than the whole stage, because the ring has two of them.
+ */
+type Placement = "spread" | "phone" | "stage" | "stagePhone" | "ring";
+
+const berthed = (place: Placement) => place !== "spread";
+
+/** anything that can be laid out: a spot in a frame, or a berth on a stage */
+type Placed = Spot | Berth | Handset["at"];
+
+/**
+ * Which table each placement reads from — one map rather than the same
+ * three-armed ternary written out at every call site, which is how one of them
+ * ends up disagreeing with the others.
+ */
+const SPOT_FOR: Record<Placement, (a: Placeable) => Placed> = {
+  spread: (a) => a.at ?? a.atStage,
+  phone: (a) => a.atPhone ?? a.atStagePhone,
+  stage: (a) => a.atStage,
+  stagePhone: (a) => a.atStagePhone,
+  ring: (a) => a.atRing,
+};
+
+/** the placement fields every artifact declares; `at` and `atPhone` are absent
+    on the objects the classic composition does not draw */
+type Placeable = {
+  at?: Placed;
+  atPhone?: Berth;
+  atStage: Berth;
+  atStagePhone: Berth;
+  atRing: Berth;
+};
+
+/**
+ * What an artifact IS, in two lines.
+ *
+ * A screenshot without a name is decoration — the window has said so in this
+ * file since it was written, and the meaningful variant simply extends that
+ * rule to every object in the composition. `label` is the KIND of work (the
+ * category the reader is being shown) and `subject` is whose it was.
+ *
+ * Every string here is transcribed from something the repository already
+ * holds: the marks in `MARKS`, the organisations in `STOPS`, and the alt text
+ * each artifact already carries. Nothing is a claim this site does not make
+ * somewhere else.
+ */
+type Cap = {
+  label: Bi;
+  subject: Bi;
+  /**
+   * Which bottom corner of the artifact the label is stuck to.
+   *
+   * It sits ON the picture rather than under it, overlapping the corner by
+   * more than half its own height, so it extends the artifact's box by almost
+   * nothing and cannot open a hole in the composition. The corner is chosen
+   * per artifact so a label always hangs into daylight rather than into
+   * whatever is drawn beside it — the accelerator's window is labelled on its
+   * left because BaseBox laps its right, and so on down the table.
+   */
+  at: "start" | "end";
+  /**
+   * And the corner it is stuck to on the PHONE stage, where the overlaps are
+   * different because the composition is.
+   *
+   * Only declared where the two disagree: the accelerator's window is lapped
+   * on its right by BaseBox on the wide stage and on its left by the front
+   * handset on a phone, so the label changes sides rather than changing what
+   * it says. Omitted everywhere the answer is the same at both sizes.
+   */
+  atPhone?: "start" | "end";
+  /**
+   * And the corner it takes in the RING, where the overlaps are different
+   * again: the accelerator's window is lapped on its left by the front handset
+   * there, so its label crosses to the other corner. Omitted wherever the
+   * answer is the same as `at`.
+   */
+  atRing?: "start" | "end";
+  /** the angle it was stuck on at, deg — small, and never the artifact's own */
+  tilt: number;
+};
 
 /**
  * How a screenshot sits inside the frame drawn around it.
@@ -220,6 +361,17 @@ type Tile = {
   at: Spot;
   /** phone placement — the outer zones of the one stage */
   atPhone: Berth;
+  /** the meaningful variant's wide stage — see MEANINGFUL STAGE below */
+  atStage: Berth;
+  /** and its phone stage, which carries the same six objects at a phone's size */
+  atStagePhone: Berth;
+  /** and its ring, where the work scatters around the identity instead */
+  atRing: Berth;
+  /** what this photograph is, drawn beside it in the meaningful variant */
+  cap: Cap;
+  /** whether that caption is also set on a phone, where there is less room:
+      the primaries carry one, the objects that read as part of a neighbouring
+      group do not — see MEANINGFUL STAGE */
 };
 
 /**
@@ -252,6 +404,29 @@ const TILES: Tile[] = [
        which is what makes it read as the primary rather than as one of four
        similar cards. */
     atPhone: { w: 47, x: -25.5, top: 0 },
+    /* The workshop, and the largest thing on the wide stage: it is the human
+       half of the story — a hall full of people being taught — and it opens
+       the composition from its head, on the same side of it that photography
+       holds everywhere else in this hero. */
+    atStage: { w: 28, x: -34, top: 0 },
+    /* on a phone it opens the stage from the upper left and laps the platform
+       beside it — the same relationship, at a phone's size */
+    atStagePhone: { w: 50, x: -25, top: 0 },
+    /* THE RING — around the name rather than above it.
+
+       Berthed in the LEFT frame, whose width is the container these
+       are a fraction of. The workshop is the largest object in the
+       composition and it opens the frame from its head, exactly as
+       it opens every other arrangement in this file. */
+    atRing: { w: 94, x: -3, top: 0 },
+    cap: {
+      label: { ar: "ورش العمل", en: "Workshops" },
+      subject: { ar: "منشآت — مركز الابتكار", en: "Monsha'at Innovation Center" },
+      /* the speaking frame is tucked under its left, so the label
+         hangs off the other corner and into daylight */
+      at: "end",
+      tilt: -1.6,
+    },
   },
   {
     id: "stage",
@@ -271,6 +446,22 @@ const TILES: Tile[] = [
        of the desktop spread. The gap above it is 7% of the stage's width, so
        it is the same piece of daylight at 320px as at 430px. */
     atPhone: { w: 30, x: -31, top: 40 },
+    /* the speaking frame, lapped over the room's lower-left corner and in
+       front of it — one photograph supporting the other, not two prints side
+       by side */
+    atStage: { w: 13, x: -39.5, top: 17 },
+    atStagePhone: { w: 24, x: -36, top: 42 },
+    /* under the room, lapping its lower-left corner */
+    atRing: { w: 42, x: -27, top: 58 },
+    cap: {
+      label: { ar: "مشاركات ومنصات", en: "Speaking" },
+      subject: {
+        ar: "هيئة الأدب والنشر والترجمة",
+        en: "Literature, Publishing & Translation Commission",
+      },
+      at: "start",
+      tilt: 2.2,
+    },
   },
 ];
 
@@ -351,52 +542,126 @@ const MARKS: Mark[] = [
 /* ------------------------------------------------------------------ */
 
 /**
- * The platform window — the anchor of the right column, and the only object
- * in it that is deliberately kept STRAIGHT.
+ * The platform windows — the anchors of the product side, and the only objects
+ * in the composition deliberately kept STRAIGHT.
  *
- * The Film Business Accelerator's sign-in, shown whole. The file is a real
- * browser viewport — the page itself, not a photograph of a laptop with the
- * page in it — so this frame's chrome is the ONLY chrome in the picture:
- * there is no second bezel, no rounded device body and no drop shadow baked
- * into the source for a card to sit inside a card. It needs no crop either,
- * and the shot's box carries the file's own aspect, so the product UI is
- * neither letterboxed nor stretched at any width.
+ * Each file is a real browser viewport — the page itself, not a photograph of
+ * a laptop with the page in it — so this frame's chrome is the ONLY chrome in
+ * the picture: no second bezel, no rounded device body, no drop shadow baked
+ * into the source for a card to sit inside a card. Neither needs a crop, and
+ * each shot's box carries its file's own aspect, so the product UI is neither
+ * letterboxed nor stretched at any width.
  *
- * At the size the hero actually draws it, "Sign in", both fields, the orange
- * button and the bilingual lockup all still read, which is more than a
- * dashboard survives at 324px.
- *
- * It is also the one artifact that carries words at rest: a caption naming the
- * product and who it was built for. A screenshot without a name is decoration.
+ * The classic composition draws the first of these and only the first: its
+ * right column is one window with two handsets under it, and that is the
+ * arrangement it was drawn for. The meaningful stage draws both, because it
+ * has the width for a second platform and because the timeline has a stop
+ * waiting for one — see STAGE_DOCKS.
  */
-const WINDOW = {
-  src: "/hero/archive/window-fba.jpg",
-  /* the baked file's own size, so the shot's box is exactly the shape of the
-     picture in it — the number the crop resolves to, never the number the
-     source happened to be before it was baked */
-  ratio: 1120 / 666,
-  /* a browser viewport at the box's own aspect: nothing to nudge, and
-     nothing that may be cropped */
-  screen: UI,
-  alt: {
-    ar: "شاشة الدخول إلى منصة مسرّعة أعمال الأفلام",
-    en: "The Film Business Accelerator sign-in screen",
-  } satisfies Bi,
-  name: {
-    ar: "مسرّعة أعمال الأفلام",
-    en: "Film Business Accelerator",
-  } satisfies Bi,
-  kind: { ar: "هيئة الأفلام السعودية", en: "Saudi Film Commission" } satisfies Bi,
-  /** width as a percentage of the showcase frame */
-  w: 87,
-  /* Upper RIGHT of the visual stage — the anchor of the product side, kept on
-     the side of the composition it holds on a desktop. Hung from the head of
-     the stage rather than centred on a point, because the caption underneath
-     it is type and therefore a fixed height: anchoring the group by its top is
-     what keeps the daylight under it the same at every width instead of
-     growing and shrinking with the caption's leading. */
-  atPhone: { w: 45, x: 26.5, top: 2 } satisfies Berth,
+type Win = {
+  id: string;
+  src: string;
+  /** the source file's own size, so the shot's box is the shape of the picture
+      in it — never the number the source happened to be before it was baked */
+  ratio: number;
+  screen: Screen;
+  alt: Bi;
+  /** the product's name, and who it was built for */
+  name: Bi;
+  kind: Bi;
+  /** what KIND of work this is — the line the meaningful stage leads with */
+  cap: Cap;
+  /** depth inside the showcase layer */
+  z: number;
+  /** width as a percentage of the showcase frame, in the classic composition */
+  w: number;
+  atPhone: Berth;
+  atStage: Berth;
+  atStagePhone: Berth;
+  atRing: Berth;
 };
+
+const WINDOWS: Win[] = [
+  {
+    id: "window",
+    src: "/hero/archive/window-fba.jpg",
+    ratio: 1120 / 666,
+    /* a browser viewport at the box's own aspect: nothing to nudge, and
+       nothing that may be cropped */
+    screen: UI,
+    alt: {
+      ar: "شاشة الدخول إلى منصة مسرّعة أعمال الأفلام",
+      en: "The Film Business Accelerator sign-in screen",
+    },
+    name: { ar: "مسرّعة أعمال الأفلام", en: "Film Business Accelerator" },
+    kind: { ar: "هيئة الأفلام السعودية", en: "Saudi Film Commission" },
+    z: 1,
+    w: 87,
+    /* Upper RIGHT of the visual stage — the anchor of the product side, kept on
+       the side of the composition it holds on a desktop. Hung from the head of
+       the stage rather than centred on a point, because the caption underneath
+       it is type and therefore a fixed height: anchoring the group by its top
+       is what keeps the daylight under it the same at every width instead of
+       growing and shrinking with the caption's leading. */
+    atPhone: { w: 45, x: 26.5, top: 2 },
+    /* the right half of the wide stage, with the second platform lapped over
+       its lower-right corner */
+    atStage: { w: 24, x: 19, top: 3 },
+    atStagePhone: { w: 46, x: 25, top: 4 },
+    /* the head of the RIGHT frame — the client platform, with both
+       banking apps standing under it */
+    atRing: { w: 90, x: 3, top: 0 },
+    cap: {
+      label: { ar: "منصات رقمية", en: "Digital platforms" },
+      subject: { ar: "مسرّعة أعمال الأفلام", en: "Film Business Accelerator" },
+      /* BaseBox laps this window's right corner on the wide stage; the front
+         handset laps its left on a phone and in the ring — so it changes
+         sides with the arrangement rather than staying put and being covered */
+      at: "start",
+      atPhone: "end",
+      atRing: "end",
+      tilt: -1.8,
+    },
+  },
+  {
+    id: "window-basebox",
+    /* BaseBox's own marketing page, at the size the file ships. It is the one
+       artifact in the hero that is a product of MINE rather than a client's,
+       which is exactly the stop it flies to — "منتجات ومشاريع مستقلة" in the
+       timeline below, whose proof row already carries this same file. */
+    src: "/hero/basebox.jpg",
+    ratio: 1600 / 755,
+    screen: UI,
+    alt: {
+      ar: "الصفحة الرئيسية لمنصة BaseBox",
+      en: "The BaseBox platform landing page",
+    },
+    name: { ar: "BaseBox", en: "BaseBox" },
+    /* transcribed from the ventures stop in FlightPath, word for word */
+    kind: { ar: "منصة SaaS بالذكاء الاصطناعي", en: "AI-powered SaaS" },
+    /* in front of the accelerator's window, which is what makes the pair read
+       as two platforms at two depths rather than two tiles in a row */
+    z: 2,
+    /* never drawn in the classic composition, so it has no width in it */
+    w: 0,
+    atPhone: { w: 0, x: 0, top: 0 },
+    atStage: { w: 21, x: 37.5, top: 17 },
+    atStagePhone: { w: 32, x: 32, top: 48 },
+    /* the foot of the LEFT frame. It is the one artifact here that is
+       my own product rather than a client's, which is why it sits with
+       the teaching rather than with the commissioned work. */
+    atRing: { w: 62, x: 18, top: 76 },
+    cap: {
+      label: { ar: "منتجات مستقلة", en: "Independent products" },
+      subject: { ar: "BaseBox — منصة SaaS", en: "BaseBox — AI-powered SaaS" },
+      at: "end",
+      tilt: 1.9,
+    },
+  },
+];
+
+/** the anchor of the product side, and the artifact the hero preloads */
+const WINDOW = WINDOWS[0];
 
 /**
  * The two banking apps, in the foreground.
@@ -425,6 +690,10 @@ type Handset = {
   z: number;
   at: { w: number; x: number; b: number };
   atPhone: Berth;
+  atStage: Berth;
+  atStagePhone: Berth;
+  atRing: Berth;
+  cap: Cap;
 };
 
 const PHONES: Handset[] = [
@@ -448,6 +717,22 @@ const PHONES: Handset[] = [
        42% of it in height — this is the deepest object in the composition and
        therefore the one that decides where the stage's floor is. */
     atPhone: { w: 19.5, x: 20, top: 50 },
+    /* the middle column of the meaningful stage: the bank's own screen is the
+       piece of evidence that is a product in a hand, so it stands in front */
+    atStage: { w: 11, x: -9.5, top: 8 },
+    /* the largest object on the phone stage, because a phone is what it is */
+    atStagePhone: { w: 24, x: -8, top: 26 },
+    /* the front of the RIGHT frame, standing over the accelerator
+       window it was built beside */
+    atRing: { w: 30, x: -28, top: 48 },
+    cap: {
+      label: { ar: "تطبيقات بنكية", en: "Banking apps" },
+      subject: { ar: "مصرف الراجحي", en: "Al Rajhi Bank" },
+      /* the second handset laps its right, so this one is labelled on its
+         left */
+      at: "start",
+      tilt: -2.4,
+    },
   },
   {
     id: "emkan",
@@ -466,6 +751,16 @@ const PHONES: Handset[] = [
        with the same controlled lap over the one in front of it that the
        desktop pair keeps — two sizes and two levels, never a couple */
     atPhone: { w: 14.5, x: 34.5, top: 56 },
+    atStage: { w: 8.5, x: -1.75, top: 18 },
+    atStagePhone: { w: 17.5, x: 10, top: 33 },
+    /* the second of the pair, lapped by the one in front of it */
+    atRing: { w: 23, x: -4, top: 62 },
+    cap: {
+      label: { ar: "تمويل", en: "Finance" },
+      subject: { ar: "إمكان", en: "Emkan Finance" },
+      at: "end",
+      tilt: 2.6,
+    },
   },
 ];
 
@@ -477,9 +772,9 @@ const TILT = {
   ...Object.fromEntries(TILES.map((tile) => [`tile-${tile.id}`, tile.rotate])),
   ...Object.fromEntries(MARKS.map((mark) => [`mark-${mark.id}`, mark.rotate])),
   ...Object.fromEntries(PHONES.map((phone) => [`phone-${phone.id}`, phone.rotate])),
-  /* the window is straight at rest and straight when it lands: the anchor of
-     the composition is the one thing that never needs to be unwound */
-  window: 0,
+  /* both platforms are straight at rest and straight when they land: the
+     anchors of the composition are the things that never need unwinding */
+  ...Object.fromEntries(WINDOWS.map((win) => [win.id, 0])),
 } as Record<string, number>;
 
 /**
@@ -583,6 +878,10 @@ const PHONE_BLUR = 0;
  * the desktop's own order scaled to the phone's shorter runway.
  */
 const PHONE_LEAVES_FIRST: Record<string, number> = {
+  /* the meaningful stage's own floor: the speaking frame and the second
+     platform stand on it, so they are the first things the climbing name
+     meets and the first to leave */
+  "window-basebox": 0.015,
   "phone-alrajhi": 0.02,
   "phone-emkan": 0.045,
   "tile-stage": 0.075,
@@ -590,17 +889,65 @@ const PHONE_LEAVES_FIRST: Record<string, number> = {
   "tile-room": 0.135,
 };
 
-const PHONE_FLIGHTS: Flight[] = FLIGHTS.map((flight) => ({
-  ...flight,
-  /* one narrow column, so the bow is a nudge rather than a detour */
-  bow: flight.bow * 0.3,
-  blur: flight.blur * PHONE_BLUR,
-  start: PHONE_LEAVES_FIRST[flight.id] ?? flight.start * 0.86,
-  end: Math.min(0.94, flight.end * 0.98),
-}));
+const PHONE_FLIGHTS: Flight[] = toPhone(FLIGHTS);
 
 /** Every stop the desktop route has, because every artifact still flies. */
 const PHONE_DOCKS = DOCKS;
+
+/* ------------------------------------------------------------------ */
+/* The meaningful route                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The same route, with the stop the classic composition had nothing to send.
+ *
+ * `ventures` was left out of DOCKS for one reason, written down where it is
+ * skipped: with nothing landing on it, it was a row of text pretending to be a
+ * landing. The meaningful stage has the width for BaseBox's own platform —
+ * a real product, whose screenshot the timeline's ventures stop already
+ * carries in its proof row — so the stop now receives something, and it goes
+ * back into the route in the position the career puts it in: after the
+ * innovation centre, before the accelerator.
+ *
+ * Nothing about DOCKS or FLIGHTS is rewritten. The classic composition reads
+ * exactly the arrays it always did; this is those arrays plus one.
+ */
+const STAGE_DOCKS: Dock[] = [
+  ...DOCKS.slice(0, 5),
+  /* the frame takes the artifact's OWN aspect, as every dock in this file
+     does — match one edge and both come out right */
+  { id: "ventures", ratio: 1600 / 755 },
+  ...DOCKS.slice(5),
+];
+
+const STAGE_FLIGHTS: Flight[] = [
+  ...FLIGHTS.slice(0, FLIGHTS.length - 1),
+  /* it leaves just before the accelerator's window and lands just before it
+     too, so the two platforms keep their order on the way down as well as in
+     the composition */
+  leg("window-basebox", "ventures", "frame", 0.31, 0.81, 62, -7, 2.6),
+  ...FLIGHTS.slice(FLIGHTS.length - 1),
+];
+
+/**
+ * The phone's version of any route.
+ *
+ * Extracted rather than written twice: the classic phone route and the
+ * meaningful one differ only in which artifacts are on the stage, and the
+ * narrowing a phone needs — a bow that is a nudge rather than a detour, no
+ * motion blur, a shorter runway — is the same narrowing in both.
+ */
+function toPhone(flights: Flight[]): Flight[] {
+  return flights.map((flight) => ({
+    ...flight,
+    bow: flight.bow * 0.3,
+    blur: flight.blur * PHONE_BLUR,
+    start: PHONE_LEAVES_FIRST[flight.id] ?? flight.start * 0.86,
+    end: Math.min(0.94, flight.end * 0.98),
+  }));
+}
+
+const PHONE_STAGE_FLIGHTS = toPhone(STAGE_FLIGHTS);
 
 
 /* ------------------------------------------------------------------ */
@@ -612,6 +959,35 @@ export default function Hero({ ready = true }: HeroProps) {
   const { t, lang } = useLanguage();
   const reduced = useSafeReducedMotion();
   const isPhone = useIsPhone();
+  const isWide = useIsWide();
+  const variant = useHeroVariant();
+  const meaningful = variant === "meaningful";
+  /**
+   * Whether the archive rests in ONE band above the identity.
+   *
+   * True on every phone, because there is no such thing as three columns at
+   * 360px, and true at every width in the meaningful variant, because that is
+   * what the variant IS. It is the one question the placement tables, the CSS
+   * and the band measurement all have to agree on, so it is asked once.
+   */
+  /*
+     The ring lays its work out in two frames either side of the identity, so
+     there is no single band above the copy to measure — that question, and the
+     phone's measured lift, are what `stacked` answers.
+  */
+  const ringed = meaningful && isWide;
+  const stacked = isPhone || (meaningful && !isWide);
+  /* which placement table every artifact below is laid out from — decided
+     once, here, so no component has to re-derive it */
+  const place: Placement = meaningful
+    ? ringed
+      ? "ring"
+      : isPhone
+        ? "stagePhone"
+        : "stage"
+    : isPhone
+      ? "phone"
+      : "spread";
   const still = Boolean(reduced);
 
   /* ---------------------------------------------------------------- */
@@ -633,8 +1009,14 @@ export default function Hero({ ready = true }: HeroProps) {
    * that outlives the gesture.
    */
   const flying = !still;
-  const docks = isPhone ? PHONE_DOCKS : DOCKS;
-  const flights = isPhone ? PHONE_FLIGHTS : FLIGHTS;
+  const docks = meaningful ? STAGE_DOCKS : PHONE_DOCKS;
+  const flights = meaningful
+    ? isPhone
+      ? PHONE_STAGE_FLIGHTS
+      : STAGE_FLIGHTS
+    : isPhone
+      ? PHONE_FLIGHTS
+      : FLIGHTS;
 
   const {
     pinRef,
@@ -650,7 +1032,7 @@ export default function Hero({ ready = true }: HeroProps) {
     registerSlot,
     registerNode,
     plan,
-  } = useFlightPlan(flights, flying, ready, isPhone);
+  } = useFlightPlan(flights, flying, ready, isPhone, stacked);
 
   const { scrollYProgress } = useScroll({
     target: pinRef,
@@ -813,6 +1195,7 @@ export default function Hero({ ready = true }: HeroProps) {
       id="home"
       ref={rootRef}
       className="hero-root"
+      data-variant={variant}
       data-flight={flying ? "on" : "off"}
       data-airborne={flying && airborne ? "1" : "0"}
       onPointerMove={onPointerMove}
@@ -855,7 +1238,12 @@ export default function Hero({ ready = true }: HeroProps) {
               <motion.div className="arc-cell arc-collage" ref={collageRef} {...enter(0.22, 22)}>
                 <Collage
                   tiles={TILES}
-                  isPhone={isPhone}
+                  place={place}
+                  /* The ring's left frame is what I teach and what I build for
+                     myself: the two photographs, and my own platform under
+                     them. Everywhere else BaseBox belongs to the product side,
+                     because everywhere else there is only one product side. */
+                  windows={place === "ring" ? WINDOWS.slice(1) : undefined}
                   lang={lang}
                   mx={smx}
                   my={smy}
@@ -913,7 +1301,7 @@ export default function Hero({ ready = true }: HeroProps) {
 
               <motion.div className="arc-cell arc-showcase" ref={showcaseRef} {...enter(0.3, 22)}>
                 <Showcase
-                  isPhone={isPhone}
+                  place={place}
                   lang={lang}
                   mx={smx}
                   my={smy}
@@ -1376,7 +1764,7 @@ export default function Hero({ ready = true }: HeroProps) {
            diagonal the two phones then stand in. */
         .arc-window-stack {
           position: absolute;
-          z-index: 1;
+          z-index: var(--z, 1);
           inset-inline-end: 0;
           top: 0;
           width: var(--w);
@@ -2953,6 +3341,834 @@ export default function Hero({ ready = true }: HeroProps) {
             min-height: 100svh;
           }
         }
+
+        /* ═══════════════════════════════════════════════════════════════
+           THE MEANINGFUL VARIANT
+           ───────────────────────────────────────────────────────────────
+           A visual-layer experiment, and nothing else. Every artifact below
+           is the SAME element with the SAME id flying the SAME plan into the
+           SAME dock — what changes is where it rests, how the page is
+           coloured, and that the route now announces itself between the
+           buttons and the marks.
+
+           The composition it draws is the one the concepts ask for:
+
+             · the workshop photograph — mentoring, and the human half of the
+               work — opening the stage from its left
+             · the banking app, standing in front, because a bank's product is
+               the piece of evidence that lives in a hand
+             · the platform window, anchoring the right, because a digital
+               platform is a thing you visit rather than hold
+
+           and the two supporting artifacts (the speaking frame, the second
+           lender's app) are subordinate to those three rather than four more
+           cards of the same weight. Nothing is here because it looks well.
+
+           The whole thing is ONE bounded stage above the identity at every
+           width, which is the phone layout's own model generalised: an
+           artifact layer stretched over row one, the copy in row two, and a
+           reserve between them that is measured rather than guessed. That is
+           what makes "an image below the buttons" a thing this layout cannot
+           express, on a desktop as much as on a phone.
+           ═══════════════════════════════════════════════════════════════ */
+
+        /* ---------- palette ----------
+
+           Tokens only. Every one of these is a variable something in this file
+           already reads, so the variant repaints the hero without a single
+           colour being baked into an image, a gradient being duplicated, or a
+           second set of rules existing to draw the same object twice. */
+        .hero-root[data-variant="meaningful"] {
+          /* warm white with the faintest blue in it — the concept's paper */
+          --mf-paper: #f4f7fd;
+          --mf-glow: rgba(47,143,255,.15);
+          --text-primary: #0a1424;
+          --text-secondary: #5c6d85;
+          --arc-muted: #6b7c93;
+          --arc-accent: #2f8fff;
+          --arc-mount: #fff;
+          --arc-surface: #fff;
+          --arc-border: rgba(10,20,36,.09);
+          --hero-dot-color: rgba(10,20,36,.055);
+          /* restrained: the same three depths, shifted toward the blue the
+             rest of the palette is lit by, and lightened a stop */
+          --arc-lift-back: 0 24px 48px -30px rgba(16,32,58,.26), 0 4px 12px -9px rgba(16,32,58,.09);
+          --arc-lift-mid: 0 20px 36px -22px rgba(16,32,58,.28), 0 4px 10px -8px rgba(16,32,58,.12);
+          --arc-lift-front: 0 28px 46px -24px rgba(16,32,58,.34), 0 7px 16px -10px rgba(16,32,58,.16);
+          --arc-shadow-soft: 0 14px 30px -20px rgba(16,32,58,.2);
+          /* Warm paper against a cool composition — the one warm thing on the
+             stage, which is what makes a label read as something stuck ON the
+             work rather than as a caption printed under it. */
+          --arc-tape: #f4efe4;
+          --arc-tape-strip: rgba(203,187,160,.75);
+          --arc-tape-ink: #24303f;
+          --arc-tape-ink-soft: #6d7686;
+          background: var(--mf-paper);
+        }
+
+        [data-theme="dark"] .hero-root[data-variant="meaningful"] {
+          --mf-paper: #070d18;
+          --mf-glow: rgba(92,176,255,.2);
+          --text-primary: #eef4fc;
+          --text-secondary: #93a4bd;
+          --arc-muted: #8496b0;
+          --arc-accent: #5cb0ff;
+          --arc-mount: #1b2331;
+          --arc-surface: #131a26;
+          --arc-border: rgba(255,255,255,.1);
+          --hero-dot-color: rgba(255,255,255,.058);
+          --arc-lift-back: 0 26px 52px -30px rgba(0,0,0,.7), 0 4px 12px -9px rgba(0,0,0,.42);
+          --arc-lift-mid: 0 22px 40px -22px rgba(0,0,0,.74), 0 4px 10px -8px rgba(0,0,0,.48);
+          --arc-lift-front: 0 30px 50px -24px rgba(0,0,0,.8), 0 7px 16px -10px rgba(0,0,0,.54);
+          --arc-shadow-soft: 0 16px 34px -20px rgba(0,0,0,.58);
+          /* the same paper at night: still warm, still the lightest thing on
+             the stage, so the label reads as an object rather than as a hole */
+          --arc-tape: #ece5d8;
+          --arc-tape-strip: rgba(255,255,255,.34);
+          --arc-tape-ink: #1b2432;
+          --arc-tape-ink-soft: #616b7c;
+        }
+
+        /* One controlled light, not a pair of purple ones: the sky the route
+           is drawn on. It is a gradient, never a filter — a 120px blur behind
+           nine moving artifacts is the one thing this hero must not pay for. */
+        .hero-root[data-variant="meaningful"] .hero-aurora-a {
+          left: 50%;
+          top: 4%;
+          width: 92vw;
+          max-width: 1180px;
+          transform: translateX(-50%);
+          aspect-ratio: 2 / 1;
+          border-radius: 0;
+          filter: none;
+          opacity: 1;
+          background: radial-gradient(ellipse 60% 60% at 50% 40%, var(--mf-glow), transparent 72%);
+        }
+
+        .hero-root[data-variant="meaningful"] .hero-aurora-b { display: none; }
+
+        /* the accent, in dark, is what the primary action is made of — the
+           concept's sky-blue pill. In light the ink pill is already right. */
+        [data-theme="dark"] .hero-root[data-variant="meaningful"] .hero-cta-primary {
+          color: #06101f;
+          background: var(--arc-accent);
+          box-shadow: 0 14px 30px -12px rgba(92,176,255,.5);
+        }
+
+        /* ---------- how every artifact hangs, in all three arrangements ---------- */
+
+        /*
+          Top edge only, everywhere.
+
+          --x is a fraction of the CONTAINER's width from its centre line and
+          --t is hundredths of that same width measured down from its head.
+          Nothing hangs off a floor, because the floor is what these placements
+          decide rather than something they are measured against — which is
+          what makes the depth of an arrangement computable from its table.
+
+          The container is the whole stage where the work is one band above the
+          identity, and one of two frames where it is scattered around it. The
+          rule does not care which: it is the same berth model at both, so a
+          composition can change shape without a single placement changing
+          units.
+        */
+        .hero-root[data-variant="meaningful"] .arc-tile,
+        .hero-root[data-variant="meaningful"] .arc-phone {
+          inset-inline: auto;
+          left: calc(50% + var(--x));
+          right: auto;
+          top: var(--t);
+          bottom: auto;
+          transform: translate(-50%, 0) rotate(var(--r));
+        }
+
+        .hero-root[data-variant="meaningful"] .arc-window-stack {
+          inset-inline: auto;
+          left: calc(50% + var(--x));
+          right: auto;
+          top: var(--t);
+          bottom: auto;
+          transform: translate(-50%, 0);
+          /* a browser bar is a fraction of its browser, not of the stage */
+          container-type: inline-size;
+        }
+
+        /* the one piece of the composition that reads in the document's own
+           direction, because it is a sentence rather than a picture */
+        .hero-root[data-variant="meaningful"] .arc-window-caption {
+          direction: var(--doc-dir, ltr);
+        }
+
+        /* ---------- ONE STAGE, at every width above a phone ---------- */
+
+        /*
+          The TABLET band — 768 to 1099, where the work is one stage above the
+          identity because there is not yet room for it either side.
+
+          Below 768 the composition is already shaped this way and the phone
+          block builds it; above 1099 it opens into the ring. This is the same
+          model as the phone's, generalised upward: a reserve, an artifact
+          layer stretched over it, the copy underneath, and every placement a
+          fraction of ONE number — the stage's own width.
+        */
+        @media (min-width: 768px) and (max-width: 1099px) {
+          .hero-root[data-variant="meaningful"] {
+            --mf-head: clamp(84px, 9.5vh, 128px);
+            /* the daylight the name is owed under the composition */
+            --mf-gap: clamp(22px, 3vh, 40px);
+            --mf-rail-top: clamp(24px, 3.4vh, 46px);
+            --mf-mark-h: clamp(40px, 5vh, 52px);
+            /*
+              The FLOOR under how tall the copy is, used before anything has
+              been measured. heroFlight.tsx publishes the real height as
+              --arc-copy-measured on layout, on font load, on resize and
+              through a ResizeObserver, and the reserve takes whichever is
+              larger — so it can only ever be too generous, never too small.
+            */
+            --mf-copy-h: clamp(190px, 24vh, 268px);
+            /*
+              How deep the stage is, as a fraction of its own width.
+
+              Worked out from the berth table, not chosen: the deepest berth is
+              the speaking frame at 11cqw carrying a 14cqw print (17.5cqw of
+              picture plus its mount), which reaches 30cqw, and the rotations in
+              the group carry their corners a little past that. The measurement
+              below catches everything that is NOT a fraction of the width —
+              the window's credit is two lines of type — and the reserve takes
+              the deeper of the two.
+            */
+            --mf-floor: 39%;
+            /* the same number as a divisor, so the width can be solved for the
+               height that is actually left. One value, written twice, and the
+               comment is the only thing keeping them together — which is why
+               they sit on adjacent lines. */
+            --mf-floor-n: 0.39;
+            /* what the composition may actually use, once every strip of the
+               screen that is already spoken for has been taken out of it */
+            --mf-band: calc(
+              100svh
+                - var(--mf-head)
+                - var(--mf-rail-top)
+                - var(--mf-mark-h)
+                - var(--dock-clear)
+            );
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100svh;
+            padding-top: var(--mf-head);
+            padding-bottom: var(--dock-clear);
+          }
+
+          /*
+            Two rows: the visual stage, then the identity.
+
+            Row one holds no content of its own — it is a ::before reserving
+            height, because the artifacts are absolutely positioned inside a
+            layer stretched over that same row. Row two is the name, the role,
+            the description and the buttons, in normal document flow under it.
+
+            Choosing a width is choosing a height, so the width is capped by
+            what the screen actually has left after the copy, the gap, the cue
+            and the marks: the composition scales down WHOLE on a short screen
+            rather than being cropped, pushed under the navigation, or laid over
+            the name.
+          */
+          .hero-root[data-variant="meaningful"] .arc-stage {
+            direction: ltr;
+            position: relative;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto;
+            column-gap: 0;
+            row-gap: var(--mf-gap);
+            align-items: stretch;
+            width: min(
+              100%,
+              1140px,
+              calc(
+                (
+                  var(--mf-band)
+                    - max(var(--mf-copy-h), calc(var(--arc-copy-measured, 0px) + 8px))
+                    - var(--mf-gap)
+                ) / var(--mf-floor-n)
+              )
+            );
+            margin-inline: auto;
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-stage::before {
+            content: "";
+            grid-row: 1;
+            grid-column: 1;
+            width: 0;
+            padding-top: max(var(--mf-floor), var(--arc-art-measured, 0px));
+            pointer-events: none;
+          }
+
+          /* The identity is allowed to be wider than the stage: on a short
+             screen the stage shrinks so the artifacts still fit above the
+             navigation, and the name has no reason to shrink with them. */
+          .hero-root[data-variant="meaningful"] .arc-center {
+            grid-row: 2;
+            grid-column: 1;
+            justify-self: center;
+            align-self: start;
+            z-index: 3;
+            width: min(100%, 720px);
+            padding-inline: 0;
+          }
+
+          /* the artifact layer — stretched over row one and nothing else, so
+             the browser is what decides where the band ends */
+          .hero-root[data-variant="meaningful"] .arc-collage,
+          .hero-root[data-variant="meaningful"] .arc-showcase {
+            position: relative;
+            grid-row: 1;
+            grid-column: 1;
+            align-self: stretch;
+            justify-self: stretch;
+            width: 100%;
+            min-width: 0;
+            padding-top: 0;
+            direction: ltr;
+            pointer-events: none;
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-collage { z-index: 1; }
+          .hero-root[data-variant="meaningful"] .arc-showcase { z-index: 2; }
+
+          /* both frames become ONE box the size of the stage — which is also
+             the container every berth below is measured in cqw against */
+          .hero-root[data-variant="meaningful"] .arc-collage-frame,
+          .hero-root[data-variant="meaningful"] .arc-showcase-frame {
+            position: absolute;
+            inset: 0;
+            width: auto;
+            margin: 0;
+            aspect-ratio: auto;
+            container: arc-stage / inline-size;
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-rail { padding-top: var(--mf-rail-top); }
+          .hero-root[data-variant="meaningful"] .arc-marks { --mark-h: var(--mf-mark-h); }
+
+          /* The name comes down a stop. It is no longer a column beside the
+             work — it is a line under it — so it is set to the composition
+             rather than to the viewport, and the copy block stays inside the
+             reserve the stage sized itself against. */
+          .hero-root[data-variant="meaningful"] .hero-name-title {
+            max-width: 18ch;
+            font-size: clamp(40px, 4.4vw, 74px);
+          }
+
+          [dir="rtl"] .hero-root[data-variant="meaningful"] .hero-name-title {
+            max-width: 16ch;
+            font-size: clamp(42px, 4.7vw, 78px);
+          }
+
+          /*
+            Where the route may draw itself.
+
+            --fl-head is measured and published by heroFlight.tsx: the headroom
+            plus the height of the name once it has shrunk, so no dock can open
+            underneath the identity. --dock-clear at the other end is the same
+            number the navigation is built from, so none can hide behind it.
+            This is the phone's own rule, and it is right here for the same
+            reason — the identity climbs to the head of the route from below.
+          */
+          .hero-root[data-variant="meaningful"][data-flight="on"] .fl-route {
+            top: var(--fl-head, 128px);
+            height: auto;
+            bottom: var(--dock-clear);
+            align-items: center;
+          }
+        }
+
+        /*
+          A SHORT screen above the phone breakpoint — a 720p laptop, a
+          landscape tablet.
+
+          Nothing is dropped and nothing moves: every reserve gives back what it
+          can so the stage keeps as much of the remaining height as possible,
+          which is the same trade the classic composition makes at these
+          heights. Below this the width solve above takes over and the whole
+          composition scales down together.
+        */
+        @media (min-width: 768px) and (max-width: 1099px) and (max-height: 860px) {
+          .hero-root[data-variant="meaningful"] {
+            --mf-head: clamp(62px, 8vh, 88px);
+            --mf-gap: clamp(16px, 2.2vh, 26px);
+            --mf-rail-top: clamp(18px, 2.6vh, 30px);
+            --mf-mark-h: clamp(34px, 4.4vh, 44px);
+            --mf-copy-h: clamp(168px, 23vh, 220px);
+          }
+        }
+
+
+        /* ---------- THE RING — work scattered around the name ---------- */
+
+        /*
+          Above 1100 the composition stops being a band above the identity and
+          becomes a ring around it: three objects in a frame to the left of the
+          name, three in a frame to the right, at six different heights and six
+          different sizes.
+
+          The guarantee that nothing can ever be drawn on the name is the same
+          one the classic spread is built on, and it is structural rather than
+          tuned: the identity is a grid column of its own and the two artifact
+          frames are the columns either side of it. There is no berth in this
+          file that can express "over the name", because there is no container
+          over the name to berth in.
+
+          What each side says is not arbitrary. The left frame is the work I
+          teach and the work I build for myself — the workshop hall, the stage,
+          and my own platform under them. The right frame is the work that was
+          commissioned — the accelerator's platform, with both banking apps
+          standing in front of it. The name sits between the two, which is the
+          whole point of the arrangement.
+        */
+        @media (min-width: 1100px) {
+          .hero-root[data-variant="meaningful"] {
+            /*
+              How deep a frame is, as a multiple of its own width.
+
+              Read off the berth tables rather than chosen: the deepest object
+              on the left is the speaking frame at 58cqw carrying 57cqw of
+              print, and on the right the front handset at 48cqw carrying 68cqw
+              of handset — 115 and 117 — plus the label each hangs below its
+              corner. The two come out within a couple of per cent of each
+              other on purpose: a person reads this hero as two masses either
+              side of a name, and two masses of different height read as one of
+              them having been left unfinished.
+            */
+            --mf-rail-top: clamp(26px, 3.6vh, 48px);
+            --mf-mark-h: clamp(42px, 5vh, 52px);
+          }
+
+          /* Three columns, pinned left to right in BOTH scripts, exactly as the
+             classic spread is: teaching on the left of the composition and
+             commissioned product on the right, whichever way the page reads.
+             Each cell hands the document's own direction back to its text. */
+          .hero-root[data-variant="meaningful"] .arc-stage {
+            direction: ltr;
+            display: grid;
+            /*
+              Wider than the classic spread's 372, and deliberately: the work
+              is scattered AROUND the name here rather than stacked beside it,
+              so the two frames have to reach in far enough that the name reads
+              as being inside the composition instead of in a corridor between
+              two of them. What they take comes out of the corridor, not out of
+              the name — the middle column still holds the identity at the size
+              the rule below sets it.
+            */
+            /*
+              The middle column has a FLOOR and the side ones have a ceiling,
+              which is what stops the ring closing on the name at the width it
+              first appears: at 1100 there is 1052px of page, and two 420px
+              frames with a gap either side leave the identity 211 — a two-line
+              name and a button row that does not fit on one line. The floor is
+              what the CTA row actually needs, so the frames give way to it
+              rather than the other way round.
+            */
+            grid-template-columns: minmax(0, 420px) minmax(340px, 1fr) minmax(0, 420px);
+            grid-template-rows: auto;
+            column-gap: clamp(22px, 3.4vw, 56px);
+            row-gap: 0;
+            align-items: center;
+            width: 100%;
+            margin-inline: auto;
+          }
+
+          /* there is no reserve row here — the frames carry their own height */
+          .hero-root[data-variant="meaningful"] .arc-stage::before { content: none; }
+
+          .hero-root[data-variant="meaningful"] .arc-collage {
+            grid-column: 1;
+            grid-row: 1;
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-center {
+            grid-column: 2;
+            grid-row: 1;
+            justify-self: stretch;
+            align-self: center;
+            z-index: 3;
+            width: auto;
+            padding-inline: clamp(0px, 1vw, 16px);
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-showcase {
+            grid-column: 3;
+            grid-row: 1;
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-collage,
+          .hero-root[data-variant="meaningful"] .arc-showcase {
+            position: relative;
+            align-self: center;
+            justify-self: stretch;
+            width: 100%;
+            min-width: 0;
+            padding-top: 0;
+            direction: ltr;
+            /* the frames are pictures, not controls: nothing in them takes a
+               tap that belongs to the buttons in the column between them */
+            pointer-events: none;
+          }
+
+          /*
+            The frame is the unit, and it is a container.
+
+            Everything berthed in it is a percentage of it, so scaling the
+            frame scales every clearance inside it — the lap of a handset over
+            a window, the daylight under a print, the width of a label. And it
+            is capped by the height the screen can actually give it, exactly as
+            the classic frames are, so a short laptop shrinks the whole
+            composition rather than cropping it or pushing the row of marks
+            behind the navigation.
+          */
+          .hero-root[data-variant="meaningful"] .arc-collage-frame,
+          .hero-root[data-variant="meaningful"] .arc-showcase-frame {
+            /*
+              How deep a frame is, as a multiple of its own width.
+
+              Read off the berth tables rather than chosen: the deepest thing
+              on the left is the speaking frame's label at 117cqw and on the
+              right the front handset's at 118cqw. The two come out within one
+              per cent of each other on purpose — a person reads this hero as
+              two masses either side of a name, and two masses of different
+              height read as one of them having been left unfinished.
+
+              It is declared HERE and not on the root because the classic
+              frame declares its own 1.43 on this same element, and a property
+              set on an element beats one inherited into it.
+            */
+            --frame-ar: 1.2;
+            position: relative;
+            inset: auto;
+            container-type: inline-size;
+            container-name: none;
+            width: min(100%, calc((100svh - 340px) / var(--frame-ar)));
+            aspect-ratio: 1 / var(--frame-ar);
+          }
+
+          /*
+            Where a frame sits when the height has made it narrower than its
+            column: against the identity, not centred in the column.
+
+            On a short wide screen the frames shrink to fit the viewport and the
+            column does not shrink with them, so centring would open the
+            corridor back up — the work would drift to the edges of the page
+            and the name would be alone in the middle, which is the arrangement
+            this one exists to replace. Hugging the middle keeps the ring a
+            ring, and the room the frames give back goes to the page's margins
+            where the labels overhang anyway.
+          */
+          .hero-root[data-variant="meaningful"] .arc-collage-frame {
+            margin-inline: auto 0;
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-showcase-frame {
+            margin-inline: 0 auto;
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-rail { padding-top: var(--mf-rail-top); }
+          .hero-root[data-variant="meaningful"] .arc-marks { --mark-h: var(--mf-mark-h); }
+
+          /* The name is a column again rather than a line under the work, so it
+             goes back to the size the classic composition sets it at — bounded
+             by the middle column, which is what the three-column grid is for. */
+          .hero-root[data-variant="meaningful"] .hero-name-title {
+            max-width: 12ch;
+            font-size: clamp(42px, 4.6vw, 76px);
+          }
+
+          [dir="rtl"] .hero-root[data-variant="meaningful"] .hero-name-title {
+            max-width: 10ch;
+            font-size: clamp(46px, 5vw, 82px);
+          }
+
+          /* The route is the classic's own here: the identity is centred and
+             the docks own the band under it for the whole pinned viewport.
+             --fl-head belongs to the arrangements where the name climbs out
+             from UNDER the work, which this one is not. */
+          .hero-root[data-variant="meaningful"][data-flight="on"] .fl-route {
+            top: 34%;
+            height: auto;
+            bottom: var(--dock-clear);
+            align-items: center;
+          }
+        }
+
+        /*
+          A short screen with the width for a ring.
+
+          Only the reserves move. The frames are already capped against
+          100svh — that is what the width formula above is — so the
+          composition scales down as one object, and what these give back is
+          the strip around it rather than anything inside it.
+        */
+        @media (min-width: 1100px) and (max-height: 820px) {
+          .hero-root[data-variant="meaningful"] {
+            --mf-rail-top: clamp(18px, 2.6vh, 32px);
+            --mf-mark-h: clamp(34px, 4.6vh, 44px);
+          }
+        }
+
+        /* ---------- what each object IS ---------- */
+
+        /*
+          A label stuck on the picture, the way a print gets one.
+
+          Three things make this safe rather than decorative.
+
+          It is absolutely positioned off the artifact's container, which is
+          load-bearing: an absolutely positioned child adds nothing to its
+          parent's box, and that box is what the landing scale is measured
+          from. In normal flow every artifact would dock two lines of type
+          short.
+
+          It sits ON the artifact — anchored to a bottom corner and pulled back
+          across it, so most of its height is over the picture and only a
+          little hangs below. The composition therefore does not have to open a
+          gap under every object to hold its label, which is what a row of
+          labels under a row of pictures costs.
+
+          And which corner is per artifact rather than global, because the
+          composition overlaps: a label always hangs off the side of its
+          picture that has daylight next to it, never the side the next
+          artifact laps over. That is a decision made in the placement table,
+          beside the placements it depends on.
+        */
+        .arc-cap {
+          position: absolute;
+          bottom: 0;
+          z-index: 6;
+          width: max-content;
+          /*
+            Bounded twice, and the tighter of the two wins.
+
+            160% of the artifact keeps a label proportional to the thing it
+            names — a label three times the width of a handset stops reading as
+            belonging to it — and the 240px keeps a long one from crossing the
+            composition at the widths where 160% is a lot of pixels. Anything
+            longer wraps, and the band underneath grows to hold it because
+            heroFlight.tsx measures where the composition really ends rather
+            than trusting a ratio.
+          */
+          max-width: min(240px, 160%);
+          pointer-events: none;
+        }
+
+        .arc-cap[data-at="start"] { left: 0; transform: translate(-11%, 42%); }
+        .arc-cap[data-at="end"] { right: 0; transform: translate(11%, 42%); }
+
+        /*
+          The paper.
+
+          A separate element from the placement, and for the usual reason: the
+          angle it was stuck on at lives here, the position lives on the box
+          around it, and neither can overwrite the other. It is also what the
+          departure fades, so a label leaves without its shadow being animated
+          separately from the card it belongs to.
+        */
+        .arc-cap-paper {
+          position: relative;
+          display: block;
+          padding: clamp(4px, .45vw, 7px) clamp(7px, .72vw, 11px);
+          border-radius: 3px;
+          background: var(--arc-tape);
+          box-shadow: var(--arc-shadow-soft);
+          line-height: 1.3;
+          text-align: start;
+          direction: var(--doc-dir, ltr);
+          transform: rotate(var(--cap-r, 0deg));
+        }
+
+        /* the strip of tape holding it down — one gradient, no filter, and it
+           is the only thing in the composition that is deliberately crooked
+           against the thing under it */
+        .arc-cap-paper::before {
+          content: "";
+          position: absolute;
+          top: -5px;
+          inset-inline-start: 14%;
+          width: 30%;
+          min-width: 26px;
+          height: 11px;
+          border-radius: 1px;
+          background: var(--arc-tape-strip);
+          transform: rotate(calc(var(--cap-r, 0deg) * -2.4));
+        }
+
+        .arc-cap-paper b {
+          display: block;
+          font-size: clamp(9.5px, .78vw, 12.5px);
+          font-weight: 800;
+          letter-spacing: -.008em;
+          color: var(--arc-tape-ink);
+        }
+
+        .arc-cap-paper span {
+          display: block;
+          font-size: clamp(8.5px, .64vw, 10.5px);
+          font-weight: 600;
+          color: var(--arc-tape-ink-soft);
+        }
+
+        [dir="rtl"] .arc-cap-paper b { letter-spacing: 0; }
+
+        /* Present, named, and not drawn. The meaningful stage labels the
+           picture itself, so a credit under the window as well would be the
+           same fact twice — and the second one would be sitting exactly where
+           the platform beside it is drawn. */
+        .arc-window-caption[data-quiet="1"] {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          margin: -1px;
+          padding: 0;
+          overflow: hidden;
+          white-space: nowrap;
+          clip-path: inset(50%);
+          border: 0;
+        }
+
+        /*
+          In the RING the label is the category and nothing else — the same
+          trade the phone stage makes, for the same reason.
+
+          A ring frame is 372px at its widest, which is a phone's stage: the
+          second line runs to "Literature, Publishing & Translation Commission"
+          in English, and forty-six characters set to a third of that column is
+          five lines of type under a print. What each object IS still reads,
+          the subject stays in the document for a screen reader, and the
+          timeline below meets it in full.
+        */
+        @media (min-width: 1100px) {
+          .arc-cap { max-width: min(190px, 110%); }
+          .arc-cap-paper b { font-size: clamp(10px, .72vw, 12.5px); }
+
+          .arc-cap-paper span {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            clip-path: inset(50%);
+          }
+        }
+
+        /* ---------- the meaningful stage, on a phone ---------- */
+
+        /*
+          The same six objects and the same story, folded to a phone.
+
+          It is NOT the classic phone composition with two more things dropped
+          into it: that layout solves its stage width against a chain of
+          reserves built for five artifacts, one of which — the push that keeps
+          the handsets off the accelerator's credit — exists because that
+          composition hangs its credit in the one place this one does not.
+          Every caption here is absolutely positioned off its own artifact, so
+          there is nothing to push anything off, and the push is switched off
+          rather than left to resolve to a number that means nothing.
+
+          What is left is one honest sum: the band a phone has, less the copy,
+          less the daylight the name is owed, divided by how deep the stage is
+          as a fraction of its own width. The floor below is the deepest berth
+          in the table worked out — the front handset at 28cqw carrying 58cqw
+          of handset — and the measurement in heroFlight.tsx is what catches
+          the captions, which are type and therefore a fraction of nothing.
+        */
+        @media (max-width: 767px) {
+          .hero-root[data-variant="meaningful"] {
+            /* every caption hangs off its own artifact here, so there is
+               nothing under the platform for a handset to be pushed clear of */
+            --arc-phone-push: 0px;
+            /* the deepest berth in atStagePhone, plus the slack the rotations
+               carry the corners into. A floor, not the answer — see below. */
+            --arc-art-floor: 82%;
+          }
+
+          .hero-root[data-variant="meaningful"] .arc-stage {
+            width: min(
+              100%,
+              430px,
+              calc(
+                (
+                  var(--arc-band)
+                    - max(var(--arc-copy-h), calc(var(--arc-copy-measured, 0px) + 6px))
+                    - var(--arc-art-gap)
+                ) / 0.82
+              )
+            );
+          }
+
+          /*
+            On a phone the label is the CATEGORY and nothing else.
+
+            The second line is who the work was for, and in English those run
+            to "Literature, Publishing & Translation Commission" — forty-six
+            characters set to a quarter of a 390px screen, which is five lines
+            of type under a thumbnail and a label wider than three of the
+            objects beside it. There is no width here that makes that read.
+
+            So the phone stage says what each object IS and stops, which is
+            also exactly what the reference composition does. The subject is
+            not dropped: it stays in the document for a screen reader, the alt
+            text on every artifact already names the work, and the timeline
+            three hundred pixels below meets the reader with all of it in full.
+          */
+          .arc-cap { max-width: 130%; }
+
+          .arc-cap-paper { padding: 4px 7px; border-radius: 3px; }
+          .arc-cap-paper::before { height: 9px; top: -4px; }
+          .arc-cap-paper b { font-size: clamp(9px, 2.6vw, 11.5px); }
+
+          .arc-cap-paper span {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            clip-path: inset(50%);
+          }
+        }
+
+        /*
+          Under 360 the captions stop being captions.
+
+          Two lines of type set to a quarter of a 320px screen is four words
+          broken across five lines under a thumbnail — deeper than the artifact
+          it belongs to, and unreadable at the size it would have to be set. So
+          the subject line goes to screen readers and the category line stays,
+          which is the same trade the classic credit makes at the same width
+          and for the same reason: the reader still learns what they are
+          looking at, in the form the width can carry.
+        */
+        /* The narrowest phones give the tape back and tighten the paper: at a
+           165px stage a strip of tape is a third of the label it is holding
+           down, and it stops reading as tape. */
+        @media (max-width: 359px) {
+          .arc-cap-paper { padding: 3px 5px; }
+          .arc-cap-paper::before { display: none; }
+          .arc-cap-paper b { font-size: 8.5px; line-height: 1.2; }
+        }
+
+        /* Nothing moves, so nothing fades: the calm treatment keeps every
+           caption at full strength beside the composition it belongs to. */
+        @media (prefers-reduced-motion: reduce) {
+          .arc-cap-paper { opacity: 1 !important; }
+        }
+
       `}</style>
     </section>
   );
@@ -3021,13 +4237,72 @@ function Art({
   );
 }
 
+/**
+ * What an artifact is, drawn beside it.
+ *
+ * Absolutely positioned, and that is load-bearing rather than convenient: an
+ * absolutely positioned child contributes nothing to its parent's box, so the
+ * container this hangs off keeps exactly the height it had — which is the
+ * height the landing scale is measured from. A caption in normal flow would
+ * make every artifact dock short by two lines of type. It is the same
+ * arrangement the window's own credit has always used.
+ *
+ * It does not travel. At the size an artifact lands on the route this would be
+ * two illegible grey lines under a 50px frame, so it stands down at the top of
+ * the departure — one CSS transition on one boolean, rather than a transform
+ * per caption running on every scroll frame.
+ */
+const Caption = memo(function Caption({
+  cap,
+  lang,
+  progress,
+  flying,
+  place,
+}: {
+  cap: Cap;
+  lang: "ar" | "en";
+  progress: MotionValue<number>;
+  /** false under reduced motion, where nothing departs and nothing fades */
+  flying: boolean;
+  /** the arrangement being drawn — a couple of labels change corners with it */
+  place: Placement;
+}) {
+  const opacity = useTransform(progress, [0.02, 0.16], [1, 0], { clamp: true });
+  const corner =
+    (place === "stagePhone" && cap.atPhone) || (place === "ring" && cap.atRing) || cap.at;
+
+  return (
+    <motion.span
+      className="arc-cap"
+      data-at={corner}
+      /* Scenery. Each artifact's alt text already says what the picture is,
+         and the timeline below meets the reader with the same organisations
+         and the same products in full — so a screen reader is not read the
+         career twice over. */
+      aria-hidden="true"
+      style={
+        {
+          "--cap-r": `${cap.tilt}deg`,
+          ...(flying ? {} : {}),
+        } as CSSProperties
+      }
+    >
+      <motion.span className="arc-cap-paper" style={flying ? { opacity } : undefined}>
+        <b>{cap.label[lang]}</b>
+        <span>{cap.subject[lang]}</span>
+      </motion.span>
+    </motion.span>
+  );
+});
+
 /* ------------------------------------------------------------------ */
 /* The collage                                                         */
 /* ------------------------------------------------------------------ */
 
 const Collage = memo(function Collage({
   tiles,
-  isPhone,
+  windows,
+  place,
   lang,
   mx,
   my,
@@ -3038,7 +4313,9 @@ const Collage = memo(function Collage({
   registerCraft,
 }: {
   tiles: Tile[];
-  isPhone: boolean;
+  /** platforms berthed on THIS side of the identity — the ring only */
+  windows?: Win[];
+  place: Placement;
   lang: "ar" | "en";
   mx: MotionValue<number>;
   my: MotionValue<number>;
@@ -3047,12 +4324,29 @@ const Collage = memo(function Collage({
 } & FlightProps) {
   return (
     <div className="arc-collage-frame">
+      {(windows ?? []).map((win) => (
+        <ShowcaseWindow
+          key={win.id}
+          win={win}
+          spot={SPOT_FOR[place](win)}
+          place={place}
+          lang={lang}
+          mx={mx}
+          my={my}
+          still={still}
+          progress={progress}
+          plan={plan}
+          flight={flightFor(win.id)}
+          registerCraft={registerCraft}
+        />
+      ))}
+
       {tiles.map((tile) => (
         <CollageTile
           key={tile.id}
           tile={tile}
-          spot={isPhone ? tile.atPhone : tile.at}
-          isPhone={isPhone}
+          spot={SPOT_FOR[place](tile)}
+          place={place}
           lang={lang}
           mx={mx}
           my={my}
@@ -3070,7 +4364,7 @@ const Collage = memo(function Collage({
 const CollageTile = memo(function CollageTile({
   tile,
   spot,
-  isPhone,
+  place,
   lang,
   mx,
   my,
@@ -3081,8 +4375,8 @@ const CollageTile = memo(function CollageTile({
   registerCraft,
 }: {
   tile: Tile;
-  spot: Spot | Berth;
-  isPhone: boolean;
+  spot: Placed;
+  place: Placement;
   lang: "ar" | "en";
   mx: MotionValue<number>;
   my: MotionValue<number>;
@@ -3095,6 +4389,9 @@ const CollageTile = memo(function CollageTile({
   const px = useTransform(mx, [-0.5, 0.5], [-depth, depth]);
   const py = useTransform(my, [-0.5, 0.5], [-depth * 0.5, depth * 0.5]);
   const fly = useFlightStyle(flight, progress, plan);
+  /* only the meaningful composition labels its objects; the classic spread
+     names its one window in the credit under it and nothing else */
+  const labelled = berthed(place) && place !== "phone";
 
   return (
     <div
@@ -3103,7 +4400,7 @@ const CollageTile = memo(function CollageTile({
       ref={registerCraft(`tile-${tile.id}`)}
       style={
         {
-          ...(isPhone
+          ...(berthed(place)
             ? berthVars(spot as Berth)
             : {
                 "--w": `${spot.w}%`,
@@ -3122,6 +4419,16 @@ const CollageTile = memo(function CollageTile({
         animation outranks an inline style in the cascade, so anything sharing
         an element with `arc-float` simply loses.
       */}
+      {labelled ? (
+        <Caption
+          cap={tile.cap}
+          lang={lang}
+          progress={progress}
+          flying={Boolean(flight)}
+          place={place}
+        />
+      ) : null}
+
       <motion.div className="arc-tile-fly" style={flight ? fly : undefined}>
         <motion.div className="arc-tile-drift" style={still ? undefined : { x: px, y: py }}>
           <span className="arc-tile-float">
@@ -3230,7 +4537,7 @@ const MarkChip = memo(function MarkChip({
  * of each other, which is what made the group read as a pile of screenshots.
  */
 const Showcase = memo(function Showcase({
-  isPhone,
+  place,
   lang,
   mx,
   my,
@@ -3240,115 +4547,54 @@ const Showcase = memo(function Showcase({
   flightFor,
   registerCraft,
 }: {
-  isPhone: boolean;
+  place: Placement;
   lang: "ar" | "en";
   mx: MotionValue<number>;
   my: MotionValue<number>;
   still: boolean;
   flightFor: (id: string) => Flight | undefined;
 } & FlightProps) {
-  const wx = useTransform(mx, [-0.5, 0.5], [-5, 5]);
-  const wy = useTransform(my, [-0.5, 0.5], [-2.5, 2.5]);
-  const windowFlight = flightFor("window");
-  const fly = useFlightStyle(windowFlight, progress, plan);
-  /* The caption is the one thing in the composition that cannot travel: at the
-     scale the window lands on the route it would be two illegible grey lines
-     under a 50px frame. It stands down with the buttons, long before the
-     window reaches anything. */
-  const captionOpacity = useTransform(progress, [0.02, 0.16], [1, 0]);
+  /* The classic composition's right column is one window with two handsets
+     under it — the arrangement it was drawn for, and the one it keeps at every
+     width, phone included. The second platform belongs to the meaningful
+     stage, which has the room for it and a stop below that is waiting for it;
+     drawing it anywhere else would put an artifact on the screen that no route
+     has anywhere to send. */
+  /* The ring hands BaseBox to the frame on the other side of the name; the
+     stacked compositions draw both platforms here, and the classic spread
+     draws only the one it was built around. */
+  const windows =
+    place === "ring"
+      ? WINDOWS.slice(0, 1)
+      : place === "stage" || place === "stagePhone"
+        ? WINDOWS
+        : WINDOWS.slice(0, 1);
 
   return (
     <div className="arc-showcase-frame">
-      <div
-        className="arc-window-stack"
-        style={
-          (isPhone ? berthVars(WINDOW.atPhone) : { "--w": `${WINDOW.w}%` }) as CSSProperties
-        }
-      >
-        {/*
-          The craft is the window ALONE. The caption sits outside it on purpose:
-          the landing scale is measured as slot height over artifact height, so
-          a caption inside this box would make the window itself dock short by
-          exactly the height of two lines of type.
-        */}
-        <div className="arc-window-hold" ref={registerCraft("window")}>
-          <motion.div className="arc-window-fly" style={windowFlight ? fly : undefined}>
-            <motion.div
-              className="arc-window-drift"
-              style={still ? undefined : { x: wx, y: wy }}
-            >
-              <div className="arc-window">
-                <div className="arc-window-bar" aria-hidden="true">
-                  <span className="arc-window-lights">
-                    <span className="arc-window-dot" />
-                    <span className="arc-window-dot" />
-                    <span className="arc-window-dot" />
-                  </span>
-
-                  <span className="arc-window-address">
-                    <svg className="arc-window-lock" viewBox="0 0 8 10">
-                      <path
-                        d="M2.1 4.2V2.7a1.9 1.9 0 0 1 3.8 0v1.5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.05"
-                      />
-                      <rect x=".7" y="4.1" width="6.6" height="5.2" rx="1.3" fill="currentColor" />
-                    </svg>
-                    <span className="arc-window-address-line" />
-                  </span>
-
-                  {/* balances the lights, so the address pill sits on the
-                      bar's true centre rather than being pushed off it */}
-                  <span className="arc-window-lights arc-window-lights-ghost" aria-hidden="true">
-                    <span className="arc-window-dot" />
-                    <span className="arc-window-dot" />
-                    <span className="arc-window-dot" />
-                  </span>
-                </div>
-
-                <span
-                  className="arc-window-shot"
-                  style={
-                    {
-                      "--ar": WINDOW.ratio,
-                      ...screenVars(WINDOW.screen),
-                    } as CSSProperties
-                  }
-                >
-                  {/* The largest artifact in the composition and the anchor of
-                      it, so it is the one that is preloaded — and the one that
-                      is NOT art-directed: a second source would have the phone
-                      preloading the desktop file and then fetching the small
-                      one. One file, sized for the widest draw there is. */}
-                  <Image
-                    src={WINDOW.src}
-                    alt={WINDOW.alt[lang]}
-                    fill
-                    sizes="(max-width: 767px) 47vw, 460px"
-                    priority
-                  />
-                </span>
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-
-        <motion.p
-          className="arc-window-caption"
-          style={windowFlight ? { opacity: captionOpacity } : undefined}
-        >
-          <b>{WINDOW.name[lang]}</b>
-          <span>{WINDOW.kind[lang]}</span>
-        </motion.p>
-      </div>
+      {windows.map((win) => (
+        <ShowcaseWindow
+          key={win.id}
+          win={win}
+          spot={SPOT_FOR[place](win)}
+          place={place}
+          lang={lang}
+          mx={mx}
+          my={my}
+          still={still}
+          progress={progress}
+          plan={plan}
+          flight={flightFor(win.id)}
+          registerCraft={registerCraft}
+        />
+      ))}
 
       {PHONES.map((phone, index) => (
         <ShowcasePhone
           key={phone.id}
           phone={phone}
-          spot={isPhone ? phone.atPhone : phone.at}
-          isPhone={isPhone}
+          spot={SPOT_FOR[place](phone)}
+          place={place}
           lead={index === 0}
           lang={lang}
           mx={mx}
@@ -3364,10 +4610,175 @@ const Showcase = memo(function Showcase({
   );
 });
 
+/**
+ * One platform, in a browser frame.
+ *
+ * The craft registered for the flight is the window ALONE. The caption sits
+ * outside it on purpose: the landing scale is measured as slot height over
+ * artifact height, so a caption inside this box would make the window itself
+ * dock short by exactly the height of two lines of type.
+ */
+const ShowcaseWindow = memo(function ShowcaseWindow({
+  win,
+  spot,
+  place,
+  lang,
+  mx,
+  my,
+  still,
+  progress,
+  plan,
+  flight,
+  registerCraft,
+}: {
+  win: Win;
+  spot: Placed;
+  place: Placement;
+  lang: "ar" | "en";
+  mx: MotionValue<number>;
+  my: MotionValue<number>;
+  still: boolean;
+  flight: Flight | undefined;
+} & FlightProps) {
+  const wx = useTransform(mx, [-0.5, 0.5], [-5, 5]);
+  const wy = useTransform(my, [-0.5, 0.5], [-2.5, 2.5]);
+  const fly = useFlightStyle(flight, progress, plan);
+  /* The caption is the one thing in the composition that cannot travel: at the
+     scale the window lands on the route it would be two illegible grey lines
+     under a 50px frame. It stands down with the buttons, long before the
+     window reaches anything. */
+  const captionOpacity = useTransform(progress, [0.02, 0.16], [1, 0]);
+  /* the anchor of the composition is the hero's largest paint, and the only
+     image in it that is preloaded */
+  const lead = win.id === WINDOW.id;
+  const labelled = berthed(place) && place !== "phone";
+
+  return (
+    <div
+      className="arc-window-stack"
+      data-window={win.id}
+      style={
+        {
+          ...(place === "spread" ? { "--w": `${win.w}%` } : berthVars(spot as Berth)),
+          "--z": win.z,
+        } as CSSProperties
+      }
+    >
+      <div className="arc-window-hold" ref={registerCraft(win.id)}>
+        <motion.div className="arc-window-fly" style={flight ? fly : undefined}>
+          <motion.div
+            className="arc-window-drift"
+            style={still ? undefined : { x: wx, y: wy }}
+          >
+            <div className="arc-window">
+              <div className="arc-window-bar" aria-hidden="true">
+                <span className="arc-window-lights">
+                  <span className="arc-window-dot" />
+                  <span className="arc-window-dot" />
+                  <span className="arc-window-dot" />
+                </span>
+
+                <span className="arc-window-address">
+                  <svg className="arc-window-lock" viewBox="0 0 8 10">
+                    <path
+                      d="M2.1 4.2V2.7a1.9 1.9 0 0 1 3.8 0v1.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.05"
+                    />
+                    <rect x=".7" y="4.1" width="6.6" height="5.2" rx="1.3" fill="currentColor" />
+                  </svg>
+                  <span className="arc-window-address-line" />
+                </span>
+
+                {/* balances the lights, so the address pill sits on the
+                    bar's true centre rather than being pushed off it */}
+                <span className="arc-window-lights arc-window-lights-ghost" aria-hidden="true">
+                  <span className="arc-window-dot" />
+                  <span className="arc-window-dot" />
+                  <span className="arc-window-dot" />
+                </span>
+              </div>
+
+              <span
+                className="arc-window-shot"
+                style={{ "--ar": win.ratio, ...screenVars(win.screen) } as CSSProperties}
+              >
+                {/* Not art-directed, deliberately: a second source would have
+                    the phone preloading the desktop file and then fetching the
+                    small one. One file, sized for the widest draw there is. */}
+                <Image
+                  src={win.src}
+                  alt={win.alt[lang]}
+                  fill
+                  sizes="(max-width: 767px) 50vw, 460px"
+                  priority={lead}
+                  loading={lead ? undefined : "eager"}
+                />
+              </span>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/*
+        Two shapes of the same credit, and which one is drawn is the whole
+        difference between the two variants.
+
+        The classic composition names the product and who commissioned it,
+        because it draws one window and that window IS the product side. The
+        meaningful stage leads with the KIND of work instead — every object in
+        it carries the same two lines, so the reader gets a row of categories
+        rather than six differently-shaped labels — and the commissioner stays
+        in the document as a line for screen readers rather than being dropped.
+      */}
+      {/*
+        The credit, in the composition that needs one here.
+
+        The classic spread draws a single window and this is the only place its
+        product is named. The meaningful stage names its work in GROUPS instead
+        — one label per kind of evidence, on a baseline of their own — so a
+        credit under the window as well would be the same fact twice, and the
+        second one would be sitting where the platform beside it is drawn. It
+        goes to screen readers rather than away.
+      */}
+      {/*
+        The credit, in the composition that needs one here.
+
+        The classic spread draws a single window and this is the only place its
+        product is named, so it stays exactly as it was: the product, then who
+        commissioned it, hanging under the frame. The meaningful stage labels
+        every object instead — a tape label stuck on the picture itself — so
+        the credit under the window would be the same fact twice and the second
+        one would be sitting where the platform beside it is drawn. It goes to
+        screen readers rather than away.
+      */}
+      <motion.p
+        className="arc-window-caption"
+        data-quiet={labelled ? "1" : "0"}
+        style={flight ? { opacity: captionOpacity } : undefined}
+      >
+        <b>{win.name[lang]}</b>
+        <span>{win.kind[lang]}</span>
+      </motion.p>
+
+      {labelled ? (
+        <Caption
+          cap={win.cap}
+          lang={lang}
+          progress={progress}
+          flying={Boolean(flight)}
+          place={place}
+        />
+      ) : null}
+    </div>
+  );
+});
+
 const ShowcasePhone = memo(function ShowcasePhone({
   phone,
   spot,
-  isPhone,
+  place,
   lead,
   lang,
   mx,
@@ -3379,8 +4790,8 @@ const ShowcasePhone = memo(function ShowcasePhone({
   registerCraft,
 }: {
   phone: Handset;
-  spot: Handset["at"] | Berth;
-  isPhone: boolean;
+  spot: Placed;
+  place: Placement;
   /** the dominant one of the pair — it drifts further and floats slower */
   lead: boolean;
   lang: "ar" | "en";
@@ -3393,6 +4804,7 @@ const ShowcasePhone = memo(function ShowcasePhone({
   const px = useTransform(mx, [-0.5, 0.5], [-depth, depth]);
   const py = useTransform(my, [-0.5, 0.5], [-depth / 2, depth / 2]);
   const fly = useFlightStyle(flight, progress, plan);
+  const labelled = berthed(place) && place !== "phone";
 
   return (
     <div
@@ -3402,7 +4814,7 @@ const ShowcasePhone = memo(function ShowcasePhone({
       ref={registerCraft(`phone-${phone.id}`)}
       style={
         {
-          ...(isPhone
+          ...(berthed(place)
             ? berthVars(spot as Berth)
             : {
                 "--w": `${spot.w}%`,
@@ -3415,6 +4827,16 @@ const ShowcasePhone = memo(function ShowcasePhone({
         } as CSSProperties
       }
     >
+      {labelled ? (
+        <Caption
+          cap={phone.cap}
+          lang={lang}
+          progress={progress}
+          flying={Boolean(flight)}
+          place={place}
+        />
+      ) : null}
+
       <motion.div className="arc-phone-fly" style={flight ? fly : undefined}>
         <motion.div className="arc-phone-drift" style={still ? undefined : { x: px, y: py }}>
           <span className="arc-phone-float">

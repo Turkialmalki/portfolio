@@ -204,7 +204,8 @@ export type PlanFeed = {
  * absolutely — at which point the stack's own height stops including it, and
  * it is the deepest thing on that side of the composition.
  */
-const ART_SELECTOR = ".arc-tile, .arc-phone, .arc-window-stack, .arc-window-caption";
+const ART_SELECTOR =
+  ".arc-tile, .arc-phone, .arc-window-stack, .arc-window-caption, .arc-cap";
 
 export function useFlightPlan(
   flights: Flight[],
@@ -212,6 +213,17 @@ export function useFlightPlan(
   ready: boolean,
   /** phones pin with a measured lift; every other width pins at the top */
   lifted: boolean,
+  /**
+   * Whether the whole archive rests in ONE band above the identity.
+   *
+   * That used to be the same question as `lifted`, because the phone was the
+   * only layout shaped that way. The meaningful variant is shaped that way at
+   * every width, and it still needs the band's real depth measured — while a
+   * desktop-width stage still pins at the top of the composition rather than
+   * at a negative offset. So the two questions are asked separately, and on a
+   * phone they are still the same answer.
+   */
+  stacked: boolean = lifted,
 ) {
   const pinRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -344,10 +356,11 @@ export function useFlightPlan(
     const stage = stageRef.current;
     const layer = collageRef.current;
     if (!stage) return;
-    /* only the phone lays the archive out as one band above the identity;
-       every other width gives it columns either side, where this number is
-       meaningless and must not be left behind from a narrower layout */
-    if (!lifted || !layer) {
+    /* only a stacked layout lays the archive out as one band above the
+       identity; a layout that gives it columns either side has no such band,
+       where this number is meaningless and must not be left behind from a
+       narrower layout */
+    if (!stacked || !layer) {
       if (lastArt.current !== -1) {
         lastArt.current = -1;
         stage.style.removeProperty("--arc-art-measured");
@@ -368,7 +381,7 @@ export function useFlightPlan(
     if (Math.abs(height - lastArt.current) < 2) return;
     lastArt.current = height;
     stage.style.setProperty("--arc-art-measured", `${height}px`);
-  }, [lifted]);
+  }, [stacked]);
 
   /**
    * Returns a signature of what it measured, so the caller can tell whether the
@@ -945,5 +958,6 @@ export function FlightRoute({
     </motion.div>
   );
 }
+
 
 export type { Bi };
