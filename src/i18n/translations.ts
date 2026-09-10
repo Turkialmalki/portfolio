@@ -34,6 +34,8 @@ const translations = {
       panelLabel: "بطاقة التواصل",
       closeProfile: "أغلق بطاقة التواصل",
       emailLabel: "راسلني",
+      /* the booking action — opens the same Calendly page /contact links to */
+      bookLabel: "احجز مكالمة",
     },
     hero: {
       eyebrow: "قائد هندسة برمجيات · مستشار تقني",
@@ -174,6 +176,8 @@ const translations = {
       panelLabel: "Contact card",
       closeProfile: "Close contact card",
       emailLabel: "Email me",
+      /* the booking action — opens the same Calendly page /contact links to */
+      bookLabel: "Book a call",
     },
     hero: {
       eyebrow: "Engineering Leader · Technology Consultant",

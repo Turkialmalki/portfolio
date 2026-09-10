@@ -13,6 +13,7 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import { CONTACT } from "@/config/contact";
+import { MEETING_URL } from "@/config/careerServices";
 import { useSafeReducedMotion } from "@/hooks/useSafeReducedMotion";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import type { Language } from "@/i18n/translations";
@@ -96,16 +97,6 @@ function useHasHover() {
 /* ------------------------------------------------------------------ */
 /* The identity                                                        */
 /* ------------------------------------------------------------------ */
-
-/**
- * One language at a time. The document is in Arabic or it is in English, and
- * the card says so in that language only — a header is not the place to print
- * a name twice.
- */
-const IDENTITY = {
-  name: { ar: "تركي", en: "Turki" },
-  role: { ar: "قائد هندسة البرمجيات", en: "Engineering Leader" },
-} as const;
 
 /* ------------------------------------------------------------------ */
 /* The shade's timing                                                  */
@@ -317,15 +308,19 @@ function ProfileCard({
           />
         </span>
 
-        {/* one grid column of its own, so a phone can fold the words away and
-            give their width to the actions — without them ever wrapping */}
-        <span className="tb-idwrap">
-          <span className="tb-idtext">
-            <span className="tb-name">{IDENTITY.name[lang]}</span>
-            <span className="tb-role">{IDENTITY.role[lang]}</span>
-          </span>
-        </span>
+        {/*
+          The name and the role are not printed here any more.
 
+          They were the two things on this card a reader already had: the name
+          is the largest word in the hero directly beneath it, and the role is
+          the line under that name. Printing them a second time in the header
+          made the card a long white bar with a photograph on the end of it —
+          and it is the photograph that identifies the page, not the caption.
+
+          Both go on being said. The portrait's alt text names the person, the
+          button's own label says what the card is for, and neither is a thing
+          a sighted reader had to be shown twice.
+        */}
         <span className="tb-sr">
           {open ? t.topbar.closeProfile : t.topbar.openProfile}
         </span>
@@ -343,6 +338,27 @@ function ProfileCard({
         aria-label={t.topbar.panelLabel}
       >
         <div className="tb-fold-in">
+          {/*
+            Book a call — the same Calendly page /contact already links to, so
+            the header cannot offer a slot the contact page does not have.
+
+            It leads the row because it is the thing a reader who opened this
+            card most likely wants: the email is a message that waits, this is
+            a time that is already free. It opens in a new tab rather than
+            navigating away from a page somebody is halfway down.
+          */}
+          <a
+            className="tb-act tb-act-book"
+            href={MEETING_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={act(0)}
+            aria-label={t.topbar.bookLabel}
+            title={t.topbar.bookLabel}
+          >
+            <BookingGlyph />
+          </a>
+
           {/* An icon, not an address. The address is in the label, where a
               screen reader will read it and a tooltip will show it, and in the
               mailto the icon opens — printing it across the header only made
@@ -350,7 +366,7 @@ function ProfileCard({
           <a
             className="tb-act"
             href={`mailto:${CONTACT.email}`}
-            style={act(0)}
+            style={act(1)}
             aria-label={`${t.topbar.emailLabel} — ${CONTACT.email}`}
             title={CONTACT.email}
           >
@@ -360,13 +376,67 @@ function ProfileCard({
             </svg>
           </a>
 
-          <span className="tb-langslot" style={act(1)}>
+          <span className="tb-langslot" style={act(2)}>
             <LanguagePill lang={lang} setLang={setLang} label={t.topbar.switchLanguage} />
             <LanguageFlip lang={lang} setLang={setLang} label={t.topbar.switchLanguage} />
           </span>
         </div>
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Booking: a calendar that opens                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The booking chip's glyph, drawn as a calendar that OPENS rather than a
+ * calendar that sits there.
+ *
+ * Every part of it is a separate element so the hover can move them
+ * independently: the two rings lift a hair off the page, the page itself
+ * settles, and the four dates arrive one after another in the order you would
+ * read them. That stagger is the whole idea — it is what a date being CHOSEN
+ * looks like, which is what the chip does when you press it.
+ *
+ * It costs nothing to run. There is no JavaScript behind it, no keyframes
+ * looping in the background, and the only properties that change are
+ * `transform` and `opacity` on six small nodes inside one 17px box — so it is
+ * a compositor job that exists for exactly as long as the pointer is over the
+ * chip. Each date carries its own index rather than being selected by a chain
+ * of nth-child rules, which is the same convention the fold's own stagger
+ * uses two rules above it.
+ *
+ * `transform-box: fill-box` is not optional on SVG children: without it a
+ * scale is applied about the viewBox's origin rather than the shape's own
+ * centre, and the dates grow out of the top-left corner of the icon instead
+ * of out of themselves.
+ */
+function BookingGlyph() {
+  return (
+    <svg className="tb-cal" viewBox="0 0 24 24" aria-hidden="true">
+      {/* the rings the page hangs from */}
+      <path className="tb-cal-ring" d="M8.2 2.9v3.4" />
+      <path className="tb-cal-ring" d="M15.8 2.9v3.4" />
+
+      {/* the page, and the band across the head of it */}
+      <rect className="tb-cal-page" x="3.4" y="4.9" width="17.2" height="16.2" rx="3.4" />
+      <path className="tb-cal-band" d="M3.4 10h17.2" />
+
+      {/*
+        The dates, arriving in reading order — two rows of three, because one
+        row and a stray underneath it reads as a calendar missing most of a
+        month rather than as a month. The one that lands last is the one being
+        chosen, and it lands bigger.
+      */}
+      <circle className="tb-cal-day" cx="8.2" cy="13.6" r="1.05" style={{ "--d": 0 } as CSSProperties} />
+      <circle className="tb-cal-day" cx="12" cy="13.6" r="1.05" style={{ "--d": 1 } as CSSProperties} />
+      <circle className="tb-cal-day" cx="15.8" cy="13.6" r="1.05" style={{ "--d": 2 } as CSSProperties} />
+      <circle className="tb-cal-day" cx="8.2" cy="17.6" r="1.05" style={{ "--d": 3 } as CSSProperties} />
+      <circle className="tb-cal-day tb-cal-day-on" cx="12" cy="17.6" r="1.05" style={{ "--d": 4 } as CSSProperties} />
+      <circle className="tb-cal-day" cx="15.8" cy="17.6" r="1.05" style={{ "--d": 5 } as CSSProperties} />
+    </svg>
   );
 }
 
@@ -799,6 +869,19 @@ const TOPBAR_CSS = `
   /* ══════════════ the identity card ══════════════ */
 
   .tb-card {
+    /*
+      ONE number, and the portrait is derived from it.
+
+      Now that the card is a disc rather than a pill with words in it, "is it
+      round?" is a question with an arithmetic answer: the portrait has to be
+      the card's height less its border and less twice its padding, or the
+      shut card comes out a couple of pixels wider than it is tall — which is
+      not a pill and not a circle, and is exactly what it used to be at three
+      of the four sizes here. Every breakpoint below sets these two and the
+      portrait follows.
+    */
+    --tb-h: 48px;
+    --tb-pad: 5px;
     pointer-events: auto;
     position: relative;
     display: flex;
@@ -806,8 +889,8 @@ const TOPBAR_CSS = `
     flex: 0 1 auto;
     min-width: 0;
     /* fixed, so opening it can never change the strip the hero reserves */
-    height: 48px;
-    padding: 5px;
+    height: var(--tb-h);
+    padding: var(--tb-pad);
     /* A PILL, not a squircle. The radius is half the height at every size, so
        the card is one continuous capsule around a circular portrait rather
        than a rounded box with a rounded box inside it. */
@@ -883,8 +966,17 @@ const TOPBAR_CSS = `
   .tb-portrait {
     position: relative;
     flex: 0 0 auto;
-    width: 40px;
-    height: 40px;
+    /*
+      Sized so the SHUT card is a circle, not a pill with one thing in it.
+
+      The card is 48 tall with 5px of padding, so a 38px portrait makes it 48
+      wide as well — one white disc with a face in it, which is what it is now
+      that the name and the role are no longer printed beside it. Every larger
+      breakpoint already worked this way; only the base size did not, and it
+      came out 50x48 — two pixels of pill nobody could name.
+    */
+    width: calc(var(--tb-h) - 2px - var(--tb-pad) * 2);
+    height: calc(var(--tb-h) - 2px - var(--tb-pad) * 2);
     /* a circle, always — not a squircle that rounds up when the card opens */
     border-radius: 50%;
     overflow: hidden;
@@ -910,64 +1002,24 @@ const TOPBAR_CSS = `
     box-shadow: 0 0 0 1px var(--tb-border-hi), inset 0 0 0 1px rgba(255,255,255,.34);
   }
 
-  .tb-idwrap {
-    display: grid;
-    grid-template-columns: 1fr;
-    min-width: 0;
-    transition: grid-template-columns .5s var(--tb-ease);
-  }
-
-  .tb-idtext {
-    /* direction is inherited from .tb-id, which is where it is decided */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 0;
-    min-width: 0;
-    /* clips horizontally so the words can fold away on a phone — which is
-       exactly why the lines below must carry their own descender room */
-    overflow: hidden;
-    padding-inline: 11px 18px;
-    transition: opacity .28s ease;
-  }
-
-  /*
-    Thmanyah Sans is 1000/-250 per em: its glyph box is 1.25em tall BEFORE any
-    line-height applies. A line-height of 1.25 therefore leaves the tail of ي
-    sitting exactly on the edge of the line box, and the moment an ancestor
-    clips — .tb-idtext does — the descender is cut off. 1.45 is the room the
-    script actually needs, and it costs nothing: these are two single lines in
-    a flex column, so the extra leading is centred, not stacked.
-
-    Neither line truncates any more either. There is one name and one role, in
-    one language, and both are short — an ellipsis here only ever hid a letter.
-  */
-  .tb-name {
-    font-size: var(--chrome-name, 15px);
-    font-weight: var(--chrome-name-weight, 700);
-    line-height: 1.45;
-    letter-spacing: -.01em;
-    white-space: nowrap;
-  }
-
-  .tb-role {
-    font-size: var(--chrome-label, 11px);
-    font-weight: var(--chrome-label-weight, 500);
-    line-height: 1.45;
-    color: var(--tb-ink-soft);
-    white-space: nowrap;
-    transition: color .45s ease;
-  }
-
   /* the fold itself */
+  /*
+    The fold, and the reason its shut track is a minmax rather than a bare 0fr.
+
+    A bare 0fr track is still at least as wide as its item's automatic minimum
+    size, and the row inside this one carries a leading padding — so shut, the
+    card was eight pixels wider than it was tall and the disc was not a disc.
+    minmax(0, 0fr) says the track may genuinely be nothing, and the row is
+    already clipped, so what is clipped is clipped.
+  */
   .tb-fold {
     display: grid;
-    grid-template-columns: 0fr;
+    grid-template-columns: minmax(0, 0fr);
     height: 100%;
     transition: grid-template-columns .55s var(--tb-ease);
   }
 
-  .tb-card[data-open="1"] .tb-fold { grid-template-columns: 1fr; }
+  .tb-card[data-open="1"] .tb-fold { grid-template-columns: minmax(0, 1fr); }
 
   .tb-fold-in {
     display: flex;
@@ -1029,6 +1081,130 @@ const TOPBAR_CSS = `
   }
 
   .tb-act svg { width: 17px; height: 17px; display: block; }
+
+  /* ══════════════ the booking chip ══════════════ */
+
+  /*
+    The one action on this card that is not a message but a TIME, so it is the
+    one that is filled rather than tinted — a reader glancing at the row should
+    be able to tell without reading the labels which of the two is the offer.
+  */
+  .tb-act.tb-act-book {
+    background: var(--tb-ink);
+    color: var(--tb-solid);
+    transition: background-color .3s ease, color .3s ease, transform .35s var(--tb-ease);
+  }
+
+  /*
+    It keeps its fill under the pointer.
+
+    The generic chip lightens on hover because it is a tinted plate going a
+    shade brighter; this one is already the darkest thing on the card, and
+    lightening it would read as it being switched OFF at the moment it is
+    being reached for. It lifts instead — the same gesture the card itself
+    makes when it opens. The selector carries the class twice on purpose: the
+    generic rule below it is equally specific, and source order is not
+    something a later edit should have to remember.
+  */
+  @media (hover: hover) and (pointer: fine) {
+    .tb-act.tb-act-book:hover,
+    .tb-act.tb-act-book:focus-visible {
+      background: var(--tb-ink);
+      transform: translate3d(0, -1.5px, 0);
+    }
+  }
+
+  /*
+    The calendar, drawn rather than iconised.
+
+    Every part is stroked from the chip's own colour, so there is no second
+    palette to keep in step with the theme — the glyph is whatever the chip's
+    foreground is, in both themes and in both states.
+  */
+  .tb-cal {
+    width: 18px;
+    height: 18px;
+    display: block;
+    overflow: visible;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* every moving part scales and turns about ITS OWN centre — without this an
+     SVG child transforms about the viewBox's origin and the dates grow out of
+     the corner of the icon */
+  .tb-cal-ring,
+  .tb-cal-page,
+  .tb-cal-band,
+  .tb-cal-day {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform .38s var(--tb-ease), opacity .24s ease;
+  }
+
+  /* At rest the calendar is shut: the page is whole, the rings are down, and
+     the dates are not on it yet. */
+  .tb-cal-day {
+    fill: currentColor;
+    stroke: none;
+    opacity: 0;
+    transform: scale(.2);
+  }
+
+  .tb-cal-day-on { opacity: 0; }
+
+  /*
+    And it opens under the pointer.
+
+    The rings lift off the page, the page settles a hair, and the four dates
+    arrive in the order they are read — which is what a date being chosen looks
+    like, and what pressing this chip is about to do. The delay is carried on
+    each date as its own index rather than in a chain of nth-child rules, the
+    same way the fold's actions carry theirs.
+  */
+  @media (hover: hover) and (pointer: fine) {
+    .tb-act-book:hover .tb-cal-ring,
+    .tb-act-book:focus-visible .tb-cal-ring {
+      transform: translateY(-1.4px);
+    }
+
+    .tb-act-book:hover .tb-cal-page,
+    .tb-act-book:focus-visible .tb-cal-page {
+      transform: translateY(.5px) scale(1.03);
+    }
+
+    .tb-act-book:hover .tb-cal-day,
+    .tb-act-book:focus-visible .tb-cal-day {
+      opacity: 1;
+      transform: none;
+      transition-delay: calc(50ms + var(--d, 0) * 42ms);
+    }
+
+    /* the one that is being booked lands last and lands bigger */
+    .tb-act-book:hover .tb-cal-day-on,
+    .tb-act-book:focus-visible .tb-cal-day-on {
+      transform: scale(1.45);
+    }
+  }
+
+  /*
+    Touch has no hover to open it with, so the dates are simply ON there — the
+    glyph reads as a calendar with a date chosen rather than as an empty page
+    waiting for a pointer that is never coming.
+  */
+  @media not all and (hover: hover) and (pointer: fine) {
+    .tb-cal-day { opacity: 1; transform: none; }
+    .tb-cal-day-on { opacity: 1; transform: scale(1.45); }
+  }
+
+  /* nothing travels, and the calendar is drawn in the state it settles in */
+  @media (prefers-reduced-motion: reduce) {
+    .tb-cal-day { opacity: 1 !important; transform: none !important; }
+    .tb-cal-day-on { transform: scale(1.45) !important; }
+  }
   .tb-act:focus-visible { outline: none; box-shadow: var(--tb-ring); }
 
   @media (hover: hover) and (pointer: fine) {
@@ -1379,8 +1555,6 @@ const TOPBAR_CSS = `
     .tb-card {
       transition: background-color .45s ease, border-color .45s ease, transform .45s var(--tb-ease);
     }
-    .tb-card[data-open="1"] .tb-idwrap { grid-template-columns: 0fr; }
-    .tb-card[data-open="1"] .tb-idtext { opacity: 0; }
   }
 
   /* The narrowest phones. The chips do not shrink — they are the one thing a
@@ -1393,10 +1567,8 @@ const TOPBAR_CSS = `
 
   @media (min-width: 768px) {
     .tb-row { padding-block: 14px; padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
-    .tb-card { height: 54px; padding: 6px; }
+    .tb-card { --tb-h: 54px; --tb-pad: 6px; }
     .tb-id::after { inset: -6px -3px; }
-    .tb-portrait { width: 42px; height: 42px; }
-    .tb-idtext { padding-inline: 12px 20px; }
     .tb-fold-in { gap: 6px; padding-inline-start: 8px; }
     .tb-act { height: 42px; min-width: 42px; }
     /* room to spare on a pointer device, so the targets take it */
@@ -1419,8 +1591,7 @@ const TOPBAR_CSS = `
      to move for any of this. */
   @media (min-width: 1024px) {
     .tb-row { padding-block: 10px; padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
-    .tb-card { height: 58px; padding: 6px; }
-    .tb-portrait { width: 46px; height: 46px; }
+    .tb-card { --tb-h: 58px; --tb-pad: 6px; }
     .tw { width: 52px; height: 72px; }
     .tw-hull { padding: 5.5px; }
     .tw-grip { bottom: 5px; }
@@ -1435,8 +1606,10 @@ const TOPBAR_CSS = `
     .tb-card,
     .tb-card[data-open="1"],
     .tb-portrait,
-    .tb-idwrap,
-    .tb-idtext,
+    .tb-cal-ring,
+    .tb-cal-page,
+    .tb-cal-band,
+    .tb-cal-day,
     .tb-fold,
     .tb-fold-in > *,
     .tb-act,
