@@ -341,22 +341,6 @@ export const STOPS: Stop[] = [
       external: true,
     },
   },
-  {
-    id: "cv-product",
-    anchor: "spark",
-    period: { ar: "اليوم", en: "Today" },
-    org: { ar: "مراجعة السيرة الذاتية وتحليل المسار", en: "CV Review & Career Analysis" },
-    role: { ar: "منتج مستقل — مباشر الآن", en: "Independent product — live" },
-    summary: {
-      ar: "منتج بنيته من الفكرة إلى الإطلاق: ترفع سيرتك الذاتية، فتحصل على تقييم واضح، وما الذي يعيقها، وأول خطوة لتحسينها.",
-      en: "Designed and built end to end: upload a CV and get a clear score, what is holding it back, and the first thing to fix.",
-    },
-    tags: ["Next.js", "TypeScript", "Supabase"],
-    link: {
-      label: { ar: "جرّب التحليل", en: "Try the analysis" },
-      href: "/career",
-    },
-  },
 ];
 
 const COPY = {
@@ -716,7 +700,7 @@ export default function FlightPath() {
                 <p>{copy.arrivalLine}</p>
               </div>
               <Link
-                href="/contact"
+                href="#contact-footer"
                 className="fp-arrival-cta"
                 onClick={() =>
                   trackEvent("contact_cta_click", { location: "flight_path" })

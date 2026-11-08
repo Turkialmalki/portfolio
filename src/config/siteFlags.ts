@@ -29,4 +29,4 @@ export const SHOW_PROJECTS =
  * Where "view my work" points when the portfolio is not public: the flight-path
  * timeline on the homepage, which carries the same work as verified proof.
  */
-export const WORK_HREF = SHOW_PROJECTS ? "/projects" : "/#journey";
+export const WORK_HREF = "#work";

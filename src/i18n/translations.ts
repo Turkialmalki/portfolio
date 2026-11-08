@@ -23,6 +23,7 @@ const translations = {
       about: "عنّي",
       blog: "المدونة",
       contact: "تواصل",
+      journey: "الرحلة",
     },
     topbar: {
       /* the cabin window, which is the theme control */
@@ -165,6 +166,7 @@ const translations = {
       about: "About",
       blog: "Blog",
       contact: "Contact",
+      journey: "Journey",
     },
     topbar: {
       /* the cabin window, which is the theme control */

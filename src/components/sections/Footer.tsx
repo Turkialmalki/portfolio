@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import {
@@ -12,7 +11,6 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import { CONTACT } from "@/config/contact";
-import { SHOW_PROJECTS } from "@/config/siteFlags";
 
 type Bezier = [number, number, number, number];
 
@@ -111,11 +109,9 @@ export default function Footer() {
   const copy = COPY[lang];
 
   const pageLinks = [
-    { label: t.nav.home, href: "/" },
-    ...(SHOW_PROJECTS ? [{ label: t.nav.portfolio, href: "/projects" }] : []),
-    { label: t.nav.services, href: "/services" },
-    { label: t.nav.about, href: "/about" },
-    { label: t.nav.blog, href: "/blog" },
+    { label: t.nav.home, href: "#home" },
+    { label: t.nav.journey, href: "#journey" },
+    { label: t.nav.portfolio, href: "#work" },
   ];
 
   const inView = useInView(ref, {
@@ -181,14 +177,14 @@ export default function Footer() {
                 scale: 0.98,
               }}
             >
-              <Link
-                href="/contact"
+              <a
+                href={`mailto:${CONTACT.email}`}
                 onClick={() => trackEvent("contact_click", { location: "footer" })}
                 className="contact-button"
               >
                 {copy.cta}
                 <ArrowGlyph />
-              </Link>
+              </a>
             </motion.div>
           </div>
 
@@ -268,9 +264,9 @@ export default function Footer() {
           <div className="footer-rail">
             <nav className="footer-links" aria-label={copy.pages}>
               {pageLinks.map((item) => (
-                <Link key={item.label} href={item.href}>
+                <a key={item.label} href={item.href}>
                   {item.label}
-                </Link>
+                </a>
               ))}
             </nav>
 

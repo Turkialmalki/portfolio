@@ -4,11 +4,12 @@ import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import Preloader from "./Preloader";
 import TopBar from "./TopBar";
-import Navbar from "./Navbar";
 import Hero from "./sections/Hero";
 import FlightPath from "./sections/FlightPath";
-import FAQ from "./sections/FAQ";
-import BlogPreview from "./sections/BlogPreview";
+import Impact from "./story/Impact";
+import Stack from "./story/Stack";
+import Life from "./story/Life";
+import Work from "./work/Work";
 import Footer from "./sections/Footer";
 
 /**
@@ -16,9 +17,9 @@ import Footer from "./sections/Footer";
  * flight-path timeline, which carries the career, the proof and the numbers in
  * a single pass, and lands on the FAQ and the contact CTA in the footer.
  *
- * The old standalone "Featured Work", "Behind the Screens" and "Why Me?"
- * sections are deliberately absent — their content now lives inside the
- * timeline. Their components stay in the tree for the other routes.
+ * This is the whole site: there are no other routes. The timeline tells the
+ * career; the Work section lets a visitor open any product as a full case
+ * study in a pop-up without leaving the page.
  */
 export default function HomeClient() {
   const [loading, setLoading] = useState(true);
@@ -34,12 +35,13 @@ export default function HomeClient() {
         style={{ pointerEvents: loading ? "none" : "auto" }}
       >
         <TopBar />
-        <Navbar />
         <main>
           <Hero ready={!loading} />
           <FlightPath />
-          <FAQ />
-          <BlogPreview />
+          <Work />
+          <Impact />
+          <Stack />
+          <Life />
         </main>
         <Footer />
       </motion.div>

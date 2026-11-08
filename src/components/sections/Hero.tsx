@@ -1281,9 +1281,9 @@ export default function Hero({ ready = true }: HeroProps) {
 
                   <motion.div className="hero-cta-row" {...enter(0.28, 12)}>
                     <Link
-                      href="/services"
+                      href="#contact-footer"
                       className="hero-cta-primary"
-                      onClick={() => trackEvent("quick_service_cta_click", { location: "hero" })}
+                      onClick={() => trackEvent("contact_cta_click", { location: "hero" })}
                     >
                       {t.hero.ctaPrimary}
                     </Link>
