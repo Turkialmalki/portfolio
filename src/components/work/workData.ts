@@ -93,9 +93,6 @@ const COVER: Record<string, { cover?: string; pos?: string; gallery: { src: stri
       { src: "/op/munasib.jpg", label: { ar: "واجهة المنتج", en: "Product interface" } },
     ],
   },
-  hala: { gallery: [] },
-  "sap-cloud-cx": { gallery: [] },
-  "lean-technologies": { gallery: [] },
 };
 
 function fromProject(p: ProjectData, lang: Lang): WorkCase {
@@ -239,13 +236,40 @@ export function buildWork(lang: Lang): WorkCase[] {
       },
       lang,
     ),
-    study("hala"),
-    study("sap-cloud-cx"),
-    study("lean-technologies"),
+    fromStop(
+      "alrajhi",
+      {
+        num: "04",
+        title: { ar: "تطبيق مصرف الراجحي", en: "Al Rajhi Mobile Banking" },
+        subtitle: { ar: "رحلات مصرفية معقّدة، بسيطة على الجوال", en: "Complex banking, made simple on mobile" },
+        industry: { ar: "مصرف الراجحي", en: "Al Rajhi Bank" },
+        year: "2019–2022",
+        accent: "#1E8FFF",
+        ground: "linear-gradient(148deg, #0A1424 0%, #0F2038 55%, #09121F 100%)",
+        cover: "/hero/alrajhi-pair.jpg",
+        pos: "center 40%",
+      },
+      lang,
+    ),
+    fromStop(
+      "emkan",
+      {
+        num: "05",
+        title: { ar: "منصة إمكان", en: "Emkan Platform" },
+        subtitle: { ar: "من التقديم إلى الصرف في تجربة واحدة", en: "From application to disbursement, in one flow" },
+        industry: { ar: "إمكان للتمويل", en: "Emkan Finance" },
+        year: "2022–2024",
+        accent: "#2BB673",
+        ground: "linear-gradient(148deg, #0A1A14 0%, #0F2A20 55%, #09150F 100%)",
+        cover: "/hero/emkan.jpg",
+        pos: "center 30%",
+      },
+      lang,
+    ),
     fromStop(
       "ventures",
       {
-        num: "07",
+        num: "06",
         title: { ar: "اثنين", en: "Ithnain" },
         subtitle: { ar: "تجربة اجتماعية", en: "A social experience" },
         industry: { ar: "تطبيق اجتماعي", en: "Social app" },

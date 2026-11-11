@@ -26,6 +26,7 @@ import {
   LuSparkles,
   LuTrophy,
 } from "react-icons/lu";
+import { FiDownload } from "react-icons/fi";
 import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import { useSafeReducedMotion } from "@/hooks/useSafeReducedMotion";
@@ -351,8 +352,10 @@ const COPY = {
     years: "‎+9 سنوات",
     arrivalKicker: "الوجهة الحالية",
     arrival: "اليوم",
-    arrivalLine: "الرحلة مستمرة",
+    arrivalLine: "الرحلة مستمرة، والمحطة القادمة قد تكون مشروعك.",
     arrivalCta: "لنتحدث",
+    arrivalCv: "تحميل السيرة الذاتية",
+    arrivalStats: [["+9", "سنوات خبرة"], ["8", "جهات عملت معها"], ["3", "جوائز"]],
     credentialsLabel: "اعتمادات",
     proofLabel: "أعمال داعمة",
     now: "الآن",
@@ -367,6 +370,8 @@ const COPY = {
     arrival: "Today",
     arrivalLine: "The journey continues — the next stop could be yours.",
     arrivalCta: "Let's talk",
+    arrivalCv: "Download CV",
+    arrivalStats: [["9+", "years of experience"], ["8", "organisations"], ["3", "awards"]],
     credentialsLabel: "Credentials",
     proofLabel: "Supporting work",
     now: "Now",
@@ -695,19 +700,39 @@ export default function FlightPath() {
             </span>
             <div className="fp-arrival-card">
               <div className="fp-arrival-copy">
-                <span className="fp-arrival-kicker">{copy.arrivalKicker}</span>
+                <span className="fp-arrival-kicker">
+                  <i aria-hidden="true" />
+                  {copy.arrivalKicker}
+                </span>
                 <strong>{copy.arrival}</strong>
                 <p>{copy.arrivalLine}</p>
               </div>
-              <Link
-                href="#contact-footer"
-                className="fp-arrival-cta"
-                onClick={() =>
-                  trackEvent("contact_cta_click", { location: "flight_path" })
-                }
-              >
-                {copy.arrivalCta}
-              </Link>
+              <ul className="fp-arrival-stats">
+                {copy.arrivalStats.map(([n, l]) => (
+                  <li key={l}>
+                    <b>{n}</b>
+                    <span>{l}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="fp-arrival-actions">
+                <Link
+                  href="#contact-footer"
+                  className="fp-arrival-cta"
+                  onClick={() => trackEvent("contact_cta_click", { location: "flight_path" })}
+                >
+                  {copy.arrivalCta}
+                </Link>
+                <a
+                  className="fp-arrival-cv"
+                  href={`/Turki-Almalki-CV-${lang}.pdf`}
+                  download
+                  onClick={() => trackEvent("cv_download", { lang })}
+                >
+                  <FiDownload size={16} aria-hidden="true" />
+                  {copy.arrivalCv}
+                </a>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -2010,11 +2035,11 @@ const STYLES = `
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 18px;
+    gap: 20px 24px;
     max-width: 880px;
-    padding: 22px 24px;
-    border-radius: 22px;
-    background: var(--fp-card);
+    padding: clamp(20px, 3vw, 30px);
+    border-radius: 28px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--fp-accent) 14%, var(--fp-card)), var(--fp-card) 70%);
     border: 1px solid var(--fp-card-border);
     box-shadow: var(--fp-card-shadow);
     backdrop-filter: blur(16px);
@@ -2102,6 +2127,17 @@ const STYLES = `
     transition: transform 280ms cubic-bezier(.16,1,.3,1), box-shadow 280ms ease;
   }
 
+  .fp-arrival-kicker i { display: inline-block; width: 8px; height: 8px; margin-inline-end: 8px; border-radius: 50%; background: var(--fp-accent); animation: fp-live 2s ease-out infinite; }
+  @keyframes fp-live { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--fp-accent) 55%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+  .fp-arrival-copy strong { font-size: clamp(30px, 5vw, 48px); line-height: 1.1; }
+  .fp-arrival-stats { flex: 1 1 100%; list-style: none; margin: 0; padding: 14px 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; border-top: 1px solid var(--fp-card-border); }
+  .fp-arrival-stats li { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .fp-arrival-stats b { font-size: clamp(24px, 4vw, 34px); font-weight: 900; letter-spacing: -.03em; line-height: 1.1; }
+  .fp-arrival-stats span { font-size: 12.5px; color: var(--text-secondary, #626262); }
+  .fp-arrival-actions { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 10px; }
+  .fp-arrival-cv { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 12px 22px; border-radius: 999px; font-size: 14px; font-weight: 700; text-decoration: none; color: var(--text-primary, #0d0e12); box-shadow: inset 0 0 0 1.5px var(--fp-card-border); transition: transform 280ms cubic-bezier(.16,1,.3,1); }
+  .fp-arrival-cv:hover { transform: translateY(-2px); }
+  .fp-arrival-cv:focus-visible { outline: 3px solid var(--fp-accent); outline-offset: 3px; }
   .fp-arrival-cta:hover { transform: translateY(-2px); box-shadow: 0 18px 38px rgba(0,0,0,.2); }
 
   /* ── progress chip ───────────────────────────────────── */
@@ -2251,7 +2287,7 @@ const STYLES = `
     .fp-highlights { grid-template-columns: 1fr; }
     .fp-metric { padding: 9px 13px; }
     .fp-metric b { font-size: 18px; }
-    .fp-arrival-cta { width: 100%; justify-content: center; }
+    .fp-arrival-actions > * { flex: 1 1 100%; justify-content: center; }
   }
 
   /* ── reduced motion ──────────────────────────────────── */
@@ -2280,6 +2316,8 @@ const STYLES = `
     .fp-cred,
     .fp-link,
     .fp-arrival-cta,
+    .fp-arrival-cv,
     .fp-dot { transition: none !important; }
+    .fp-arrival-kicker i { animation: none; }
   }
 `;

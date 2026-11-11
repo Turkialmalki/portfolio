@@ -15,13 +15,13 @@ const COPY = {
     kicker: "",
     title: "أعمالي",
     sub: "اضغط على أي مشروع لتقرأ قصته.",
-    open: "افتح القصة",
+    open: "افتح المشروع",
   },
   en: {
     kicker: "",
     title: "Work",
     sub: "Tap a project to read its story.",
-    open: "Open the story",
+    open: "Open project",
   },
 } as const;
 
@@ -235,10 +235,10 @@ export default function Work() {
 
       <style>{`
         .sc-root { background: var(--bg-primary); color: var(--text-primary); }
-        .sc-head { max-width: 1120px; margin: 0 auto; padding: clamp(80px, 14vw, 170px) clamp(20px, 4vw, 40px) clamp(28px, 5vw, 56px); }
+        .sc-head { text-align: center; max-width: 1120px; margin: 0 auto; padding: clamp(80px, 14vw, 170px) clamp(20px, 4vw, 40px) clamp(28px, 5vw, 56px); }
         .sc-kicker { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
         .sc-head h2 { margin: 12px 0 14px; font-size: clamp(38px, 8vw, 88px); line-height: 1.06; font-weight: 900; }
-        .sc-head p { margin: 0; max-width: 46ch; font-size: clamp(16px, 2vw, 20px); line-height: 1.7; color: var(--text-secondary); }
+        .sc-head p { margin: 0 auto; max-width: 46ch; font-size: clamp(16px, 2vw, 20px); line-height: 1.7; color: var(--text-secondary); }
 
         .sc-deck { max-width: 1120px; margin: 0 auto; padding: 0 clamp(14px, 3vw, 24px) clamp(60px, 10vw, 120px); }
         .sc-card {

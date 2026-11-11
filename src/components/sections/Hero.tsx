@@ -21,7 +21,6 @@ import {
   type MotionValue,
 } from "framer-motion";
 import { trackEvent } from "@/lib/analytics";
-import { WORK_HREF } from "@/config/siteFlags";
 import {
   HERO_VISUAL_VARIANT,
   heroVariantOverride,
@@ -1286,14 +1285,6 @@ export default function Hero({ ready = true }: HeroProps) {
                       onClick={() => trackEvent("contact_cta_click", { location: "hero" })}
                     >
                       {t.hero.ctaPrimary}
-                    </Link>
-
-                    <Link
-                      href={WORK_HREF}
-                      className="hero-cta-secondary"
-                      onClick={() => trackEvent("portfolio_cta_click", { location: "hero" })}
-                    >
-                      {t.hero.ctaSecondary}
                     </Link>
                   </motion.div>
                 </motion.div>
@@ -4173,6 +4164,8 @@ export default function Hero({ ready = true }: HeroProps) {
         /* The paper stickers named each object and landed on top of its
            neighbours. The pieces speak for themselves; the labels are gone. */
         .arc-cap { display: none !important; }
+        .hero-cta-row { width: 100%; }
+        .hero-cta-primary { flex: 1 1 auto; min-width: min(100%, 260px); min-height: 54px; font-size: 15px; }
       `}</style>
     </section>
   );

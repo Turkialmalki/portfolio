@@ -145,7 +145,7 @@ export const ANALYTICS_ID: Record<ServiceId, string> = {
  * /book route) in one place. `CONTACT_URL` is the quieter, on-site fallback
  * and the destination for every "coming soon" interest click.
  */
-export const MEETING_URL = "https://calendly.com/turkialmalki202200/30min";
+export const MEETING_URL = "https://cal.com/turki-almalki/15min";
 export const CONTACT_URL = "/contact";
 
 /** PLACEHOLDER — swap each for the real Tally intake form. */

@@ -5,14 +5,8 @@ import { useEffect, useRef, useSyncExternalStore, type CSSProperties } from "rea
 import { useLanguage } from "@/i18n/LanguageProvider";
 import Reveal from "./Reveal";
 
-type Bi = { ar: string; en: string };
 type Place = "milan" | "como" | "swiss";
 
-const PLACE: Record<Place, Bi> = {
-  milan: { ar: "ميلانو", en: "Milan" },
-  como: { ar: "كومو", en: "Como" },
-  swiss: { ar: "سويسرا", en: "Switzerland" },
-};
 
 /* The travel photographs, in the order they sit on the page. To add one, drop a
    resized file in /public/life and add a row here. `ratio` is the crop the tile
@@ -37,8 +31,8 @@ const PHOTOS: { n: number; place: Place; ratio: string; pos?: string }[] = [
 ];
 
 const COPY = {
-  ar: { title: "خارج الشاشة", sub: "ميلانو · كومو · سويسرا" },
-  en: { title: "Off screen", sub: "Milan · Como · Switzerland" },
+  ar: { title: "خارج الشاشة", sub: "سفر · كتب · رياضة" },
+  en: { title: "Off screen", sub: "Travel · Books · Sport" },
 } as const;
 
 /* Two columns on a phone, three from 700px. Read once per change through
@@ -115,12 +109,11 @@ export default function Life() {
                   <figure className="lf-fig" style={{ aspectRatio: p.ratio, "--pos": p.pos ?? "center" } as CSSProperties}>
                     <Image
                       src={`/life/${p.n}.jpg`}
-                      alt={PLACE[p.place][lang]}
+                      alt=""
                       fill
                       sizes="(max-width: 700px) 46vw, 360px"
                       className="lf-img"
                     />
-                    <figcaption>{PLACE[p.place][lang]}</figcaption>
                   </figure>
                 </Reveal>
               ))}
@@ -132,7 +125,7 @@ export default function Life() {
       <style>{`
         .lf-root { background: var(--bg-primary); color: var(--text-primary); padding: clamp(72px, 12vw, 150px) clamp(16px, 4vw, 40px) clamp(72px, 10vw, 140px); overflow-x: clip; }
         .lf-wrap { max-width: 1120px; margin: 0 auto; }
-        .lf-head { margin-bottom: clamp(24px, 4vw, 48px); }
+        .lf-head { text-align: center; margin-bottom: clamp(24px, 4vw, 48px); }
         .lf-head h2 { margin: 0 0 10px; font-size: clamp(38px, 7vw, 80px); line-height: 1.1; font-weight: 900; letter-spacing: -.02em; }
         .lf-head p { margin: 0; font-size: clamp(16px, 2vw, 20px); color: var(--text-secondary); }
         .lf-cols { display: grid; gap: clamp(10px, 1.6vw, 16px); grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); align-items: start; padding-block: 40px; }
