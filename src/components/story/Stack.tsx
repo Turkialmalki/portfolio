@@ -152,7 +152,11 @@ export default function Stack() {
           render();
         });
     };
+    let lastW = window.innerWidth;
     const onResize = () => {
+      /* iOS fires resize as its toolbar slides; the stage is svh-sized, so only a new width matters */
+      if (window.innerWidth === lastW) return;
+      lastW = window.innerWidth;
       measure();
       render();
     };

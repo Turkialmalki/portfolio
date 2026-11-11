@@ -428,10 +428,16 @@ export default function FlightPath() {
     if (!route) return;
     const ro = new ResizeObserver(measure);
     ro.observe(route);
-    window.addEventListener("resize", measure);
+    let lastW = window.innerWidth;
+    const onWidth = () => {
+      if (window.innerWidth === lastW) return;
+      lastW = window.innerWidth;
+      measure();
+    };
+    window.addEventListener("resize", onWidth);
     return () => {
       ro.disconnect();
-      window.removeEventListener("resize", measure);
+      window.removeEventListener("resize", onWidth);
     };
   }, [measure]);
 
@@ -537,7 +543,14 @@ export default function FlightPath() {
 
     relayout();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", relayout);
+    let lastW = window.innerWidth;
+    const onWidth = () => {
+      /* iOS fires resize as its toolbar slides; only a new width needs a re-read */
+      if (window.innerWidth === lastW) return;
+      lastW = window.innerWidth;
+      relayout();
+    };
+    window.addEventListener("resize", onWidth);
     window.addEventListener("orientationchange", relayout);
     window.addEventListener("load", relayout);
     /* Arabic and Latin metrics differ enough to move every row. */
@@ -551,7 +564,7 @@ export default function FlightPath() {
       if (frame) cancelAnimationFrame(frame);
       ro.disconnect();
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", relayout);
+      window.removeEventListener("resize", onWidth);
       window.removeEventListener("orientationchange", relayout);
       window.removeEventListener("load", relayout);
     };

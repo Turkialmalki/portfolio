@@ -52,6 +52,18 @@ type Bi = { ar: string; en: string };
  * its own curve: a straight interpolation from A to B reads as a drag, a
  * lateral bow peaking mid-flight reads as a path.
  */
+/* iOS Safari fires `resize` while its toolbar slides in and out, which is every
+   time the reader scrolls back up. Nothing here depends on that height, so only a
+   change of width counts. */
+function onWidthChange(fn: () => void) {
+  let w = window.innerWidth;
+  return () => {
+    if (window.innerWidth === w) return;
+    w = window.innerWidth;
+    fn();
+  };
+}
+
 export type Flight = {
   id: string;
   /** id of the dock this artifact belongs to — always a real timeline stop */
@@ -650,7 +662,8 @@ export function useFlightPlan(
         measureCopy();
         measureRail();
       };
-      window.addEventListener("resize", onResize);
+      const onWidth = onWidthChange(onResize);
+      window.addEventListener("resize", onWidth);
       window.addEventListener("orientationchange", onResize);
       document.fonts?.ready.then(onResize).catch(() => {});
       const ro = new ResizeObserver(onResize);
@@ -660,7 +673,7 @@ export function useFlightPlan(
          touching anything else on the page */
       if (collageRef.current) ro.observe(collageRef.current);
       return () => {
-        window.removeEventListener("resize", onResize);
+        window.removeEventListener("resize", onWidth);
         window.removeEventListener("orientationchange", onResize);
         ro.disconnect();
       };
@@ -715,7 +728,8 @@ export function useFlightPlan(
        window's caption is type, and a font swap or a language switch changes
        how deep the composition is without moving anything else */
     if (collageRef.current) ro.observe(collageRef.current);
-    window.addEventListener("resize", restart);
+    const onWidth = onWidthChange(restart);
+    window.addEventListener("resize", onWidth);
     window.addEventListener("orientationchange", restart);
     /* Arabic and Latin metrics differ enough to move every dock a few pixels. */
     document.fonts?.ready.then(restart).catch(() => {});
@@ -724,7 +738,7 @@ export function useFlightPlan(
     return () => {
       if (frame) cancelAnimationFrame(frame);
       ro.disconnect();
-      window.removeEventListener("resize", restart);
+      window.removeEventListener("resize", onWidth);
       window.removeEventListener("orientationchange", restart);
       window.removeEventListener("load", restart);
     };
