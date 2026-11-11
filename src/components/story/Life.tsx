@@ -1,126 +1,150 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, type CSSProperties } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useSyncExternalStore, type CSSProperties } from "react";
 import { useLanguage } from "@/i18n/LanguageProvider";
-import { useSafeReducedMotion } from "@/hooks/useSafeReducedMotion";
+import Reveal from "./Reveal";
 
 type Bi = { ar: string; en: string };
-type Photo = { src: string; title: Bi; meta: Bi; pos?: string; area: string };
+type Place = "milan" | "como" | "swiss";
 
-/* Every picture here is a real one already on the site, captioned with what
-   the timeline says it is. To add a hobby, add a row: a photo in /public/op
-   and its two captions — the grid places it. */
-const PHOTOS: Photo[] = [
-  {
-    src: "/op/room.jpg",
-    area: "a",
-    title: { ar: "من الفكرة إلى MVP", en: "From idea to MVP" },
-    meta: { ar: "ورشة عمل لرواد الأعمال", en: "A workshop for founders" },
-    pos: "center 40%",
-  },
-  {
-    src: "/speaking-portrait.jpg",
-    area: "b",
-    title: { ar: "على المسرح", en: "On stage" },
-    meta: { ar: "هيئة الأدب والنشر والترجمة", en: "Literature, Publishing & Translation Commission" },
-    pos: "50% 30%",
-  },
-  {
-    src: "/op/1.jpg",
-    area: "c",
-    title: { ar: "مدرّب معتمد", en: "Certified instructor" },
-    meta: { ar: "برامج تدريب وابتكار", en: "Training & innovation programs" },
-    pos: "48% 32%",
-  },
-  {
-    src: "/IMG-20181201-WA0054.jpg",
-    area: "d",
-    title: { ar: "فريق مسابقة واعد", en: "Wa'ed competition team" },
-    meta: { ar: "المركز الأول — أرامكو", en: "1st place — Aramco" },
-    pos: "center 40%",
-  },
-  {
-    src: "/op/portrait.jpg",
-    area: "e",
-    title: { ar: "تركي", en: "Turki" },
-    meta: { ar: "مهندس، مدرّب، ومستشار", en: "Engineer, teacher, consultant" },
-    pos: "50% 25%",
-  },
+const PLACE: Record<Place, Bi> = {
+  milan: { ar: "ميلانو", en: "Milan" },
+  como: { ar: "كومو", en: "Como" },
+  swiss: { ar: "سويسرا", en: "Switzerland" },
+};
+
+/* The travel photographs, in the order they sit on the page. To add one, drop a
+   resized file in /public/life and add a row here. `ratio` is the crop the tile
+   is drawn at — the mix of heights is what makes the columns read as a wall
+   rather than a table. */
+const PHOTOS: { n: number; place: Place; ratio: string; pos?: string }[] = [
+  { n: 21, place: "milan", ratio: "4 / 5" },
+  { n: 9, place: "milan", ratio: "3 / 4", pos: "50% 60%" },
+  { n: 12, place: "milan", ratio: "4 / 5" },
+  { n: 15, place: "swiss", ratio: "3 / 4", pos: "50% 35%" },
+  { n: 14, place: "swiss", ratio: "4 / 5", pos: "50% 55%" },
+  { n: 16, place: "como", ratio: "3 / 4" },
+  { n: 17, place: "como", ratio: "4 / 5" },
+  { n: 11, place: "milan", ratio: "3 / 4" },
+  { n: 13, place: "swiss", ratio: "4 / 5" },
+  { n: 22, place: "milan", ratio: "3 / 4" },
+  { n: 18, place: "como", ratio: "4 / 5" },
+  { n: 23, place: "milan", ratio: "3 / 4", pos: "50% 40%" },
+  { n: 24, place: "swiss", ratio: "4 / 5" },
+  { n: 19, place: "milan", ratio: "3 / 4" },
+  { n: 20, place: "milan", ratio: "4 / 5" },
 ];
 
 const COPY = {
-  ar: { kicker: "خارج الكود", title: "ما أفعله خارج الشاشة", sub: "تدريب، ومنصات، وورش عمل — الجزء من العمل الذي يحدث في قاعة." },
-  en: { kicker: "Beyond the code", title: "What I do away from the screen", sub: "Teaching, speaking and workshops — the part of the work that happens in a room." },
+  ar: { title: "خارج الشاشة", sub: "ميلانو · كومو · سويسرا" },
+  en: { title: "Off screen", sub: "Milan · Como · Switzerland" },
 } as const;
+
+/* Two columns on a phone, three from 700px. Read once per change through
+   useSyncExternalStore so the server render (three) is what hydration expects. */
+const WIDE = "(min-width: 700px)";
+function useColumns() {
+  const wide = useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(WIDE);
+      m.addEventListener("change", cb);
+      return () => m.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(WIDE).matches,
+    () => true,
+  );
+  return wide ? 3 : 2;
+}
+
+/* How far each column drifts, in px, over the section's pass through the
+   viewport. Neighbouring columns move opposite ways, which is the whole effect. */
+const DRIFT: Record<number, number[]> = { 3: [-70, 50, -30], 2: [-34, 28] };
 
 export default function Life() {
   const { lang } = useLanguage();
   const copy = COPY[lang];
-  const reduced = useSafeReducedMotion();
-  const photos = useMemo(() => PHOTOS, []);
+  const cols = useColumns();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const columns: (typeof PHOTOS)[] = Array.from({ length: cols }, () => []);
+  PHOTOS.forEach((p, i) => columns[i % cols].push(p));
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const els = Array.from(root.querySelectorAll<HTMLElement>("[data-col]"));
+    const drift = DRIFT[cols];
+    let raf = 0;
+    const render = () => {
+      raf = 0;
+      const r = root.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const p = Math.min(1, Math.max(0, (vh - r.top) / (vh + r.height)));
+      els.forEach((el, i) => {
+        el.style.transform = `translate3d(0, ${((p - 0.5) * 2 * drift[i]).toFixed(1)}px, 0)`;
+      });
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(render);
+    };
+    render();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [cols]);
 
   return (
     <section id="life" className="lf-root" aria-labelledby="lf-title">
       <div className="lf-wrap">
-        <header className="lf-head">
-          <span className="lf-kicker">{copy.kicker}</span>
+        <Reveal as="header" className="lf-head">
           <h2 id="lf-title">{copy.title}</h2>
           <p>{copy.sub}</p>
-        </header>
+        </Reveal>
 
-        <ul className="lf-grid">
-          {photos.map((p, i) => (
-            <motion.li
-              key={p.src}
-              className="lf-cell"
-              data-area={p.area}
-              initial={reduced ? { opacity: 0 } : { opacity: 0, y: 60, scale: 0.92 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: true, amount: 0.25 }}
-              transition={reduced ? { duration: 0.2 } : { type: "spring", stiffness: 100, damping: 18, delay: (i % 2) * 0.1 }}
-            >
-              <figure className="lf-fig" style={{ "--pos": p.pos ?? "center" } as CSSProperties}>
-                <Image src={p.src} alt={p.title[lang]} fill sizes="(max-width: 700px) 92vw, 560px" className="lf-img" />
-                <figcaption>
-                  <strong>{p.title[lang]}</strong>
-                  <span>{p.meta[lang]}</span>
-                </figcaption>
-              </figure>
-            </motion.li>
+        <div className="lf-cols" ref={rootRef} data-cols={cols}>
+          {columns.map((col, c) => (
+            <div key={c} className="lf-col" data-col={c}>
+              {col.map((p, k) => (
+                <Reveal key={p.n} i={k % 2} className="lf-cell">
+                  <figure className="lf-fig" style={{ aspectRatio: p.ratio, "--pos": p.pos ?? "center" } as CSSProperties}>
+                    <Image
+                      src={`/life/${p.n}.jpg`}
+                      alt={PLACE[p.place][lang]}
+                      fill
+                      sizes="(max-width: 700px) 46vw, 360px"
+                      className="lf-img"
+                    />
+                    <figcaption>{PLACE[p.place][lang]}</figcaption>
+                  </figure>
+                </Reveal>
+              ))}
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
 
       <style>{`
-        .lf-root { background: var(--bg-primary); color: var(--text-primary); padding: clamp(72px, 12vw, 150px) clamp(16px, 4vw, 40px) clamp(48px, 8vw, 100px); }
+        .lf-root { background: var(--bg-primary); color: var(--text-primary); padding: clamp(72px, 12vw, 150px) clamp(16px, 4vw, 40px) clamp(72px, 10vw, 140px); overflow-x: clip; }
         .lf-wrap { max-width: 1120px; margin: 0 auto; }
-        .lf-head { max-width: 640px; margin-bottom: clamp(28px, 5vw, 56px); }
-        .lf-kicker { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
-        .lf-head h2 { margin: 12px 0 14px; font-size: clamp(34px, 7vw, 72px); line-height: 1.08; font-weight: 900; }
-        .lf-head p { margin: 0; font-size: clamp(16px, 2vw, 19px); line-height: 1.7; color: var(--text-secondary); }
-
-        .lf-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(10px, 1.6vw, 16px); grid-template-columns: 1fr 1fr; grid-auto-rows: clamp(150px, 42vw, 230px); }
-        .lf-cell { display: block; min-height: 0; }
-        .lf-cell[data-area="a"] { grid-column: 1 / -1; grid-row: span 2; }
-        .lf-fig { position: relative; margin: 0; width: 100%; height: 100%; border-radius: clamp(20px, 3vw, 28px); overflow: hidden; background: var(--bg-card); isolation: isolate; }
-        .lf-img { object-fit: cover; object-position: var(--pos); transition: transform 1.2s cubic-bezier(.16,1,.3,1); }
-        .lf-fig::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(0deg, rgba(6,7,10,.72), transparent 55%); }
-        .lf-fig figcaption { position: absolute; z-index: 2; inset-inline: 0; bottom: 0; padding: clamp(12px, 2vw, 22px); color: #fff; display: flex; flex-direction: column; gap: 2px; }
-        .lf-fig strong { font-size: clamp(15px, 2vw, 22px); font-weight: 800; line-height: 1.25; }
-        .lf-fig span { font-size: clamp(11px, 1.3vw, 13px); opacity: .8; line-height: 1.4; }
-
-        @media (min-width: 800px) {
-          .lf-grid { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 200px; }
-          .lf-cell[data-area="a"] { grid-column: span 2; grid-row: span 2; }
-          .lf-cell[data-area="b"] { grid-column: span 1; grid-row: span 2; }
-          .lf-cell[data-area="c"] { grid-column: span 1; grid-row: span 2; }
-          .lf-cell[data-area="d"] { grid-column: span 2; grid-row: span 1; }
-          .lf-cell[data-area="e"] { grid-column: span 2; grid-row: span 1; }
-        }
-        @media (hover: hover) and (pointer: fine) { .lf-fig:hover .lf-img { transform: scale(1.08); } }
-        @media (prefers-reduced-motion: reduce) { .lf-img { transition: none; } }
+        .lf-head { margin-bottom: clamp(24px, 4vw, 48px); }
+        .lf-head h2 { margin: 0 0 10px; font-size: clamp(38px, 7vw, 80px); line-height: 1.1; font-weight: 900; letter-spacing: -.02em; }
+        .lf-head p { margin: 0; font-size: clamp(16px, 2vw, 20px); color: var(--text-secondary); }
+        .lf-cols { display: grid; gap: clamp(10px, 1.6vw, 16px); grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); align-items: start; padding-block: 40px; }
+        .lf-cols[data-cols="2"] { --n: 2; }
+        .lf-cols[data-cols="3"] { --n: 3; }
+        .lf-col { display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); will-change: transform; }
+        .lf-fig { position: relative; margin: 0; width: 100%; border-radius: clamp(18px, 2.4vw, 28px); overflow: hidden; background: var(--bg-card); isolation: isolate; }
+        .lf-img { object-fit: cover; object-position: var(--pos); transition: transform 1.4s cubic-bezier(.16,1,.3,1); }
+        .lf-fig::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(0deg, rgba(6,7,10,.5), transparent 38%); }
+        .lf-fig figcaption { position: absolute; z-index: 2; inset-inline: 0; bottom: 0; padding: clamp(10px, 1.6vw, 18px); color: #fff; font-size: clamp(12px, 1.4vw, 15px); font-weight: 700; }
+        @media (hover: hover) and (pointer: fine) { .lf-fig:hover .lf-img { transform: scale(1.06); } }
+        @media (prefers-reduced-motion: reduce) { .lf-img { transition: none; } .lf-col { transform: none !important; } }
       `}</style>
     </section>
   );

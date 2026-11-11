@@ -46,8 +46,8 @@ const TOOLS: Tool[] = [
 ];
 
 const COPY = {
-  ar: { kicker: "الأدوات", title: "الأدوات التي أبني بها", done: "كلها في مكان واحد — وكلها استخدمتها في أعمال حقيقية." },
-  en: { kicker: "Tech stack", title: "The tools I build with", done: "All in one place — each one used on real work." },
+  ar: { kicker: "", title: "الأدوات", done: "كلها في مكان واحد." },
+  en: { kicker: "", title: "Tools", done: "All in one place." },
 } as const;
 
 /* deterministic scatter: same positions on server and client, no Math.random */
@@ -176,7 +176,7 @@ export default function Stack() {
     >
       <div className="st-stage" ref={stageRef}>
         <header className="st-head" ref={headRef}>
-          <span className="st-kicker">{copy.kicker}</span>
+          
           <h2 id="st-title">{copy.title}</h2>
         </header>
 

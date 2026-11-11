@@ -650,7 +650,7 @@ const WINDOWS: Win[] = [
     /* the foot of the LEFT frame. It is the one artifact here that is
        my own product rather than a client's, which is why it sits with
        the teaching rather than with the commissioned work. */
-    atRing: { w: 62, x: 18, top: 76 },
+    atRing: { w: 62, x: 27, top: 76 },
     cap: {
       label: { ar: "منتجات مستقلة", en: "Independent products" },
       subject: { ar: "BaseBox — منصة SaaS", en: "BaseBox — AI-powered SaaS" },
@@ -4169,6 +4169,10 @@ export default function Hero({ ready = true }: HeroProps) {
           .arc-cap-paper { opacity: 1 !important; }
         }
 
+
+        /* The paper stickers named each object and landed on top of its
+           neighbours. The pieces speak for themselves; the labels are gone. */
+        .arc-cap { display: none !important; }
       `}</style>
     </section>
   );

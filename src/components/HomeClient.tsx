@@ -9,6 +9,8 @@ import FlightPath from "./sections/FlightPath";
 import Impact from "./story/Impact";
 import Stack from "./story/Stack";
 import Life from "./story/Life";
+import Experience from "./story/Experience";
+import Credentials from "./story/Credentials";
 import Work from "./work/Work";
 import Footer from "./sections/Footer";
 
@@ -40,7 +42,9 @@ export default function HomeClient() {
           <FlightPath />
           <Work />
           <Impact />
+          <Experience />
           <Stack />
+          <Credentials />
           <Life />
         </main>
         <Footer />

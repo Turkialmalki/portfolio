@@ -12,15 +12,15 @@ import { buildWork } from "./workData";
 
 const COPY = {
   ar: {
-    kicker: "الأعمال",
-    title: "منتجات بنيتها",
-    sub: "مرّر لتتنقّل بين المشاريع — واضغط على أي منها لتفتح قصته كاملة.",
+    kicker: "",
+    title: "أعمالي",
+    sub: "اضغط على أي مشروع لتقرأ قصته.",
     open: "افتح القصة",
   },
   en: {
-    kicker: "Work",
-    title: "Products I've built",
-    sub: "Scroll through the work — open any project for its full story.",
+    kicker: "",
+    title: "Work",
+    sub: "Tap a project to read its story.",
     open: "Open the story",
   },
 } as const;
@@ -140,7 +140,7 @@ export default function Work() {
   return (
     <section id="work" className="sc-root" aria-labelledby="sc-title">
       <header className="sc-head">
-        <span className="sc-kicker">{copy.kicker}</span>
+        
         <h2 id="sc-title">{copy.title}</h2>
         <p>{copy.sub}</p>
       </header>

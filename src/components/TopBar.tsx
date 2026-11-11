@@ -1,19 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type CSSProperties,
-  type FocusEvent as ReactFocusEvent,
-} from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore, type CSSProperties } from "react";
 import { motion } from "framer-motion";
-import { CONTACT } from "@/config/contact";
-import { MEETING_URL } from "@/config/careerServices";
 import { useSafeReducedMotion } from "@/hooks/useSafeReducedMotion";
 import { useLanguage } from "@/i18n/LanguageProvider";
 import type { Language } from "@/i18n/translations";
@@ -68,37 +56,6 @@ function applyTheme(dark: boolean) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Does this pointer hover?                                            */
-/* ------------------------------------------------------------------ */
-
-const HOVER_QUERY = "(hover: hover) and (pointer: fine)";
-
-/**
- * Hover is a capability, not a width.
- *
- * The card opens on hover only where hovering is a real thing the device can
- * do; a touch screen gets tap and nothing else, so the panel can never be
- * opened by a stray "hover" that a tap synthesises and then never undoes.
- * Read through useSyncExternalStore so the server snapshot (false) is what
- * hydration compares against.
- */
-function useHasHover() {
-  return useSyncExternalStore(
-    (notify) => {
-      const media = window.matchMedia(HOVER_QUERY);
-      media.addEventListener("change", notify);
-      return () => media.removeEventListener("change", notify);
-    },
-    () => window.matchMedia(HOVER_QUERY).matches,
-    () => false,
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* The identity                                                        */
-/* ------------------------------------------------------------------ */
-
-/* ------------------------------------------------------------------ */
 /* The shade's timing                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -120,7 +77,6 @@ export default function TopBar() {
   const { t, lang, setLang } = useLanguage();
   const dark = useSyncExternalStore(subscribeToTheme, readTheme, () => false);
   const reduced = useSafeReducedMotion();
-  const hasHover = useHasHover();
 
   /* Restore the visitor's saved preference. This writes to the DOM — an
      external system — rather than to React state, which is exactly what an
@@ -150,7 +106,9 @@ export default function TopBar() {
         so Arabic still reads right to left where it is read.
       */}
       <div className="tb-row">
-        <ProfileCard t={t} lang={lang} setLang={setLang} hasHover={hasHover} />
+        <span className="tb-solo">
+          <LanguagePill lang={lang} setLang={setLang} label={t.topbar.switchLanguage} />
+        </span>
         <CabinWindow dark={dark} label={t.topbar.toggleTheme} reduced={reduced} />
       </div>
 
@@ -158,291 +116,6 @@ export default function TopBar() {
     </motion.header>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/* The identity card                                                   */
-/* ------------------------------------------------------------------ */
-
-type Dict = ReturnType<typeof useLanguage>["t"];
-
-function ProfileCard({
-  t,
-  lang,
-  setLang,
-  hasHover,
-}: {
-  t: Dict;
-  lang: Language;
-  setLang: (l: Language) => void;
-  hasHover: boolean;
-}) {
-  const panelId = `tb-panel-${useId()}`;
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const [open, setOpen] = useState(false);
-
-  /* Hover peeks, press pins.
-     A mouse that has already opened the card must not close it again the
-     moment it is clicked — the pointer entered first, so a plain toggle would
-     make the click read as "shut". The card therefore remembers WHY it is
-     open: a hover-open closes itself when the pointer leaves, a press-open
-     stays until it is pressed again, and pressing a hover-open promotes it
-     rather than reversing it. */
-  const openedBy = useRef<"hover" | "press" | null>(null);
-
-  /* Escape has to put focus back on the trigger, and putting focus back on the
-     trigger is exactly what opens the card — so without this the panel shuts
-     and springs open again in the same tick. The flag lives for one microtask,
-     which is long enough to cover the synchronous focus event `.focus()`
-     dispatches and short enough that the next real Tab still opens it. */
-  const refocusing = useRef(false);
-
-  /* Escape and tap-outside, listened for only while there is something open
-     to close — an idle header adds no listeners to the document at all. */
-  useEffect(() => {
-    if (!open) return;
-
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      openedBy.current = null;
-      refocusing.current = true;
-      setOpen(false);
-      triggerRef.current?.focus();
-      queueMicrotask(() => {
-        refocusing.current = false;
-      });
-    };
-
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (target && wrapRef.current?.contains(target)) return;
-      openedBy.current = null;
-      setOpen(false);
-    };
-
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onPointerDown, true);
-    };
-  }, [open]);
-
-  /* Keyboard opens it; a mouse click does not, because the click handler
-     already owns that and two owners is how a control ends up reopening
-     itself the moment it is dismissed. `:focus-visible` is the only honest
-     way to tell those two arrivals apart. */
-  const onFocusIn = (event: ReactFocusEvent<HTMLDivElement>) => {
-    if (refocusing.current) return;
-    const target = event.target as HTMLElement;
-    if (typeof target.matches === "function" && target.matches(":focus-visible")) {
-      openedBy.current = "press";
-      setOpen(true);
-    }
-  };
-
-  const onFocusOut = (event: ReactFocusEvent<HTMLDivElement>) => {
-    const next = event.relatedTarget as Node | null;
-    if (next && wrapRef.current?.contains(next)) return;
-    openedBy.current = null;
-    setOpen(false);
-  };
-
-  const enter = () => {
-    if (open) return;
-    openedBy.current = "hover";
-    setOpen(true);
-  };
-
-  const leave = () => {
-    if (openedBy.current === "press") return;
-    const wrap = wrapRef.current;
-    if (wrap && wrap.contains(document.activeElement)) return;
-    openedBy.current = null;
-    setOpen(false);
-  };
-
-  const press = () => {
-    if (open && openedBy.current === "hover") {
-      openedBy.current = "press";
-      return;
-    }
-    if (open) {
-      openedBy.current = null;
-      setOpen(false);
-      return;
-    }
-    openedBy.current = "press";
-    setOpen(true);
-  };
-
-  const act = (index: number) => ({ "--i": index }) as CSSProperties;
-
-  return (
-    <div
-      ref={wrapRef}
-      className="tb-card"
-      data-open={open ? "1" : "0"}
-      onPointerEnter={hasHover ? enter : undefined}
-      onPointerLeave={hasHover ? leave : undefined}
-      onFocus={onFocusIn}
-      onBlur={onFocusOut}
-    >
-      <button
-        ref={triggerRef}
-        type="button"
-        className="tb-id"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={press}
-      >
-        <span className="tb-portrait">
-          <Image
-            className="tb-portrait-img"
-            src="/hero/portrait-turki-tab.jpg"
-            alt={t.topbar.portraitAlt}
-            width={320}
-            height={320}
-            sizes="(max-width: 767px) 40px, (max-width: 1023px) 50px, 54px"
-            priority
-          />
-        </span>
-
-        {/*
-          The name and the role are not printed here any more.
-
-          They were the two things on this card a reader already had: the name
-          is the largest word in the hero directly beneath it, and the role is
-          the line under that name. Printing them a second time in the header
-          made the card a long white bar with a photograph on the end of it —
-          and it is the photograph that identifies the page, not the caption.
-
-          Both go on being said. The portrait's alt text names the person, the
-          button's own label says what the card is for, and neither is a thing
-          a sighted reader had to be shown twice.
-        */}
-        <span className="tb-sr">
-          {open ? t.topbar.closeProfile : t.topbar.openProfile}
-        </span>
-      </button>
-
-      {/* The fold. Nothing here is laid out outside the card: it is one grid
-          column that goes from 0fr to 1fr, so opening it is a width reveal
-          inside a bar whose height never changes. `inert` is what keeps the
-          clipped actions out of the tab order while it is shut. */}
-      <div
-        className="tb-fold"
-        id={panelId}
-        inert={!open}
-        role="group"
-        aria-label={t.topbar.panelLabel}
-      >
-        <div className="tb-fold-in">
-          {/*
-            Book a call — the same Calendly page /contact already links to, so
-            the header cannot offer a slot the contact page does not have.
-
-            It leads the row because it is the thing a reader who opened this
-            card most likely wants: the email is a message that waits, this is
-            a time that is already free. It opens in a new tab rather than
-            navigating away from a page somebody is halfway down.
-          */}
-          <a
-            className="tb-act tb-act-book"
-            href={MEETING_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={act(0)}
-            aria-label={t.topbar.bookLabel}
-            title={t.topbar.bookLabel}
-          >
-            <BookingGlyph />
-          </a>
-
-          {/* An icon, not an address. The address is in the label, where a
-              screen reader will read it and a tooltip will show it, and in the
-              mailto the icon opens — printing it across the header only made
-              the card long. */}
-          <a
-            className="tb-act"
-            href={`mailto:${CONTACT.email}`}
-            style={act(1)}
-            aria-label={`${t.topbar.emailLabel} — ${CONTACT.email}`}
-            title={CONTACT.email}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="2.6" y="4.8" width="18.8" height="14.4" rx="3" />
-              <path d="m3.4 7.4 7.5 5.2a2 2 0 0 0 2.2 0l7.5-5.2" />
-            </svg>
-          </a>
-
-          <span className="tb-langslot" style={act(2)}>
-            <LanguagePill lang={lang} setLang={setLang} label={t.topbar.switchLanguage} />
-            <LanguageFlip lang={lang} setLang={setLang} label={t.topbar.switchLanguage} />
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Booking: a calendar that opens                                      */
-/* ------------------------------------------------------------------ */
-
-/**
- * The booking chip's glyph, drawn as a calendar that OPENS rather than a
- * calendar that sits there.
- *
- * Every part of it is a separate element so the hover can move them
- * independently: the two rings lift a hair off the page, the page itself
- * settles, and the four dates arrive one after another in the order you would
- * read them. That stagger is the whole idea — it is what a date being CHOSEN
- * looks like, which is what the chip does when you press it.
- *
- * It costs nothing to run. There is no JavaScript behind it, no keyframes
- * looping in the background, and the only properties that change are
- * `transform` and `opacity` on six small nodes inside one 17px box — so it is
- * a compositor job that exists for exactly as long as the pointer is over the
- * chip. Each date carries its own index rather than being selected by a chain
- * of nth-child rules, which is the same convention the fold's own stagger
- * uses two rules above it.
- *
- * `transform-box: fill-box` is not optional on SVG children: without it a
- * scale is applied about the viewBox's origin rather than the shape's own
- * centre, and the dates grow out of the top-left corner of the icon instead
- * of out of themselves.
- */
-function BookingGlyph() {
-  return (
-    <svg className="tb-cal" viewBox="0 0 24 24" aria-hidden="true">
-      {/* the rings the page hangs from */}
-      <path className="tb-cal-ring" d="M8.2 2.9v3.4" />
-      <path className="tb-cal-ring" d="M15.8 2.9v3.4" />
-
-      {/* the page, and the band across the head of it */}
-      <rect className="tb-cal-page" x="3.4" y="4.9" width="17.2" height="16.2" rx="3.4" />
-      <path className="tb-cal-band" d="M3.4 10h17.2" />
-
-      {/*
-        The dates, arriving in reading order — two rows of three, because one
-        row and a stray underneath it reads as a calendar missing most of a
-        month rather than as a month. The one that lands last is the one being
-        chosen, and it lands bigger.
-      */}
-      <circle className="tb-cal-day" cx="8.2" cy="13.6" r="1.05" style={{ "--d": 0 } as CSSProperties} />
-      <circle className="tb-cal-day" cx="12" cy="13.6" r="1.05" style={{ "--d": 1 } as CSSProperties} />
-      <circle className="tb-cal-day" cx="15.8" cy="13.6" r="1.05" style={{ "--d": 2 } as CSSProperties} />
-      <circle className="tb-cal-day" cx="8.2" cy="17.6" r="1.05" style={{ "--d": 3 } as CSSProperties} />
-      <circle className="tb-cal-day tb-cal-day-on" cx="12" cy="17.6" r="1.05" style={{ "--d": 4 } as CSSProperties} />
-      <circle className="tb-cal-day" cx="15.8" cy="17.6" r="1.05" style={{ "--d": 5 } as CSSProperties} />
-    </svg>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Language: one control, two densities                                */
-/* ------------------------------------------------------------------ */
 
 /**
  * The wide one: both options side by side, the live one carried on a filled
@@ -479,36 +152,6 @@ function LanguagePill({
         </button>
       ))}
     </span>
-  );
-}
-
-/**
- * The narrow one: a single button showing the language it would switch TO.
- * Both are always rendered and CSS picks which is on screen, so there is no
- * width read in JavaScript and nothing to get wrong at hydration.
- */
-function LanguageFlip({
-  lang,
-  setLang,
-  label,
-}: {
-  lang: Language;
-  setLang: (l: Language) => void;
-  label: string;
-}) {
-  const next: Language = lang === "ar" ? "en" : "ar";
-  return (
-    <button
-      type="button"
-      className="tb-act tb-langflip"
-      onClick={() => setLang(next)}
-      aria-label={label}
-      title={label}
-    >
-      <span lang={next} aria-hidden="true">
-        {next === "en" ? "EN" : "ع"}
-      </span>
-    </button>
   );
 }
 
@@ -1628,5 +1271,27 @@ const TOPBAR_CSS = `
     .tw:hover .tw-hull,
     .tw[data-drag="1"] .tw-hull { transform: none !important; }
     .tw:hover .tw-shade { --sh: 0px !important; }
+  }
+  /* The header is two things now: a language pill and the window. The pill is a
+     small solid capsule with the same hairline and lift as the glass beside it. */
+  .tb-solo { pointer-events: auto; display: inline-flex; }
+  .tb-solo .tb-lang {
+    display: inline-flex;
+    padding: 4px;
+    background: var(--tb-surface-hi);
+    border: 1px solid var(--tb-border);
+    box-shadow: var(--tb-lift);
+    backdrop-filter: var(--tb-blur);
+    -webkit-backdrop-filter: var(--tb-blur);
+  }
+  .tb-solo .tb-lang-knob { top: 4px; left: 4px; }
+  .tb-solo .tb-lang-opt { width: 36px; height: 36px; }
+  .tb-solo .tb-lang-knob { width: 36px; height: 36px; }
+  :root[data-lang="en"] .tb-solo .tb-lang-knob { transform: translate3d(38px,0,0); }
+  .tb-solo .tb-lang-knob { background: var(--tb-ink); }
+  .tb-solo .tb-lang-opt[aria-pressed="true"] { color: var(--bg-primary, #fff); opacity: 1; }
+  @media (max-width: 480px) {
+    .tb-solo .tb-lang-opt, .tb-solo .tb-lang-knob { width: 34px; height: 34px; }
+    :root[data-lang="en"] .tb-solo .tb-lang-knob { transform: translate3d(36px,0,0); }
   }
 `;
