@@ -67,7 +67,8 @@ export default function Life() {
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    /* the drift is a pointer-device flourish; on a touch screen the wall just scrolls */
+    if (window.matchMedia("(prefers-reduced-motion: reduce), (pointer: coarse)").matches) return;
     const els = Array.from(root.querySelectorAll<HTMLElement>("[data-col]"));
     const drift = DRIFT[cols];
     let raf = 0;

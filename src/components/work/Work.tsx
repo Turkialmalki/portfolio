@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { AnimatePresence } from "framer-motion";
 import { LuArrowUpRight } from "react-icons/lu";
 import { useLanguage } from "@/i18n/LanguageProvider";
@@ -24,6 +24,23 @@ const COPY = {
     open: "Open project",
   },
 } as const;
+
+/* On a phone the deck is a plain stack of cards. The pinned, scroll-scrubbed
+   version rewrites custom properties on five cards every frame, and each write
+   restyles every word and button inside them — on iOS, over a page this long,
+   that is what leaves the screen blank mid-flick. */
+const COMPACT = "(max-width: 899px)";
+function useCompact() {
+  return useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(COMPACT);
+      m.addEventListener("change", cb);
+      return () => m.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(COMPACT).matches,
+    () => false,
+  );
+}
 
 const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
@@ -49,7 +66,9 @@ const pin = (i: number) => PIN_BASE + PIN_STEP * i;
 export default function Work() {
   const { lang } = useLanguage();
   const copy = COPY[lang];
-  const reduced = useSafeReducedMotion();
+  const motionOff = useSafeReducedMotion();
+  const compact = useCompact();
+  const reduced = motionOff || compact;
   const cases = useMemo(() => buildWork(lang), [lang]);
   const cardRefs = useRef<Array<HTMLElement | null>>([]);
 
@@ -302,6 +321,12 @@ export default function Work() {
         .sc-art i { font-style: normal; font-size: 14px; color: var(--text-secondary); }
         .sc-dim { position: absolute; inset: 0; z-index: 5; background: var(--bg-primary); opacity: calc(var(--q) * .55); pointer-events: none; }
 
+        @media (max-width: 899px) {
+          .sc-card { position: relative; top: auto; margin-bottom: 14px; --e: 1 !important; --q: 0 !important; }
+          .sc-inner { transform: none; box-shadow: none; height: clamp(460px, 120vw, 560px); }
+          .sc-frame { transition: none; }
+          .sc-dim { display: none; }
+        }
         @media (min-width: 900px) {
           .sc-inner { height: clamp(460px, 62svh, 560px); }
           .sc-tags { display: flex; }
