@@ -205,6 +205,7 @@ export default function Stack() {
 
       <style>{`
         .st-root { position: relative; height: 270svh; background: var(--bg-primary); color: var(--text-primary); }
+        @media (max-width: 700px) { .st-root:not([data-static="1"]) { height: 190svh; } }
         .st-stage { position: sticky; top: 0; height: 100svh; min-height: 560px; overflow: hidden; }
         .st-head { position: absolute; inset-inline: 0; top: clamp(84px, 13svh, 130px); text-align: center; padding: 0 20px; z-index: 2; }
         .st-kicker { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
