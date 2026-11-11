@@ -86,7 +86,18 @@ export default function Stack() {
   useLayoutEffect(() => {
     const root = rootRef.current;
     const stage = stageRef.current;
-    if (!root || !stage || reduced) return;
+    if (reduced) {
+      /* the first (server-matching) pass may already have scattered the tiles;
+         the still layout must start from clean ones */
+      for (const el of tileRefs.current) {
+        if (!el) continue;
+        el.style.removeProperty("transform");
+        el.style.removeProperty("width");
+        el.style.removeProperty("--lab");
+      }
+      return;
+    }
+    if (!root || !stage) return;
 
     let w = 0;
     let h = 0;

@@ -43,6 +43,11 @@ function loadGtm() {
  */
 function syncClarityForRoute(pathname: string) {
   if (!CLARITY_PROJECT_ID) return;
+  /* Session recording serialises every DOM mutation. This page rewrites inline
+     styles on dozens of elements each scroll frame, and on a phone that was
+     measured at roughly a fifth of all scripting time while scrolling. Touch
+     devices are not recorded; the rest of the analytics (GTM) is unaffected. */
+  if (window.matchMedia("(pointer: coarse)").matches) return;
   const excluded = isClarityExcludedPath(pathname);
 
   if (!document.getElementById("ms-clarity-script")) {
