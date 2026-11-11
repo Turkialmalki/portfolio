@@ -725,7 +725,7 @@ export default function FlightPath() {
                 </Link>
                 <a
                   className="fp-arrival-cv"
-                  href={`/Turki-Almalki-CV-${lang}.pdf`}
+                  href="/Turki-Almalki-CV.pdf"
                   download
                   onClick={() => trackEvent("cv_download", { lang })}
                 >
