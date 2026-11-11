@@ -206,7 +206,9 @@
 html {
   scroll-behavior: auto;
   height: 100%;
-  overflow-x: hidden;
+  /* `clip`, not `hidden`: `hidden` turns the root into its own scroll
+     container, and iOS Safari then stalls a momentum scroll part-way down. */
+  overflow-x: clip;
 }
 
 html.lenis,
