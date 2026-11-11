@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useSyncExternalStore, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { IconType } from "react-icons";
 import {
   SiFigma,
@@ -59,10 +59,27 @@ const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
+/* On a phone the Tools section is a still grid: the scatter-to-gather rewrites
+   sixteen transforms every scroll frame, which a phone does not keep up with. */
+const PHONE = "(pointer: coarse) and (max-width: 700px)";
+function usePhone() {
+  return useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(PHONE);
+      m.addEventListener("change", cb);
+      return () => m.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(PHONE).matches,
+    () => false,
+  );
+}
+
 export default function Stack() {
   const { lang, t } = useLanguage();
   const copy = COPY[lang];
-  const reduced = useSafeReducedMotion();
+  const motionOff = useSafeReducedMotion();
+  const phone = usePhone();
+  const reduced = motionOff || phone;
   const rtl = t.dir === "rtl";
 
   const rootRef = useRef<HTMLElement>(null);

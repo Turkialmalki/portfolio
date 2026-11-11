@@ -3,23 +3,16 @@
 import { useSyncExternalStore } from "react";
 
 const QUERY = "(prefers-reduced-motion: reduce)";
-/* A phone: touch, and narrow. The pinned, scroll-scrubbed hero and timeline are
-   the heaviest thing on the page and the one a phone cannot hold at 60fps, so a
-   phone gets the still treatment by default. `?calm=0` turns that off, `?calm=1`
-   turns it on for any device. */
-const PHONE = "(pointer: coarse) and (max-width: 700px)";
 
 function subscribe(onChange: () => void) {
-  const media = [window.matchMedia(QUERY), window.matchMedia(PHONE)];
-  media.forEach((m) => m.addEventListener("change", onChange));
-  return () => media.forEach((m) => m.removeEventListener("change", onChange));
+  const media = window.matchMedia(QUERY);
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
 }
 
-const getSnapshot = () => {
-  const q = window.location.search;
-  if (/[?&]calm=0\b/.test(q)) return window.matchMedia(QUERY).matches;
-  return window.matchMedia(QUERY).matches || window.matchMedia(PHONE).matches || /[?&]calm=1\b/.test(q);
-};
+/* `?calm=1` forces the still treatment, so a slow phone can be tested without
+   touching the system setting */
+const getSnapshot = () => window.matchMedia(QUERY).matches || /[?&]calm=1\b/.test(window.location.search);
 const getServerSnapshot = () => false;
 
 /**
