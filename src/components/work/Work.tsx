@@ -78,6 +78,8 @@ export default function Work() {
     const render = () => {
       raf = 0;
       const vh = window.innerHeight;
+      const deck = cards[0]?.parentElement?.getBoundingClientRect();
+      if (deck && (deck.bottom < -vh || deck.top > vh * 2)) return;
       for (let i = 0; i < cards.length; i++) {
         const el = cards[i];
         if (!el) continue;
@@ -254,7 +256,7 @@ export default function Work() {
           background: color-mix(in srgb, var(--accent) 9%, var(--bg-card));
           border: 1px solid var(--border-subtle);
           padding: clamp(24px, 4vw, 52px);
-          transform: scale(calc(1 - var(--q) * 0.05)); transform-origin: 50% 0; will-change: transform;
+          transform: scale(calc(1 - var(--q) * 0.05)); transform-origin: 50% 0;
           box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 18px 48px rgba(0,0,0,.08);
         }
         .sc-copy { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 460px; }
@@ -291,7 +293,7 @@ export default function Work() {
           transform: perspective(1100px) translateY(calc((1 - var(--e)) * 90px)) scale(calc(.94 + var(--e) * .06))
             rotateX(calc(var(--rx, 0deg) + (1 - var(--e)) * 10deg)) rotateY(var(--ry, 0deg));
           transform-origin: 50% 100%; transition: transform .25s ease-out;
-          will-change: transform; -webkit-tap-highlight-color: transparent;
+          -webkit-tap-highlight-color: transparent;
         }
         .sc-img { object-fit: cover; transform: scale(calc(1.16 - var(--e) * .16)); transform-origin: 50% 40%; }
         .sc-art { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 6px; padding: 20px;

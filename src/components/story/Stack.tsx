@@ -114,10 +114,14 @@ export default function Stack() {
       const rows = Math.ceil(TOOLS.length / cols);
       size = Math.max(40, Math.min(size, Math.floor((bandBottom - bandTop) / rows - gap - 20)));
       mid = (bandTop + bandBottom) / 2 - h / 2;
+      for (const el of tileRefs.current) if (el) el.style.width = `${size}px`;
     };
 
+    let lastP = -1;
     const render = () => {
       const p = clamp01((window.scrollY - top) / span);
+      if (p === lastP && (p === 0 || p === 1)) return;
+      lastP = p;
       const g = clamp01(p / 0.72);
       const rows = Math.ceil(TOOLS.length / cols);
       const rowH = size + gap + 20;
@@ -134,7 +138,6 @@ export default function Stack() {
         const k = ease(clamp01(g * 1.45 - (i / TOOLS.length) * 0.45));
         const x = lerp(sc.x * w * 0.46, tx, k);
         const y = lerp(sc.y * h * 0.42, ty, k);
-        el.style.width = `${size}px`;
         el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) rotate(${lerp(sc.r, 0, k).toFixed(1)}deg) scale(${lerp(sc.s, 1, k).toFixed(3)})`;
         el.style.setProperty("--lab", clamp01((k - 0.55) / 0.45).toFixed(2));
       }
@@ -156,11 +159,29 @@ export default function Stack() {
     measure();
     render();
     setReady(true);
+    /* the section's offset moves whenever anything above it loads or reflows,
+       so it is re-read then rather than trusted from first paint */
+    let ro: ResizeObserver | undefined;
+    let rz = 0;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => {
+        if (rz) return;
+        rz = requestAnimationFrame(() => {
+          rz = 0;
+          lastP = -1;
+          measure();
+          render();
+        });
+      });
+      ro.observe(document.body);
+    }
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
+      ro?.disconnect();
+      if (rz) cancelAnimationFrame(rz);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [reduced, rtl, scatter]);
@@ -213,14 +234,14 @@ export default function Stack() {
         .st-field { position: absolute; inset: 0; display: grid; place-items: center; }
         .st-field > .st-tile { grid-area: 1 / 1; }
         .st-tile {
-          display: flex; flex-direction: column; align-items: center; gap: 8px; will-change: transform;
+          display: flex; flex-direction: column; align-items: center; gap: 8px;
           --lab: 0;
         }
         .st-root[data-ready="0"] .st-tile { opacity: 0; }
         .st-icon {
           width: 100%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 24%;
           background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--c);
-          box-shadow: 0 10px 28px rgba(0,0,0,.1);
+          box-shadow: 0 6px 14px rgba(0,0,0,.08);
         }
         .st-icon b { font-size: 30px; font-weight: 900; }
         .st-name { font-size: 12px; font-weight: 700; white-space: nowrap; color: var(--text-secondary); opacity: var(--lab); }
