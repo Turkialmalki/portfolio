@@ -131,7 +131,7 @@ export default function Life() {
         .lf-cols { display: grid; gap: clamp(10px, 1.6vw, 16px); grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); align-items: start; padding-block: 40px; }
         .lf-cols[data-cols="2"] { --n: 2; }
         .lf-cols[data-cols="3"] { --n: 3; }
-        .lf-col { display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); will-change: transform; }
+        .lf-col { display: flex; flex-direction: column; gap: clamp(10px, 1.6vw, 16px); }
         .lf-fig { position: relative; margin: 0; width: 100%; border-radius: clamp(18px, 2.4vw, 28px); overflow: hidden; background: var(--bg-card); isolation: isolate; }
         .lf-img { object-fit: cover; object-position: var(--pos); transition: transform 1.4s cubic-bezier(.16,1,.3,1); }
         .lf-fig::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(0deg, rgba(6,7,10,.5), transparent 38%); }

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef } from "react";
 import { FiArrowUp, FiCalendar, FiGithub, FiLinkedin, FiMail } from "react-icons/fi";
 import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/i18n/LanguageProvider";
@@ -29,8 +30,8 @@ const COPY = {
 
 /* Two columns of real work that drift past each other. Each list is doubled so
    the loop has no seam. */
-const COL_A = ["/hero/basebox.jpg", "/hero/alrajhi-pair.jpg", "/hero/fba.jpg", "/hero/basebox-dash.jpg"];
-const COL_B = ["/hero/munaseb.jpg", "/hero/emkan.jpg", "/hero/ithnain.jpg", "/hero/alrajhi.jpg"];
+const COL_A = ["/wall/basebox.jpg", "/wall/alrajhi-pair.jpg", "/wall/fba.jpg", "/wall/basebox-dash.jpg"];
+const COL_B = ["/wall/munaseb.jpg", "/wall/emkan.jpg", "/wall/ithnain.jpg", "/wall/alrajhi.jpg"];
 
 function Column({ srcs, reverse }: { srcs: string[]; reverse?: boolean }) {
   return (
@@ -49,6 +50,16 @@ function Column({ srcs, reverse }: { srcs: string[]; reverse?: boolean }) {
 export default function Footer() {
   const { lang } = useLanguage();
   const copy = COPY[lang];
+  const wallRef = useRef<HTMLDivElement>(null);
+
+  /* the wall only drifts while it is on screen */
+  useEffect(() => {
+    const el = wallRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => el.setAttribute("data-vis", e.isIntersecting ? "1" : "0"));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const links = [
     CONTACT.linkedinUrl && { label: "LinkedIn", href: CONTACT.linkedinUrl, Icon: FiLinkedin, event: "linkedin_click" },
@@ -85,7 +96,7 @@ export default function Footer() {
             </div>
           </div>
 
-          <div className="ft-wall">
+          <div className="ft-wall" ref={wallRef} data-vis="0">
             <Column srcs={COL_A} />
             <Column srcs={COL_B} reverse />
           </div>
@@ -139,7 +150,8 @@ export default function Footer() {
         .ft-wall { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 260px; padding-inline: clamp(14px, 3vw, 24px); overflow: hidden;
           -webkit-mask-image: linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent); mask-image: linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent); }
         .ft-col { overflow: hidden; min-height: 0; height: 100%; }
-        .ft-track { display: flex; flex-direction: column; gap: 10px; animation: ft-up 38s linear infinite; will-change: transform; }
+        .ft-track { display: flex; flex-direction: column; gap: 10px; animation: ft-up 38s linear infinite; animation-play-state: paused; }
+        .ft-wall[data-vis="1"] .ft-track { animation-play-state: running; }
         .ft-rev .ft-track { animation-name: ft-down; animation-duration: 46s; }
         .ft-tile { position: relative; flex: none; aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; background: var(--bg-card-muted, #eee); box-shadow: 0 0 0 1px rgba(0,0,0,.06); }
         .ft-img { object-fit: cover; }
