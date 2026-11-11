@@ -718,7 +718,21 @@ export function useFlightPlan(
     restart();
 
     const stage = stageRef.current;
-    const ro = new ResizeObserver(restart);
+    /* On a phone the stage's height follows the browser toolbar, which slides in
+       and out as the reader scrolls (Chrome on iOS does it with the layout
+       viewport as well). The numbers measured here come from the stage's width
+       and from the copy and artifact blocks inside it, so when none of those
+       moved, a height-only change is not worth another measuring run. */
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const sig = () =>
+      `${stage?.clientWidth}|${centerRef.current?.offsetHeight}|${collageRef.current?.offsetHeight}`;
+    let lastSig = sig();
+    const ro = new ResizeObserver(() => {
+      const now = sig();
+      if (coarse && now === lastSig) return;
+      lastSig = now;
+      restart();
+    });
     if (stage) ro.observe(stage);
     /* the identity block as well as the screen: a language switch resets the
        copy without necessarily resizing anything above it, and the height of
