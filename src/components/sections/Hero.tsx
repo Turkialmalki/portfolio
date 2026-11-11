@@ -1451,7 +1451,7 @@ export default function Hero({ ready = true }: HeroProps) {
              gap between the buttons and the logos rather than as margin around
              the whole composition */
           justify-content: center;
-          min-height: 100svh;
+          min-height: calc(var(--svh, 1svh) * 100);
           padding-top: clamp(104px, 12vh, 156px);
           padding-bottom: var(--dock-clear);
         }
@@ -1502,7 +1502,7 @@ export default function Hero({ ready = true }: HeroProps) {
           top: 0;
           inset-inline-start: 0;
           width: 0;
-          height: calc(100svh - var(--dock-clear));
+          height: calc(calc(var(--svh, 1svh) * 100) - var(--dock-clear));
           visibility: hidden;
           pointer-events: none;
         }
@@ -1651,7 +1651,7 @@ export default function Hero({ ready = true }: HeroProps) {
              column scale as one object, and the clamps keep the caption
              readable when the frame gets small. */
           container-type: inline-size;
-          width: min(100%, calc((100svh - 340px) / var(--frame-ar)));
+          width: min(100%, calc((calc(var(--svh, 1svh) * 100) - 340px) / var(--frame-ar)));
           margin-inline: auto;
           aspect-ratio: 1 / var(--frame-ar);
         }
@@ -2313,7 +2313,7 @@ export default function Hero({ ready = true }: HeroProps) {
           .hero-root[data-flight="on"] .arc-screen {
             position: sticky;
             top: 0;
-            height: 100svh;
+            height: calc(var(--svh, 1svh) * 100);
             min-height: 0;
           }
 
@@ -2376,7 +2376,7 @@ export default function Hero({ ready = true }: HeroProps) {
             position: sticky;
             top: calc(-1 * var(--phone-lift, 0px));
             /* the held band is one viewport, whatever was lifted out above it */
-            min-height: calc(var(--phone-lift, 0px) + 100svh);
+            min-height: calc(var(--phone-lift, 0px) + calc(var(--svh, 1svh) * 100));
           }
 
           .hero-root[data-flight="on"] .hero-runway { height: 145vh; }
@@ -2424,7 +2424,7 @@ export default function Hero({ ready = true }: HeroProps) {
           .hero-root[data-flight="on"] .arc-screen {
             position: sticky;
             top: 0;
-            height: 100svh;
+            height: calc(var(--svh, 1svh) * 100);
             min-height: 0;
           }
 
@@ -2553,7 +2553,7 @@ export default function Hero({ ready = true }: HeroProps) {
               372px,
               calc(
                 (
-                  100svh
+                  calc(var(--svh, 1svh) * 100)
                     - var(--arc-tab-head)
                     - max(176px, var(--arc-copy-measured, 0px))
                     - var(--arc-tab-gap)
@@ -2635,7 +2635,7 @@ export default function Hero({ ready = true }: HeroProps) {
               scrolled out from under it.
             */
             --arc-band: calc(
-              100svh
+              calc(var(--svh, 1svh) * 100)
                 - var(--arc-head-pad)
                 - var(--arc-marks-band)
                 - var(--mobile-nav-reserve)
@@ -3207,9 +3207,9 @@ export default function Hero({ ready = true }: HeroProps) {
                less the navigation's strip. Sized against the width instead, the
                route came out identical on a 568px screen and an 844px one —
                cramped on the first and lost in the second. */
-            --fl-slot: clamp(30px, 5.6svh, 50px);
-            --fl-mark: clamp(15px, 2.8svh, 25px);
-            --fl-node: clamp(15px, 2.4svh, 20px);
+            --fl-slot: clamp(30px, calc(var(--svh, 1svh) * 5.6), 50px);
+            --fl-mark: clamp(15px, calc(var(--svh, 1svh) * 2.8), 25px);
+            --fl-node: clamp(15px, calc(var(--svh, 1svh) * 2.4), 20px);
             /* wide enough for the widest landing there is — a 3:2 frame beside
                a wide lockup, at Monsha'at — whatever the slot has become */
             --fl-berth: calc(var(--fl-slot) * 2.9);
@@ -3218,7 +3218,7 @@ export default function Hero({ ready = true }: HeroProps) {
           .fl-track { width: 100%; }
           .fl-dock { gap: 9px; }
           .fl-berth { gap: 7px; }
-          .fl-list { gap: clamp(4px, 2.4svh, 20px); }
+          .fl-list { gap: clamp(4px, calc(var(--svh, 1svh) * 2.4), 20px); }
 
           .fl-org,
           .fl-role,
@@ -3317,7 +3317,7 @@ export default function Hero({ ready = true }: HeroProps) {
           .hero-root[data-flight] .arc-screen {
             position: relative;
             height: auto;
-            min-height: 100svh;
+            min-height: calc(var(--svh, 1svh) * 100);
           }
         }
 
@@ -3525,7 +3525,7 @@ export default function Hero({ ready = true }: HeroProps) {
             /* what the composition may actually use, once every strip of the
                screen that is already spoken for has been taken out of it */
             --mf-band: calc(
-              100svh
+              calc(var(--svh, 1svh) * 100)
                 - var(--mf-head)
                 - var(--mf-rail-top)
                 - var(--mf-mark-h)
@@ -3537,7 +3537,7 @@ export default function Hero({ ready = true }: HeroProps) {
             display: flex;
             flex-direction: column;
             justify-content: center;
-            min-height: 100svh;
+            min-height: calc(var(--svh, 1svh) * 100);
             padding-top: var(--mf-head);
             padding-bottom: var(--dock-clear);
           }
@@ -3831,7 +3831,7 @@ export default function Hero({ ready = true }: HeroProps) {
             inset: auto;
             container-type: inline-size;
             container-name: none;
-            width: min(100%, calc((100svh - 340px) / var(--frame-ar)));
+            width: min(100%, calc((calc(var(--svh, 1svh) * 100) - 340px) / var(--frame-ar)));
             aspect-ratio: 1 / var(--frame-ar);
           }
 

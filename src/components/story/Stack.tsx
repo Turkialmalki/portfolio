@@ -257,10 +257,10 @@ export default function Stack() {
       </div>
 
       <style>{`
-        .st-root { position: relative; height: 270svh; background: var(--bg-primary); color: var(--text-primary); }
-        @media (max-width: 700px) { .st-root:not([data-static="1"]) { height: 190svh; } }
-        .st-stage { position: sticky; top: 0; height: 100svh; min-height: 560px; overflow: hidden; }
-        .st-head { position: absolute; inset-inline: 0; top: clamp(84px, 13svh, 130px); text-align: center; padding: 0 20px; z-index: 2; }
+        .st-root { position: relative; height: calc(var(--svh, 1svh) * 270); background: var(--bg-primary); color: var(--text-primary); }
+        @media (max-width: 700px) { .st-root:not([data-static="1"]) { height: calc(var(--svh, 1svh) * 190); } }
+        .st-stage { position: sticky; top: 0; height: calc(var(--svh, 1svh) * 100); min-height: 560px; overflow: hidden; }
+        .st-head { position: absolute; inset-inline: 0; top: clamp(84px, calc(var(--svh, 1svh) * 13), 130px); text-align: center; padding: 0 20px; z-index: 2; }
         .st-kicker { font-size: 13px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
         .st-head h2 { margin: 10px 0 0; font-size: clamp(30px, 6vw, 64px); line-height: 1.1; font-weight: 900; }
         .st-field { position: absolute; inset: 0; display: grid; place-items: center; }

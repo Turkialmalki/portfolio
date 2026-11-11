@@ -264,14 +264,14 @@ export default function Work() {
         .sc-deck { max-width: 1120px; margin: 0 auto; padding: 0 clamp(14px, 3vw, 24px) clamp(60px, 10vw, 120px); }
         .sc-card {
           --pin: calc(84px + var(--i) * 14px);
-          position: sticky; top: var(--pin); margin-bottom: clamp(40px, 9svh, 96px);
+          position: sticky; top: var(--pin); margin-bottom: clamp(40px, calc(var(--svh, 1svh) * 9), 96px);
         }
         .sc-card:last-child { margin-bottom: 0; }
 
         /* a calm surface tinted by the project's own colour — Apple/Revolut, not a poster */
         .sc-inner {
           position: relative; overflow: hidden; isolation: isolate;
-          height: clamp(500px, 68svh, 600px); border-radius: clamp(26px, 3vw, 36px);
+          height: clamp(500px, calc(var(--svh, 1svh) * 68), 600px); border-radius: clamp(26px, 3vw, 36px);
           background: color-mix(in srgb, var(--accent) 9%, var(--bg-card));
           border: 1px solid var(--border-subtle);
           padding: clamp(24px, 4vw, 52px);
@@ -328,7 +328,7 @@ export default function Work() {
           .sc-dim { display: none; }
         }
         @media (min-width: 900px) {
-          .sc-inner { height: clamp(460px, 62svh, 560px); }
+          .sc-inner { height: clamp(460px, calc(var(--svh, 1svh) * 62), 560px); }
           .sc-tags { display: flex; }
           .sc-frame { inset-inline-start: auto; inset-inline-end: 0; width: 60%; max-height: 86%; bottom: 0;
             aspect-ratio: 16 / 10; border-radius: 24px 0 0 0; }

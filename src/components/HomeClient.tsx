@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/stableViewport";
 import { useState, useCallback, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import Preloader from "./Preloader";
