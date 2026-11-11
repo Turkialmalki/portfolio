@@ -1486,7 +1486,6 @@ const STYLES = `
     background: linear-gradient(to bottom, var(--fp-accent), rgba(30,143,255,.62));
     box-shadow: 0 0 14px rgba(30,143,255,.45);
     transform-origin: top;
-    will-change: transform;
   }
 
   /* The light the marker is carrying — the reason the line reads as being
@@ -1503,7 +1502,6 @@ const STYLES = `
     background: radial-gradient(ellipse at center, var(--fp-accent-soft) 0%, transparent 68%);
     opacity: .85;
     pointer-events: none;
-    will-change: transform;
   }
 
   .fp-plane {
@@ -1521,8 +1519,13 @@ const STYLES = `
     border: 1px solid var(--fp-accent-soft);
     color: var(--fp-accent);
     box-shadow: 0 6px 18px rgba(30,143,255,.28);
-    will-change: transform;
   }
+
+  /* No \`will-change\` on the rail pieces. They are a thin line, a glow and a
+     marker, and they run the whole height of the route: promoting them to their
+     own layers makes the browser promote and squash every stop that overlaps
+     them, which came to hundreds of megabytes of layer memory on a phone and
+     is what made scrolling back up through the timeline stall. */
 
   .fp-plane-wake {
     position: absolute;
