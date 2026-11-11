@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import {
   memo,
   useCallback,
@@ -20,7 +19,6 @@ import {
   useTransform,
   type MotionValue,
 } from "framer-motion";
-import { trackEvent } from "@/lib/analytics";
 import {
   HERO_VISUAL_VARIANT,
   heroVariantOverride,
@@ -1277,16 +1275,6 @@ export default function Hero({ ready = true }: HeroProps) {
                   <motion.p className="hero-positioning" {...enter(0.2, 14)}>
                     {t.hero.positioning}
                   </motion.p>
-
-                  <motion.div className="hero-cta-row" {...enter(0.28, 12)}>
-                    <Link
-                      href="#contact-footer"
-                      className="hero-cta-primary"
-                      onClick={() => trackEvent("contact_cta_click", { location: "hero" })}
-                    >
-                      {t.hero.ctaPrimary}
-                    </Link>
-                  </motion.div>
                 </motion.div>
               </motion.div>
 

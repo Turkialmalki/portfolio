@@ -19,7 +19,7 @@ const COPY = {
     hTag: "تدريس",
     hTitle: "مدرّس على Hash+",
     hBody: "أشارك خبرتي مع المتعلمين على منصة Hash+.",
-    hCta: "افتح ملفي على Hash+",
+    hCta: "عرض ملفي",
   },
   en: {
     title: "Consulting & teaching",
@@ -31,7 +31,7 @@ const COPY = {
     hTag: "Teaching",
     hTitle: "Teacher on Hash+",
     hBody: "I share what I know with learners on the Hash+ platform.",
-    hCta: "Open my Hash+ profile",
+    hCta: "View my profile",
   },
 } as const;
 

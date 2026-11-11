@@ -11,7 +11,7 @@ import Reveal from "@/components/story/Reveal";
 
 const COPY = {
   ar: {
-    title: "لنتحدث",
+    title: "تواصل معي",
     line: "عندك فكرة أو منتج تبنيه؟ أخبرني، وأرد عليك بنفسي.",
     mail: "راسلني",
     book: "احجز مكالمة",
@@ -19,7 +19,7 @@ const COPY = {
     name: "تركي المالكي",
   },
   en: {
-    title: "Let's talk",
+    title: "Get in touch",
     line: "Got an idea or a product to build? Tell me, and I'll reply myself.",
     mail: "Email me",
     book: "Book a call",
