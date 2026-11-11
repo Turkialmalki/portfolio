@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import Preloader from "./Preloader";
 import TopBar from "./TopBar";
@@ -24,7 +24,19 @@ import Footer from "./sections/Footer";
  * career; the Work section lets a visitor open any product as a full case
  * study in a pop-up without leaving the page.
  */
+/* Diagnostic switch: `/?skip=journey,work` leaves those sections out, so a slow
+   phone can be tested section by section. Names: hero, journey, work, impact,
+   experience, stack, credentials, mentoring, life. Without the parameter the
+   page is untouched. */
+const noop = () => () => {};
+const readSkip = () => new URLSearchParams(window.location.search).get("skip") ?? "";
+function useSkip() {
+  const raw = useSyncExternalStore(noop, readSkip, () => "");
+  return new Set(raw.split(",").filter(Boolean));
+}
+
 export default function HomeClient() {
+  const skip = useSkip();
   const [loading, setLoading] = useState(true);
   const handleComplete = useCallback(() => setLoading(false), []);
 
@@ -39,15 +51,15 @@ export default function HomeClient() {
       >
         <TopBar />
         <main>
-          <Hero ready={!loading} />
-          <FlightPath />
-          <Work />
-          <Impact />
-          <Experience />
-          <Stack />
-          <Credentials />
-          <Mentoring />
-          <Life />
+          {!skip.has("hero") && <Hero ready={!loading} />}
+          {!skip.has("journey") && <FlightPath />}
+          {!skip.has("work") && <Work />}
+          {!skip.has("impact") && <Impact />}
+          {!skip.has("experience") && <Experience />}
+          {!skip.has("stack") && <Stack />}
+          {!skip.has("credentials") && <Credentials />}
+          {!skip.has("mentoring") && <Mentoring />}
+          {!skip.has("life") && <Life />}
         </main>
         <Footer />
       </motion.div>
