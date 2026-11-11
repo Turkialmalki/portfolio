@@ -2290,6 +2290,28 @@ const STYLES = `
     .fp-arrival-actions > * { flex: 1 1 100%; justify-content: center; }
   }
 
+  /* ── phones ─────────────────────────────────────────────
+     iOS Safari rasterises a backdrop-filter or a 130px blur as its own
+     off-screen texture; a dozen of them down a long page is what leaves the
+     tiles blank and the scroll stalling mid-flick. On a phone the cards are
+     simply (almost) opaque, and the glow is dropped. */
+  @media (max-width: 700px) {
+    .fp-glow,
+    .fp-dots { display: none; }
+    .fp-metric,
+    a.fp-proof-inner,
+    .fp-proof-inner,
+    .fp-cred,
+    .fp-arrival-card,
+    .fp-progress {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .fp { --fp-card: rgba(255,255,255,.96); }
+    [data-theme="dark"] .fp { --fp-card: rgba(24,27,33,.94); }
+    .fp-proof-img { will-change: auto; }
+  }
+
   /* ── reduced motion ──────────────────────────────────── */
 
   @media (prefers-reduced-motion: reduce) {

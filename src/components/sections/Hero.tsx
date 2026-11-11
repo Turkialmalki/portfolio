@@ -4164,6 +4164,7 @@ export default function Hero({ ready = true }: HeroProps) {
         /* The paper stickers named each object and landed on top of its
            neighbours. The pieces speak for themselves; the labels are gone. */
         .arc-cap { display: none !important; }
+        @media (max-width: 700px) { .hero-aurora { display: none; } }
         .hero-cta-primary { flex: 0 0 auto !important; width: auto; padding: 13px 30px !important; font-size: 14px !important; }
       `}</style>
     </section>
